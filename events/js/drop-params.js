@@ -4,13 +4,13 @@ export default {
   dropName: "GHOSTNET",
 
   dropDate: {
-    month: "July",
-    day:   "17",
+    month: "August",
+    day:   "14",
     year:  "2025"
   },
 
   dropTime: {
-    time:     "9:30",
+    time:     "7:20",
     period:   "PM",
     timezone: "EST"
   },
