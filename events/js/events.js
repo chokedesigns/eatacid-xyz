@@ -210,6 +210,39 @@ function preloadFlameIcons() {
 }
 
 // =============================================================================
+// HELPERS: DROP-SCHEDULE GATE
+// =============================================================================
+
+/**
+ * Evaluates DROP_PARAMS.dropScheduled and switches the top-level panels.
+ * Hides the page-load spinner in both branches.
+ * 
+ * @returns {boolean} true  → proceed with full initialization
+ *                    false → show “No Drops Scheduled” and bail early
+ */
+function applyDropScheduledGate() {
+  const spinner = document.querySelector('.drops-page-load-spinner-div');
+  const dropsUI = document.querySelector('.drops-ui-div');
+  const noDrops = document.querySelector('.no-drops-scheduled-div');
+
+  // spinner always goes away once we decide
+  if (spinner) spinner.style.display = 'none';
+
+  // default to “scheduled” unless explicitly set false, so older params won’t break
+  const scheduled = dropParams?.dropScheduled !== false;
+
+  if (scheduled) {
+    if (dropsUI) dropsUI.style.display = 'flex';
+    if (noDrops) noDrops.style.display = 'none';
+    return true;
+  } else {
+    if (dropsUI) dropsUI.style.display = 'none';
+    if (noDrops) noDrops.style.display = 'flex';
+    return false;
+  }
+}
+
+// =============================================================================
 // HELPERS: MODAL & UI RESET FUNCTIONS
 // =============================================================================
 
@@ -1970,7 +2003,7 @@ function handleWalletConnected(account) {
   updateEventCartBurnToken();
 
   // 4) Update header text
-  const header = document.querySelector('.available-burn-tokens-title-text');
+  const header = document.querySelector('.available-burn-tokens-exchange-text');
   if (header) header.textContent = 'AVAILABLE BURN TOKENS';
 }
 
@@ -2013,7 +2046,7 @@ function handleWalletDisconnected() {
   if (exchBtn) exchBtn.textContent = 'EXCHANGE';
 
   // Switch header back to “ELIGIBLE BURN TOKENS”
-  const header = document.querySelector('.available-burn-tokens-title-text');
+  const header = document.querySelector('.available-burn-tokens-exchange-text');
   if (header) header.textContent = 'ELIGIBLE BURN TOKENS';
 }
 
@@ -2040,10 +2073,16 @@ window.addEventListener('walletDisconnected', () => {
 // =============================================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
-  // 0a) Preload our flame‑animation GIFs so toggles are instant
+  // 0) Drop-schedule early gate (page-level)
+  //     - Hides .drops-page-load-spinner-div
+  //     - Shows either .drops-ui-div or .no-drops-scheduled-div
+  //     - Returns early if no drop is scheduled
+  if (!applyDropScheduledGate()) return;
+
+  // 0a) Preload our flame-animation GIFs so toggles are instant
   preloadFlameIcons();
 
-  // 0) Ensure both spinners are visible on initial load
+  // 0b) Ensure both spinners are visible on initial load (only when scheduled)
   const availSpinner  = document.querySelector('.available-token-ui-loading---events');
   const redeemSpinner = document.querySelector('.loading-spinner-02-redeem-token');
   if (availSpinner)  availSpinner.style.display  = 'flex';
