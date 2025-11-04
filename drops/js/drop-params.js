@@ -39,7 +39,7 @@ export default {
     {
       collection: "HEN",
       enabled:    true,
-      exclude:    ["6"],
+      exclude:    ["141634"],
       burnAmount: 1
     },
     {

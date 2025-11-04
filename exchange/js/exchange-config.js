@@ -31,8 +31,8 @@ export default {
 
     mainnet: {
       collections: {
-        pane0: "KT1…your-419-mainnet-address…",
-        pane1: "KT1…your-Canaan-mainnet-address…"
+        pane0: "KT1EzmMokbtPS9nYJW1n5Darfgwf7HVtcsyq",
+        pane1: "KT1UqqSTPPFQk6btXKgv2adjj83YD2V5YBt1"
       },
       escrow: "KT1…your-escrow-mainnet-address…",
       redeemMaster: "KT1…your-redeemMaster-mainnet-address…"

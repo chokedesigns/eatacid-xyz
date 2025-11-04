@@ -63,9 +63,9 @@ export default {
       escrow: "KT1…your-escrow-mainnet-address…",
 
       collections: {
-        HEN: "KT1…your-HEN-mainnet-address…",
-        CANAAN: "KT1…your-CANAAN-mainnet-address…",
-        INTRODUCTIONS: "KT1…your-INTRO-mainnet-address…"
+        HEN: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
+        CANAAN: "KT1UqqSTPPFQk6btXKgv2adjj83YD2V5YBt1",
+        INTRODUCTIONS: "KT1FmqojETK4Ux44oeudyDbQ6zQDYrD5DaP5"
       },
 
       tokenMapping: {}

@@ -714,24 +714,36 @@ function handleDropdownChange(event) {
 async function fetchTokenPairId(burnContractAddress, burnTokenId) {
   try {
     console.log(`🔍 Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
-    // use dynamic TzKT base URL instead of a hard-coded endpoint
-    const url = `${TZKT_BASE}/v1/contracts/${BURN_REDEEM_CONTRACT}/bigmaps/token_mapping/keys`;
-    const response = await fetch(url);
-    const tokenMappings = await response.json();
-    console.log("📜 Retrieved token_mapping data:", tokenMappings);
 
-    const matching = tokenMappings.find(entry =>
-      entry.value.burn_contract_address === burnContractAddress &&
-      parseInt(entry.value.burn_token_id, 10) === parseInt(burnTokenId, 10)
+    // Only fetch ACTIVE entries from token_mapping
+    const url =
+      `${TZKT_BASE}/v1/contracts/${BURN_REDEEM_CONTRACT}` +
+      `/bigmaps/token_mapping/keys?active=true&limit=10000`;
+
+    const response = await fetch(url);
+    const raw = await response.json();
+    console.log("📜 Retrieved raw token_mapping data:", raw);
+
+    // Mirror admin behavior: ignore inactive / null-valued rows defensively
+    const tokenMappings = (raw || []).filter(
+      (entry) => entry && entry.active !== false && entry.value != null
+    );
+
+    console.log("📜 Filtered active token_mapping data:", tokenMappings);
+
+    const matching = tokenMappings.find(
+      (entry) =>
+        entry.value.burn_contract_address === burnContractAddress &&
+        parseInt(entry.value.burn_token_id, 10) === parseInt(burnTokenId, 10)
     );
 
     if (matching) {
       console.log(`✅ Found token_pair_id: ${matching.key}`);
-      return parseInt(matching.key, 10);
-    } else {
-      console.warn(`❌ No matching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
-      return null;
+      return Number(matching.key);
     }
+
+    console.warn(`❌ No token_pair_id for ${burnContractAddress} / ${burnTokenId}`);
+    return null;
   } catch (error) {
     console.error("❌ Error fetching token_pair_id:", error);
     return null;
