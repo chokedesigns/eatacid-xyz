@@ -18,8 +18,8 @@ export default {
   // DROP DATE
   // ============================================================
   dropDate: {
-    month: "August",
-    day:   "14",
+    month: "September",
+    day:   "4",
     year:  "2025"
   },
 
@@ -27,7 +27,7 @@ export default {
   // DROP TIME
   // ============================================================
   dropTime: {
-    time:     "7:20",
+    time:     "3:11",
     period:   "PM",
     timezone: "EST"
   },
@@ -39,7 +39,7 @@ export default {
     {
       collection: "HEN",
       enabled:    true,
-      exclude:    ["141634"],
+      exclude:    ["6"],
       burnAmount: 1
     },
     {

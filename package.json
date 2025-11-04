@@ -4,8 +4,8 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "parcel serve index.html events/index.html exchange/index.html --open --port 3000",
-    "build": "parcel build index.html events/index.html exchange/index.html --dist-dir dist"
+    "start": "parcel serve index.html drops/index.html exchange/index.html --open --port 3000",
+    "build": "parcel build index.html drops/index.html exchange/index.html --dist-dir dist"
   },
   "keywords": [],
   "author": "",
