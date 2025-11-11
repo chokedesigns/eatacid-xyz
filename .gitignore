@@ -22,7 +22,7 @@ npm-debug.log*
 ZIP/
 
 # ----------------------------------------
-# Webflow‑exported CSS & assets (ignore these)
+# Webflow‑exported CSS & assets
 # ----------------------------------------
 events/css/
 exchange/css/
