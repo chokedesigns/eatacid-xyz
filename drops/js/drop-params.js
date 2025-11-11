@@ -27,7 +27,7 @@ export default {
   // DROP TIME
   // ============================================================
   dropTime: {
-    time:     "3:11",
+    time:     "3:12",
     period:   "PM",
     timezone: "EST"
   },
