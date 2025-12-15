@@ -2,7 +2,12 @@
   "type": "module",
   "name": "eatacid-xyz",
   "version": "1.0.0",
+  "private": true,
   "description": "",
+  "workspaces": [
+    "admin-ui",
+    "shared/drop-params"
+  ],
   "scripts": {
     "start": "parcel serve index.html drops/index.html exchange/index.html --open --port 4000",
     "build": "parcel build index.html drops/index.html exchange/index.html --dist-dir dist"
@@ -13,7 +18,8 @@
   "dependencies": {
     "@airgap/beacon-sdk": "^4.2.2",
     "@taquito/beacon-wallet": "^19.0.2",
-    "@taquito/taquito": "^19.0.2"
+    "@taquito/taquito": "^19.0.2",
+    "ea-drop-params": "1.0.0"
   },
   "devDependencies": {
     "parcel": "^2.12.0",

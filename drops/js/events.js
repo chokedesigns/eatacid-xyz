@@ -16,7 +16,8 @@ console.log = (...args) => {
 // =============================================================================
 
 import eventsNetworkConfig from './events-config.js';
-import dropParams           from './drop-params.js';
+import dropParams from 'ea-drop-params';
+import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
 
 /**
  * Convert a collection key to its CSS slug.
@@ -141,35 +142,6 @@ function normalizeString(input) {
 function pad(n) {
   return n < 10 ? '0' + n : String(n);
 }
-
-
-// =============================================================================
-// HELPERS: TIME & DATE
-// =============================================================================
-
-/**
- * @returns {boolean} True if DST is in effect for `date`.
- */
-function isDST(date = new Date()) {
-  const janOffset = new Date(date.getFullYear(), 0, 1).getTimezoneOffset();
-  const julOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
-  return date.getTimezoneOffset() < Math.max(janOffset, julOffset);
-}
-
-/**
- * @returns {string} "CST"/"CDT", "EST"/"EDT", etc. based on `date`.
- */
-function getTzAbbrev(stdAbbrev, date) {
-  const map = {
-    CST: { std: 'CST', dst: 'CDT' },
-    EST: { std: 'EST', dst: 'EDT' },
-    PST: { std: 'PST', dst: 'PDT' }
-  };
-  const entry = map[stdAbbrev?.toUpperCase()];
-  if (!entry) return stdAbbrev;
-  return isDST(date) ? entry.dst : entry.std;
-}
-
 
 // =============================================================================
 // HELPERS: UI TRUNCATION & PRELOADING
@@ -1142,26 +1114,71 @@ function updateDropName() {
 
 /**
  * Updates the drop date and time display.
+ * - Date row uses strict validateDropDate so invalid combos
+ *   (e.g. "November 31") show a config error instead of rolling over.
+ * - Time row uses computeDropInstant so malformed time/period/timezone
+ *   never leak into the pill; instead you see a CONFIG ERROR that
+ *   matches the countdown pill.
  */
 function updateDropDateTime() {
   const dateEl = document.querySelector('.drop-details-drop-date-text');
   const timeEl = document.querySelector('.drop-details-drop-time-text');
 
+  // ----- DATE LABEL (strict via validateDropDate) -----
   if (dateEl && dropDate) {
-    const { month, day, year } = dropDate;
-    const d = new Date(`${month} ${day}, ${year}`);
-    const opts = { weekday: "long", month: "long", day: "2-digit" };
-    dateEl.innerHTML = d.toLocaleDateString("en-US", opts).toUpperCase();
+    const validation = validateDropDate(dropDate);
+
+    if (!validation.ok) {
+      // Hard error in UI for malformed Y-M-D
+      dateEl.innerHTML = 'CONFIG ERROR: BAD DATE';
+    } else {
+      const { date } = validation;
+      const opts = { weekday: "long", month: "long", day: "2-digit" };
+      dateEl.innerHTML = date.toLocaleDateString("en-US", opts).toUpperCase();
+    }
   }
 
-  if (timeEl && dropTime) {
-    const { time, period, timezone } = dropTime;
-    const [h, m] = time.split(":");
-    const tz = timezone.toUpperCase();
-    const ts = (m === "00")
-      ? `${h}${period} ${tz}`
-      : `${h}:${m}${period} ${tz}`;
-    timeEl.innerHTML = ts.toUpperCase();
+  // ----- TIME LABEL (strict via computeDropInstant) -----
+  if (timeEl) {
+    // If either date or time config is missing, treat as a hard config error.
+    if (!dropDate || !dropTime) {
+      timeEl.innerHTML = "CONFIG ERROR: MISSING DATE/TIME";
+      console.warn("[updateDropDateTime] Missing dropDate or dropTime in params.");
+    } else {
+      const result = computeDropInstant(dropDate, dropTime);
+
+      if (!result.ok) {
+        // Mirror the countdown’s error semantics so both pills agree.
+        let msg = "CONFIG ERROR";
+        if (result.error === 'BAD_TZ') {
+          msg = "CONFIG ERROR: BAD TZ";
+        } else if (result.error === 'BAD_DATE') {
+          msg = "CONFIG ERROR: BAD DATE/TIME";
+        } else if (result.error === 'BAD_DATE_TZ') {
+          msg = "CONFIG ERROR: BAD DATE/TZ";
+        }
+
+        timeEl.innerHTML = msg;
+        console.error("[updateDropDateTime] Invalid dropDate/dropTime:", {
+          dropDate,
+          dropTime,
+          error: result.error
+        });
+      } else {
+        // Valid config: render the exact H:MM / HH:MM the user supplied
+        // with AM/PM and TZ — no truncation of :00 minutes.
+        const { time, period, timezone } = dropTime;
+
+        const safeTime   = String(time || "");
+        const safePeriod = String(period || "").toUpperCase();
+        const safeTz     = String(timezone || "").toUpperCase();
+
+        const [h, m] = safeTime.split(":");
+        const ts = `${h}:${m}${safePeriod} ${safeTz}`;
+
+        timeEl.innerHTML = ts.toUpperCase();
+      }
+    }
   }
 
   console.log(
@@ -1734,6 +1751,10 @@ async function pollForUnpause(contractAddress, interval = 3000) {
 /**
  * Starts the countdown to the drop; handles pre-drop timer, standby,
  * and transitions by driving AppState only.
+ *
+ * - Uses shared computeDropInstant(dropDate, dropTime) for timezone-aware Date.
+ * - Displays "N DAYS • HH:MM:SS", "1 DAY • HH:MM:SS", "0 DAYS • HH:MM:SS",
+ *   or "TODAY • HH:MM:SS" depending on local calendar day.
  */
 function startCountdown() {
   const countdownEl = document.querySelector('.drop-details-drop-date-countdown-text');
@@ -1742,12 +1763,28 @@ function startCountdown() {
     return;
   }
 
-  // Compute drop DateTime
-  const { month, day, year } = dropDate;
-  const { time, period, timezone } = dropTime;
-  const base = `${month} ${day}, ${year} ${time} ${period}`;
-  const tzAbbrev = getTzAbbrev(timezone, new Date(base));
-  const dropDateTime = new Date(`${base} ${tzAbbrev}`);
+  // Use shared helper to compute the concrete drop Date
+  const result = computeDropInstant(dropDate, dropTime);
+  if (!result.ok) {
+    console.error("[startCountdown] computeDropInstant error:", result.error, {
+      dropDate,
+      dropTime
+    });
+
+    let msg = "CONFIG ERROR";
+    if (result.error === 'BAD_TZ')         msg = "CONFIG ERROR: BAD TZ";
+    else if (result.error === 'BAD_DATE')  msg = "CONFIG ERROR: BAD DATE/TIME";
+    else if (result.error === 'BAD_DATE_TZ') msg = "CONFIG ERROR: BAD DATE/TZ";
+
+    countdownEl.textContent = msg;
+    updateAppState({
+      countdownPhase:   'config-error',
+      currentCountdown: msg
+    });
+    return;
+  }
+
+  const dropDateTime = result.date;
   console.log("[startCountdown] Drop date/time:", dropDateTime);
 
   // initial phase = pre
@@ -1773,9 +1810,9 @@ function startCountdown() {
    * Called every second before drop: updates the timer, transitions phases.
    */
   function tick() {
-    const diff = dropDateTime - new Date();
+    const diffMs = dropDateTime - new Date();
 
-    if (diff <= 0) {
+    if (diffMs <= 0) {
       // stop the pre-drop interval
       clearInterval(AppState.countdownTimerId);
       AppState.countdownTimerId = null;
@@ -1794,13 +1831,39 @@ function startCountdown() {
       return;
     }
 
-    // still pre-drop: update hh:mm:ss
-    const hrs = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    const secs = Math.floor((diff % 60000) / 1000);
-    const formatted = `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
+    // still pre-drop: update "DAYS • HH:MM:SS" / "TODAY • HH:MM:SS" / "0 DAYS • HH:MM:SS"
+    const now      = new Date();
+    const totalSec = Math.floor(diffMs / 1000);
+
+    let s    = totalSec;
+    const days = Math.floor(s / 86400); s -= days * 86400;
+    const hrs  = Math.floor(s / 3600);  s -= hrs * 3600;
+    const mins = Math.floor(s / 60);    s -= mins * 60;
+    const secs = s;
+
+    const hh = pad(hrs);
+    const mm = pad(mins);
+    const ss = pad(secs);
+
+    // Local-day comparison for TODAY vs 0 DAYS
+    const sameLocalDay = dropDateTime.toDateString() === now.toDateString();
+
+    let labelPart;
+    if (days > 0) {
+      // Proper pluralization
+      labelPart = (days === 1) ? '1 DAY' : `${days} DAYS`;
+    } else {
+      // < 24h remaining: distinguish TODAY vs "0 DAYS"
+      labelPart = sameLocalDay ? 'TODAY' : '0 DAYS';
+    }
+
+    const timePart  = `${hh}:${mm}:${ss}`;
+    const formatted = `${labelPart} • ${timePart}`;
+
     countdownEl.textContent = formatted;
-    updateAppState({ currentCountdown: formatted });
+
+    // AppState keeps the plain clock for exchange-button hover
+    updateAppState({ currentCountdown: timePart });
   }
 
   // kick off the first tick immediately

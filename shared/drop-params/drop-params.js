@@ -18,18 +18,18 @@ export default {
   // DROP DATE
   // ============================================================
   dropDate: {
-    month: "September",
-    day:   "4",
-    year:  "2025"
+    month: "December",    // "January"–"December", "Jan"–"Dec", or "1"–"12"
+    day:   "26",          // "1"–"31"
+    year:  "2025"         // four-digit year, "XXXX"
   },
 
   // ============================================================
   // DROP TIME
   // ============================================================
   dropTime: {
-    time:     "3:12",
-    period:   "PM",
-    timezone: "EST"
+    time:     "12:59",    // "H:MM" or "HH:MM" (12-hour clock)
+    period:   "AM",       // "AM" | "PM"
+    timezone: "EST"       // "CST" | "EST" | "PST"
   },
 
   // ============================================================
