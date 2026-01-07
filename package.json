@@ -5,12 +5,14 @@
   "private": true,
   "description": "",
   "workspaces": [
-    "admin-ui",
     "shared/drop-params"
   ],
   "scripts": {
     "start": "parcel serve index.html drops/index.html exchange/index.html --open --port 4000",
-    "build": "parcel build index.html drops/index.html exchange/index.html --dist-dir dist"
+    "build": "parcel build index.html drops/index.html exchange/index.html --dist-dir dist",
+    "clean:pages": "rimraf dist .parcel-cache",
+    "build:pages": "npm run clean:pages && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist --public-url ./ --no-content-hash --no-scope-hoist",
+    "pages:sanity": "npm run build:pages && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs"
   },
   "keywords": [],
   "author": "",
@@ -22,8 +24,10 @@
     "ea-drop-params": "1.0.0"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "parcel": "^2.12.0",
     "process": "^0.11.10",
+    "rimraf": "^6.1.2",
     "stream-browserify": "^3.0.0"
   }
 }

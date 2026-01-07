@@ -41,3 +41,8 @@ dist/
 # Admin UI (tracked in its own private repo)
 # ----------------------------------------
 admin-ui/
+
+# ----------------------------------------
+# Local sanity harness (generated)
+# ----------------------------------------
+test/

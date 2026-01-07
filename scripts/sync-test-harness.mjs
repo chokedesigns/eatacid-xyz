@@ -1,0 +1,121 @@
+// scripts/sync-test-harness.mjs
+import fs from "node:fs";
+import path from "node:path";
+
+const MARK_START = "<!-- EA_TEST_BUNDLE_START -->";
+const MARK_END = "<!-- EA_TEST_BUNDLE_END -->";
+
+function ensureDir(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function readUtf8(p) {
+  return fs.readFileSync(p, "utf8");
+}
+
+function writeUtf8(p, s) {
+  ensureDir(path.dirname(p));
+  fs.writeFileSync(p, s, "utf8");
+}
+
+function removeMarkedBlock(html) {
+  const start = html.indexOf(MARK_START);
+  const end = html.indexOf(MARK_END);
+  if (start !== -1 && end !== -1 && end > start) {
+    return html.slice(0, start) + html.slice(end + MARK_END.length);
+  }
+  return html;
+}
+
+// Remove ONLY your app-loader module scripts (not Webflow/jQuery scripts).
+// We intentionally match flexible variants seen in Webflow exports:
+//
+// - Home: ./shared/beacon-setup.js (sometimes after </html> in the rip)
+// - Drops/Exchange: js/main.js (within each folder)
+// - Your previous harness injections: dist/(home|drops|exchange).js
+// - Optional: wrapper entrypoints (/home.js, /drops.js, /exchange.js) if they ever appear
+function stripAppScripts(html) {
+  const patterns = [
+    // Webflow-exported module entrypoints for Drops/Exchange
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?js\/main\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?js\/main\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+
+    // Home (and sometimes other pages) loading shared beacon setup directly
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?shared\/beacon-setup\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?shared\/beacon-setup\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+
+    // If your repo HTML ever points directly at these (older iterations)
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*drops\/js\/main\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*exchange\/js\/main\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+
+    // Remove any previous harness injections (various relative forms)
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+
+    // Optional: if you ever put these stable entrypoints directly in HTML
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+  ];
+
+  let out = html;
+  for (const re of patterns) out = out.replace(re, "");
+  return out;
+}
+
+function injectBundle(html, bundleSrc) {
+  const block =
+    `${MARK_START}\n` +
+    `<script type="module" src="${bundleSrc}"></script>\n` +
+    `${MARK_END}\n`;
+
+  const needle = /<\/body\s*>/i;
+  if (needle.test(html)) {
+    return html.replace(needle, block + "</body>");
+  }
+  // Fallback if no </body>
+  return html + "\n" + block + "\n";
+}
+
+function buildOne({ src, dest, bundleSrc }) {
+  if (!fs.existsSync(src)) {
+    throw new Error(`sync-test-harness: missing source file: ${src}`);
+  }
+
+  let html = readUtf8(src);
+
+  // Keep this idempotent
+  html = removeMarkedBlock(html);
+  html = stripAppScripts(html);
+
+  // Inject our production-ish bundle
+  html = injectBundle(html, bundleSrc);
+
+  writeUtf8(dest, html);
+  console.log(`synced: ${dest}  <-  ${src}`);
+}
+
+const root = process.cwd();
+const testDir = path.join(root, "test");
+ensureDir(testDir);
+
+// Copies your current Webflow HTML shells from the repo,
+// strips app module loader scripts, injects dist bundles.
+buildOne({
+  src: path.join(root, "index.html"),
+  dest: path.join(testDir, "home.html"),
+  bundleSrc: "../dist/home.js",
+});
+
+buildOne({
+  src: path.join(root, "drops", "index.html"),
+  dest: path.join(testDir, "drops.html"),
+  bundleSrc: "../dist/drops.js",
+});
+
+buildOne({
+  src: path.join(root, "exchange", "index.html"),
+  dest: path.join(testDir, "exchange.html"),
+  bundleSrc: "../dist/exchange.js",
+});
+
+console.log("done.");

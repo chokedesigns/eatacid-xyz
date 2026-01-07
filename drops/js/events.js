@@ -258,24 +258,6 @@ function hideModal() {
 // =============================================================================
 
 /**
- * Restores the burn-token panel to its default “add token” state.
- * @param {Element} container
- */
-function clearBurnTokenUI(container) {
-  const addDiv     = container.querySelector('.event-cart-add-token-text-div');
-  const titleEl    = container.querySelector('.collection-item-events-title-text');
-  const editionsEl = container.querySelector('.event-cart-editions-div .collection-item-events-editions-text');
-  const collEl     = container.querySelector('.collection-item-events-collection-text');
-  const img        = container.querySelector('img.token-image');
-
-  if (addDiv)     { addDiv.style.display = 'flex'; addDiv.innerHTML = defaultAddTokenMarkup; }
-  if (titleEl)    titleEl.textContent = '';
-  if (editionsEl) editionsEl.textContent = '00';
-  if (collEl)     collEl.textContent = '';
-  if (img)        img.remove();
-}
-
-/**
  * Reads the necessary fields off a CMS-row to build a “burn token” data object.
  * @param {Element} cmsRow
  * @returns {Object} { id, title, collection, editions, imgSrc, imgSrcset }
@@ -464,23 +446,6 @@ function computeBalances(nfts) {
     acc[key] = (acc[key] || 0) + count;
     return acc;
   }, {});
-}
-
-/**
- * Reads that map and updates every `.collection-item-owned-text` on the page.
- * @param {Record<string,number>} balances
- */
-function renderBalances(balances) {
-  document
-    .querySelectorAll('.w-dyn-item[data-token-id]')
-    .forEach(wrapper => {
-      const ownedEl = wrapper.querySelector('.collection-item-owned-text');
-      if (!ownedEl) return;
-      const { tokenId, contractAddress } = wrapper.dataset;
-      const key = `${contractAddress}:${tokenId}`;
-      const count = balances[key] || 0;
-      ownedEl.textContent = count > 0 ? String(count) : '00';
-    });
 }
 
 // =============================================================================
