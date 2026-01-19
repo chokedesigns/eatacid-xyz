@@ -80,6 +80,23 @@ window.getEditionCount = function (dropdown) {
 };
 
 /**
+ * Updates the burn-tokens header to reflect wallet state.
+ *
+ * Disconnected: "ELIGIBLE BURN TOKENS"
+ * Connected:    "AVAILABLE BURN TOKENS"
+ *
+ * @param {boolean} isConnected
+ */
+function setBurnTokensHeader(isConnected) {
+  const header = document.querySelector('.available-burn-tokens-exchange-text');
+  if (!header) return;
+
+  header.textContent = isConnected
+    ? 'AVAILABLE BURN TOKENS'
+    : 'ELIGIBLE BURN TOKENS';
+}
+
+/**
  * Processes incoming NFTs and updates the UI.
  * Resets the UI, sets attributes, processes wallet NFTs, and updates the burn cart.
  *
@@ -93,6 +110,10 @@ window.receiveNFTs = function (nfts) {
   setContractAndTokenAttributes();
   processWalletNFTs(nfts);
   updateBurnCart();
+
+  // Wallet is connected if we received NFTs for an active account.
+  setBurnTokensHeader(true);
+
   console.log('NFT processing complete.');
 };
 
@@ -107,12 +128,16 @@ if (window.dAppClient && typeof window.dAppClient.subscribeToEvent === 'function
     if (account) {
       console.log("ACTIVE_ACCOUNT_SET event triggered:", account.address);
       fetchNFTs(account.address).then((nfts) => {
-         if (typeof window.receiveNFTs === 'function') {
-             window.receiveNFTs(nfts);
-         } else {
-             console.error('receiveNFTs function not found.');
-         }
+        if (typeof window.receiveNFTs === 'function') {
+          window.receiveNFTs(nfts);
+        } else {
+          console.error('receiveNFTs function not found.');
+        }
       });
+    } else {
+      // If the wallet client signals "no active account", restore disconnected defaults.
+      setBurnTokensHeader(false);
+      updateCartButtons();
     }
   });
 }

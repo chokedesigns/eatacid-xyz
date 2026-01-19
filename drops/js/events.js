@@ -149,20 +149,137 @@ function pad(n) {
 
 /** Truncates over-long drop-details text elements with “…” to fit their container. */
 function applyEllipsis() {
-  document.querySelectorAll(
-    '.drop-details-burn-collection-text,' +
-    '.drop-details-redeem-token-title-text,' +
-    '.drop-details-drop-time-text'
-  ).forEach(el => {
-    const full = el.dataset.fullText || el.textContent.trim();
+  const selectors = [
+    '.drop-details-burn-collection-text',
+    '.drop-details-redeem-token-title-text',
+    '.drop-details-drop-date-text',
+    '.drop-details-drop-time-text',
+    '.drop-details-drop-date-countdown-text-mobile',
+    '.drop-details-exclusions-text-none',
+    '.drop-details-burn-amount-text',
+    '.drop-details-redeem-amount-text'
+  ];
+
+  // Elements whose contents can change over time (countdown, etc.)
+  const dynamicClasses = new Set([
+    'drop-details-drop-date-text',
+    'drop-details-drop-time-text',
+    'drop-details-drop-date-countdown-text-mobile',
+    'drop-details-exclusions-text-none'
+  ]);
+
+  document.querySelectorAll(selectors.join(',')).forEach(el => {
+    // Ensure we can actually measure overflow and force 1-line behavior
+    // (critical for elements that would otherwise wrap)
+    el.style.whiteSpace = 'nowrap';
+    el.style.overflow = 'hidden';
+    el.style.maxWidth = '100%';
+    el.style.minWidth = '0';     // critical in flex layouts
+    el.style.flexShrink = '1';   // critical in flex layouts
+
+    // If the element has no measurable width, don't mutate it.
+    // (e.g. display:none or not laid out yet)
+    if (!el.clientWidth) return;
+
+    const domText = (el.textContent || '').trim();
+    const isDynamic = Array.from(dynamicClasses).some(cls => el.classList.contains(cls));
+
+    // If the DOM currently shows an ellipsized string, DO NOT treat that as "full text".
+    const domLooksTruncated = domText.endsWith('…');
+
+    // Determine the best "full text" source:
+    // - prefer previously stored fullText (restores when layout widens)
+    // - for dynamic elements, update stored fullText only when DOM is NOT already truncated
+    let full = (el.dataset.fullText || '').trim();
+
+    if (!full) {
+      full = domText;
+    } else if (isDynamic) {
+      // Dynamic: allow updates when the DOM text changes, but never overwrite with a truncated DOM string
+      if (domText && !domLooksTruncated && domText !== full) {
+        full = domText;
+      }
+    }
+
+    // Persist full text so we can always restore
     el.dataset.fullText = full;
+
+    // Native tooltip + accessibility label
+    if (full) {
+      el.setAttribute('title', full);
+      el.setAttribute('aria-label', full);
+    } else {
+      el.removeAttribute('title');
+      el.removeAttribute('aria-label');
+    }
+
+    // Reset to full before truncation
+    el.textContent = full;
+
+    // Truncate until it fits (leave at least 1 char before ellipsis)
     let truncated = full;
-    el.textContent = truncated;
-    while (el.scrollWidth > el.clientWidth && truncated.length) {
+    while (el.scrollWidth > el.clientWidth && truncated.length > 1) {
       truncated = truncated.slice(0, -2);
       el.textContent = truncated + '…';
     }
   });
+}
+
+function enableTapToRevealEllipsis(selectors) {
+  // Enable on touch devices; also allow desktop click for testing
+  const isTouch = window.matchMedia?.('(hover: none)').matches || ('ontouchstart' in window);
+
+  let tip = document.getElementById('ea-ellipsis-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'ea-ellipsis-tip';
+    Object.assign(tip.style, {
+      position: 'fixed',
+      left: '50%',
+      bottom: '24px',
+      transform: 'translateX(-50%)',
+      maxWidth: '92vw',
+      padding: '10px 12px',
+      borderRadius: '10px',
+      background: 'rgba(0,0,0,0.85)',
+      color: '#fff',
+      fontSize: '14px',
+      lineHeight: '1.2',
+      zIndex: 999999,
+      display: 'none'
+    });
+    document.body.appendChild(tip);
+  }
+
+  function show(text) {
+    tip.textContent = text;
+    tip.style.display = 'block';
+    clearTimeout(show._t);
+    show._t = setTimeout(() => (tip.style.display = 'none'), 2500);
+  }
+
+  document.addEventListener('click', (e) => {
+    // Only run on touch devices (or let desktop click work for testing)
+    if (!isTouch && !DEBUG) return;
+
+    const sel = selectors.join(',');
+    const target = e.target.closest(sel);
+    if (!target) return;
+
+    // Determine if the element is actually truncated
+    const visible = (target.textContent || '').trim();
+    const full = (target.dataset.fullText || target.getAttribute('title') || visible).trim();
+
+    const isTruncated =
+      visible.endsWith('…') ||
+      (target.scrollWidth > target.clientWidth);
+
+    if (isTruncated && full && full !== visible) {
+      e.preventDefault();
+      e.stopPropagation();
+      show(full);
+    }
+  }, { passive: false });
 }
 
 /** Preloads animated flame-icon `<img>`s so toggles are instant. */
@@ -1723,7 +1840,17 @@ async function pollForUnpause(contractAddress, interval = 3000) {
  */
 function startCountdown() {
   const countdownEl = document.querySelector('.drop-details-drop-date-countdown-text');
-  if (!countdownEl || !dropDate || !dropTime) {
+  const countdownElMobile = document.querySelector('.drop-details-drop-date-countdown-text-mobile');
+
+  // Helper: write the exact same text to both (if present)
+  function setCountdownText(text) {
+    if (countdownEl) countdownEl.textContent = text;
+    if (countdownElMobile) countdownElMobile.textContent = text;
+    applyEllipsis();
+  }
+
+  // If neither element exists, bail early
+  if ((!countdownEl && !countdownElMobile) || !dropDate || !dropTime) {
     console.warn("[startCountdown] Missing elements or config; aborting.");
     return;
   }
@@ -1737,11 +1864,11 @@ function startCountdown() {
     });
 
     let msg = "CONFIG ERROR";
-    if (result.error === 'BAD_TZ')         msg = "CONFIG ERROR: BAD TZ";
-    else if (result.error === 'BAD_DATE')  msg = "CONFIG ERROR: BAD DATE/TIME";
+    if (result.error === 'BAD_TZ')           msg = "CONFIG ERROR: BAD TZ";
+    else if (result.error === 'BAD_DATE')    msg = "CONFIG ERROR: BAD DATE/TIME";
     else if (result.error === 'BAD_DATE_TZ') msg = "CONFIG ERROR: BAD DATE/TZ";
 
-    countdownEl.textContent = msg;
+    setCountdownText(msg);
     updateAppState({
       countdownPhase:   'config-error',
       currentCountdown: msg
@@ -1759,13 +1886,13 @@ function startCountdown() {
   if (new Date() >= dropDateTime) {
     console.log("[startCountdown] Past drop time; entering standby immediately");
     updateAppState({ countdownPhase: 'standby' });
-    countdownEl.textContent = "STANDBY…";
+    setCountdownText("STANDBY…");
 
     pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS)
       .then(() => {
         console.log("[startCountdown] Unpaused → LIVE");
         updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
-        countdownEl.textContent = "LIVE NOW!";
+        setCountdownText("LIVE NOW!");
       })
       .catch(err => console.error("[startCountdown] pollForUnpause error:", err));
     return;
@@ -1784,13 +1911,13 @@ function startCountdown() {
 
       console.log("[startCountdown] Hit zero → entering standby");
       updateAppState({ countdownPhase: 'standby' });
-      countdownEl.textContent = "STANDBY…";
+      setCountdownText("STANDBY…");
 
       pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS)
         .then(() => {
           console.log("[startCountdown] Unpaused → LIVE");
           updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
-          countdownEl.textContent = "LIVE NOW!";
+          setCountdownText("LIVE NOW!");
         })
         .catch(err => console.error("[startCountdown] pollForUnpause error:", err));
       return;
@@ -1800,7 +1927,7 @@ function startCountdown() {
     const now      = new Date();
     const totalSec = Math.floor(diffMs / 1000);
 
-    let s    = totalSec;
+    let s      = totalSec;
     const days = Math.floor(s / 86400); s -= days * 86400;
     const hrs  = Math.floor(s / 3600);  s -= hrs * 3600;
     const mins = Math.floor(s / 60);    s -= mins * 60;
@@ -1815,20 +1942,19 @@ function startCountdown() {
 
     let labelPart;
     if (days > 0) {
-      // Proper pluralization
       labelPart = (days === 1) ? '1 DAY' : `${days} DAYS`;
     } else {
-      // < 24h remaining: distinguish TODAY vs "0 DAYS"
       labelPart = sameLocalDay ? 'TODAY' : '0 DAYS';
     }
 
     const timePart  = `${hh}:${mm}:${ss}`;
     const formatted = `${labelPart} • ${timePart}`;
 
-    countdownEl.textContent = formatted;
+    setCountdownText(formatted);
 
-    // AppState keeps the plain clock for exchange-button hover
-    updateAppState({ currentCountdown: timePart });
+    // If you already switched to storing the formatted label+time for the exchange hover,
+    // keep it consistent here:
+    updateAppState({ currentCountdown: formatted });
   }
 
   // kick off the first tick immediately
@@ -1950,7 +2076,28 @@ function updateExchangeButtonState(state) {
   btn.textContent = isHover ? hoverLabel : defaultLabel;
   btn.style.color = isHover ? hoverColor : defaultColor;
 
-  // —— pulse logic, now respecting the `pulse` flag even when sold‑out ——
+  // Smaller font only when we're showing the long pre-drop countdown on hover
+  const showingPreCountdown =
+    isHover &&
+    state.countdownPhase === 'pre' &&
+    state.walletConnected &&
+    state.selectedTokenId;
+
+  if (showingPreCountdown) {
+    btn.style.fontSize = '18px';
+    btn.style.lineHeight = '1';          // important: prevents extra vertical slack
+    btn.style.display = 'flex';
+    btn.style.alignItems = 'center';      // vertical center
+    btn.style.justifyContent = 'center';  // horizontal center
+  } else {
+    btn.style.removeProperty('font-size');
+    btn.style.removeProperty('line-height');
+    btn.style.removeProperty('display');
+    btn.style.removeProperty('align-items');
+    btn.style.removeProperty('justify-content');
+  }
+
+  // —— pulse logic, now respecting the `pulse` flag even when sold-out ——
   const soldOutLive =
     state.countdownPhase === 'live' &&
     state.redeemSupply === 0 &&
@@ -2098,6 +2245,7 @@ function handleWalletDisconnected() {
 // Ensure external disconnect events also clear AppState
 window.addEventListener('walletDisconnected', () => {
   console.log("Wallet forcibly disconnected");
+
   updateAppState({
     activeAccount: null,
     walletConnected: false,
@@ -2108,6 +2256,10 @@ window.addEventListener('walletDisconnected', () => {
   const connectBtn    = document.querySelector('.connect-wallet-button');
   disconnectBtn?.style.setProperty('display', 'none');
   connectBtn?.style.setProperty('display', 'block');
+
+  // Keep header text consistent with the disconnected default
+  const header = document.querySelector('.available-burn-tokens-exchange-text');
+  if (header) header.textContent = 'ELIGIBLE BURN TOKENS';
 
   clearCartUI();
   renderDropDetails();
@@ -2160,26 +2312,42 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupExclusiveCheckboxesWallet();
   attachExchangeButtonHandlers();
 
-  // 7) Ellipsis on resize/orientation
+  // 7) Ellipsis on resize/orientation (and tap-to-reveal on touch devices)
   applyEllipsis();
+
+  enableTapToRevealEllipsis([
+    '.drop-details-burn-collection-text',
+    '.drop-details-redeem-token-title-text',
+    '.drop-details-drop-date-text',
+    '.drop-details-drop-time-text',
+    '.drop-details-drop-date-countdown-text-mobile',
+    '.drop-details-exclusions-text-none',
+    '.drop-details-burn-amount-text',
+    '.drop-details-redeem-amount-text'
+  ]);
+
   window.addEventListener('resize', applyEllipsis);
   window.addEventListener('orientationchange', applyEllipsis);
 
   // 8) Sync exchange‑button and countdown state
-  subscribeToAppState(updateExchangeButtonState);
   subscribeToAppState(({ countdownPhase, redeemSupply }) => {
-    const el = document.querySelector('.drop-details-drop-date-countdown-text');
-    if (!el) return;
+    const els = [
+      document.querySelector('.drop-details-drop-date-countdown-text'),
+      document.querySelector('.drop-details-drop-date-countdown-text-mobile')
+    ].filter(Boolean);
+
+    if (!els.length) return;
 
     if (countdownPhase === 'live' && redeemSupply === 0) {
-      // Sold out: override text and remove any animation
-      el.textContent = 'SOLD OUT!';
-      el.classList.remove('standby-anim');
+      els.forEach(el => {
+        el.textContent = 'SOLD OUT!';
+        el.classList.remove('standby-anim');
+      });
     } else {
-      // Otherwise, keep the normal pulse animation on standby/live
       const pulse = countdownPhase === 'standby' || countdownPhase === 'live';
-      el.classList.toggle('standby-anim', pulse);
-      // and let your countdown logic continue to update the text for pre/standby/live
+      els.forEach(el => {
+        el.classList.toggle('standby-anim', pulse);
+      });
     }
   });
 
