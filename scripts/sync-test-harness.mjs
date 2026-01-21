@@ -33,6 +33,7 @@ function removeMarkedBlock(html) {
 // - Home: ./shared/beacon-setup.js (sometimes after </html> in the rip)
 // - Drops/Exchange: js/main.js (within each folder)
 // - Your previous harness injections: dist/(home|drops|exchange).js
+// - NEW: staging/prod subfolder injections: dist/(staging|prod)/(home|drops|exchange).js
 // - Optional: wrapper entrypoints (/home.js, /drops.js, /exchange.js) if they ever appear
 function stripAppScripts(html) {
   const patterns = [
@@ -51,6 +52,10 @@ function stripAppScripts(html) {
     // Remove any previous harness injections (various relative forms)
     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
     /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+
+    // NEW: remove staging/prod subfolder injections too
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:staging|prod)\/(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:staging|prod)\/(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
 
     // Optional: if you ever put these stable entrypoints directly in HTML
     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
@@ -103,19 +108,19 @@ ensureDir(testDir);
 buildOne({
   src: path.join(root, "index.html"),
   dest: path.join(testDir, "home.html"),
-  bundleSrc: "../dist/home.js",
+  bundleSrc: "../dist/staging/home.js",
 });
 
 buildOne({
   src: path.join(root, "drops", "index.html"),
   dest: path.join(testDir, "drops.html"),
-  bundleSrc: "../dist/drops.js",
+  bundleSrc: "../dist/staging/drops.js",
 });
 
 buildOne({
   src: path.join(root, "exchange", "index.html"),
   dest: path.join(testDir, "exchange.html"),
-  bundleSrc: "../dist/exchange.js",
+  bundleSrc: "../dist/staging/exchange.js",
 });
 
 console.log("done.");

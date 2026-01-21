@@ -9,10 +9,15 @@
   ],
   "scripts": {
     "start": "parcel serve index.html drops/index.html exchange/index.html --open --port 4000",
-    "build": "parcel build index.html drops/index.html exchange/index.html --dist-dir dist",
-    "clean:pages": "rimraf dist .parcel-cache",
-    "build:pages": "npm run clean:pages && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist --public-url ./ --no-content-hash --no-scope-hoist",
-    "pages:sanity": "npm run build:pages && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs"
+
+    "clean:cache": "rimraf .parcel-cache",
+    "clean:prod": "rimraf dist/prod",
+    "clean:staging": "rimraf dist/staging",
+
+    "build:pages:prod": "npm run clean:cache && npm run clean:prod && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
+    "build:pages:staging": "npm run clean:cache && npm run clean:staging && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
+
+    "pages:sanity": "npm run build:pages:staging && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs"
   },
   "keywords": [],
   "author": "",
