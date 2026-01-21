@@ -44,7 +44,7 @@ jobs:
           npm ci
           # Ensure Parcel watcher native binary exists on Ubuntu runners
           npm i --no-save @parcel/watcher-linux-x64-glibc
-          NETWORK=mainnet npm run build:pages:prod
+          NETWORK=mainnet npm run build:pages:prod -- --no-optimize
 
       - name: Build staging from staging
         working-directory: repo-staging
@@ -52,7 +52,7 @@ jobs:
           npm ci
           # Ensure Parcel watcher native binary exists on Ubuntu runners
           npm i --no-save @parcel/watcher-linux-x64-glibc
-          NETWORK=mainnet npm run build:pages:staging
+          NETWORK=mainnet npm run build:pages:staging -- --no-optimize
 
       - name: Assemble dist for Pages
         run: |
