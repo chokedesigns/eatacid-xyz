@@ -41,13 +41,15 @@ jobs:
       - name: Build prod from main
         working-directory: repo-main
         run: |
-          npm ci
+          npm config set optional true
+          npm ci --include=optional
           NETWORK=mainnet npm run build:pages:prod
 
       - name: Build staging from staging
         working-directory: repo-staging
         run: |
-          npm ci
+          npm config set optional true
+          npm ci --include=optional
           NETWORK=mainnet npm run build:pages:staging
 
       - name: Assemble dist for Pages
