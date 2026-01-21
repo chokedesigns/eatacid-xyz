@@ -1,0 +1,72 @@
+name: Deploy Pages (prod + staging + loaders)
+
+on:
+  push:
+    branches: ["main", "staging"]
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout main (prod source)
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: repo-main
+
+      - name: Checkout staging (staging source)
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          path: repo-staging
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Build prod from main
+        working-directory: repo-main
+        run: |
+          npm ci
+          NETWORK=mainnet npm run build:pages:prod
+
+      - name: Build staging from staging
+        working-directory: repo-staging
+        run: |
+          npm ci
+          NETWORK=mainnet npm run build:pages:staging
+
+      - name: Assemble dist for Pages
+        run: |
+          mkdir -p dist/prod dist/staging
+          cp -R repo-main/dist/prod/* dist/prod/ || true
+          cp -R repo-staging/dist/staging/* dist/staging/ || true
+
+          # Copy loaders to root with the stable names Webflow will load
+          cp repo-main/loaders/home.loader.js dist/home.js
+          cp repo-main/loaders/drops.loader.js dist/drops.js
+          cp repo-main/loaders/exchange.loader.js dist/exchange.js
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/deploy-pages@v4
