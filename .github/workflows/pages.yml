@@ -34,6 +34,9 @@ jobs:
         with:
           node-version: "20"
           cache: npm
+          cache-dependency-path: |
+            repo-main/package-lock.json
+            repo-staging/package-lock.json
 
       - name: Build prod from main
         working-directory: repo-main
