@@ -140,10 +140,14 @@ dAppClient.subscribeToEvent(BeaconEvent.ACTIVE_ACCOUNT_SET, async account => {
 });
 
 // ----------------------------------------------------------------------------
-// Initialize on DOMContentLoaded
+// Initialize (safe for loader + dynamic import timing)
 // ----------------------------------------------------------------------------
-document.addEventListener('DOMContentLoaded', async () => {
-  console.log('DOMContentLoaded → initializing wallet buttons');
+async function bootWalletButtons() {
+  // Guard against double-binding if this module is ever evaluated twice
+  if (window.__EA_WALLET_BUTTONS_BOOTED__) return;
+  window.__EA_WALLET_BUTTONS_BOOTED__ = true;
+
+  console.log('bootWalletButtons → initializing wallet buttons');
   const { connectButton, disconnectButton } = getWalletButtons();
 
   updateButtonState('unconnected');
@@ -157,4 +161,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   connectButton?.addEventListener('click', connectWallet);
   disconnectButton?.addEventListener('click', disconnectWallet);
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => { void bootWalletButtons(); });
+} else {
+  void bootWalletButtons();
+}
