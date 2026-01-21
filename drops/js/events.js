@@ -2269,7 +2269,7 @@ window.addEventListener('walletDisconnected', () => {
 // INITIALIZATION & EVENT BINDING
 // =============================================================================
 
-document.addEventListener("DOMContentLoaded", async () => {
+async function bootDropsPage() {
   // 0) Drop-schedule early gate (page-level)
   //     - Hides .drops-page-load-spinner-div
   //     - Shows either .drops-ui-div or .no-drops-scheduled-div
@@ -2289,26 +2289,26 @@ document.addEventListener("DOMContentLoaded", async () => {
   const addDiv = document.querySelector('.event-cart-add-token-text-div');
   if (addDiv) defaultAddTokenMarkup = addDiv.innerHTML;
 
-  // 2) Build CMS‑row lookup
+  // 2) Build CMS-row lookup
   setEventContractAndTokenAttributes();
 
   // 3) Render drop details
   renderDropDetails();
 
-  // 4) Populate Redeem‑Token panel
+  // 4) Populate Redeem-Token panel
   updateEventCartRedeemToken();
 
-  // 4a) Ensure redeem‑token panel sits above the (empty) burn‑token panel
+  // 4a) Ensure redeem-token panel sits above the (empty) burn-token panel
   const redeemPanel = document.querySelector('.event-cart-redeem-token-div-main');
   if (redeemPanel) redeemPanel.style.zIndex = '10';
 
-  // 4b) Start polling the on‑chain redeem‑token supply
+  // 4b) Start polling the on-chain redeem-token supply
   startRedeemSupplyPolling();
 
-  // 5) Start countdown / standby / live‑unpause
+  // 5) Start countdown / standby / live-unpause
   startCountdown();
 
-  // 6) Wire up checkboxes & exchange‑button handlers
+  // 6) Wire up checkboxes & exchange-button handlers
   setupExclusiveCheckboxesWallet();
   attachExchangeButtonHandlers();
 
@@ -2329,7 +2329,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   window.addEventListener('resize', applyEllipsis);
   window.addEventListener('orientationchange', applyEllipsis);
 
-  // 8) Sync exchange‑button and countdown state
+  // 8) Sync exchange-button and countdown state
   subscribeToAppState(({ countdownPhase, redeemSupply }) => {
     const els = [
       document.querySelector('.drop-details-drop-date-countdown-text'),
@@ -2357,7 +2357,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (btn) btn.disabled = exchangeDisabled;
   });
 
-  // 9) Flame‑icon hookup
+  // 9) Flame-icon hookup
   subscribeToAppState(updateFlames);
   updateFlames();  // initial sync
   window.addEventListener('resize', updateFlames);
@@ -2409,7 +2409,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 12) Manual disconnect
   document.addEventListener("walletDisconnected", handleWalletDisconnected);
 
-  // 13) Pause/resume redeem‑supply polling on page visibility
+  // 13) Pause/resume redeem-supply polling on page visibility
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       stopRedeemSupplyPolling();
@@ -2419,4 +2419,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   // — no spinner toggles here any more — each spinner hides itself in its success path —
-});
+}
+
+// IMPORTANT: loader + dynamic import() can execute after DOMContentLoaded has already fired.
+// This ensures we still boot in that case.
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", () => { void bootDropsPage(); });
+} else {
+  void bootDropsPage();
+}
