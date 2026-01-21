@@ -148,7 +148,7 @@ async function bootWalletButtons() {
   window.__EA_WALLET_BUTTONS_BOOTED__ = true;
 
   console.log('bootWalletButtons → initializing wallet buttons');
-  const { connectButton, disconnectButton } = getWalletButtons();
+  const { connectButton, connectedButton, disconnectButton } = getWalletButtons();
 
   updateButtonState('unconnected');
 
@@ -160,6 +160,7 @@ async function bootWalletButtons() {
   }
 
   connectButton?.addEventListener('click', connectWallet);
+  connectedButton?.addEventListener('click', disconnectWallet);
   disconnectButton?.addEventListener('click', disconnectWallet);
 }
 
