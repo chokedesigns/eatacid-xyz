@@ -155,8 +155,14 @@ async function bootWalletButtons() {
   const activeAccount = await dAppClient.getActiveAccount();
   if (activeAccount) {
     console.log('Active account on load:', activeAccount.address);
-    await fetchNFTs(activeAccount.address);
+
+    // Flip UI immediately (don’t wait for NFT fetch)
     updateButtonState('connected', activeAccount.address);
+
+    // Fetch NFTs in the background
+    fetchNFTs(activeAccount.address).catch((err) => {
+      console.error('Error fetching NFTs after connect:', err);
+    });
   }
 
   connectButton?.addEventListener('click', connectWallet);
