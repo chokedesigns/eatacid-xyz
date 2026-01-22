@@ -1187,7 +1187,11 @@ function resetExchangeUI() {
 // UI INITIALIZATION & EVENT BINDING
 // =============================================================================
 
-document.addEventListener('DOMContentLoaded', function () {
+function bootExchangePage() {
+  // Guard against double-binding if this module is ever evaluated twice
+  if (window.__EA_EXCHANGE_BOOTED__) return;
+  window.__EA_EXCHANGE_BOOTED__ = true;
+
   console.log('DOM fully loaded. Initializing UI...');
 
   setTimeout(() => {
@@ -1297,4 +1301,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
   }, INIT_DELAY_MS);
-});
+}
+
+// IMPORTANT: loader + dynamic import() can execute after DOMContentLoaded has already fired.
+// This ensures we still boot in that case.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootExchangePage);
+} else {
+  bootExchangePage();
+}
