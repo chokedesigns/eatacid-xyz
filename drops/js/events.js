@@ -2270,6 +2270,11 @@ window.addEventListener('walletDisconnected', () => {
 // =============================================================================
 
 async function bootDropsPage() {
+  // Guard: prevent double-boot (double event binding) if the module is ever loaded twice.
+  // This should be a no-op in the normal case (single load).
+  if (window.__EA_DROPS_BOOTED__) return;
+  window.__EA_DROPS_BOOTED__ = true;
+
   // 0) Drop-schedule early gate (page-level)
   //     - Hides .drops-page-load-spinner-div
   //     - Shows either .drops-ui-div or .no-drops-scheduled-div
@@ -2312,6 +2317,10 @@ async function bootDropsPage() {
   setupExclusiveCheckboxesWallet();
   attachExchangeButtonHandlers();
 
+  // 6a) 🔥 Re-hook exchange button state machine (labels/colors/pulse/clickAction)
+  subscribeToAppState(updateExchangeButtonState);
+  updateExchangeButtonState(AppState); // initial sync (subscribers don't auto-run on subscribe)
+
   // 7) Ellipsis on resize/orientation (and tap-to-reveal on touch devices)
   applyEllipsis();
 
@@ -2351,10 +2360,19 @@ async function bootDropsPage() {
     }
   });
 
-  // 8b) Sync the disabled flag to the exchange button
+  // 8b) Reflect disabled state accessibly (do NOT block hover with pointer-events)
+  // Note: updateExchangeButtonState already handles click gating + cursor via clickAction.
   subscribeToAppState(({ exchangeDisabled }) => {
     const btn = document.querySelector('.event-cart-exchange-button-no-select.w-button');
-    if (btn) btn.disabled = exchangeDisabled;
+    if (!btn) return;
+
+    btn.setAttribute('aria-disabled', exchangeDisabled ? 'true' : 'false');
+
+    // Only apply native disabled when the element actually supports it.
+    const tag = (btn.tagName || '').toUpperCase();
+    if (tag === 'BUTTON' || tag === 'INPUT') {
+      btn.disabled = !!exchangeDisabled;
+    }
   });
 
   // 9) Flame-icon hookup
