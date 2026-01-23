@@ -48,7 +48,7 @@ jobs:
           # Fail fast if drop-params.json is stale vs drop-params.js (MAIN)
           npm run dropparams:json
           if ! git diff --quiet -- shared/drop-params/drop-params.json; then
-            echo "::error title=DROP PARAMS JSON MISMATCH (MAIN)::shared/drop-params/drop-params.json is stale vs shared/drop-params/drop-params.js. Run 'npm run dropparams:json' or 'npm run start' locally and commit + push the updated JSON."
+            echo "::error title=DROP PARAMS JSON MISMATCH (MAIN)::shared/drop-params/drop-params.json is stale vs shared/drop-params/drop-params.js. Run 'npm run dropparams:json' locally and commit the updated JSON."
             echo ""
             echo "=== Diff (expected: no changes) ==="
             git diff -- shared/drop-params/drop-params.json
@@ -68,7 +68,7 @@ jobs:
           # Fail fast if drop-params.json is stale vs drop-params.js (STAGING)
           npm run dropparams:json
           if ! git diff --quiet -- shared/drop-params/drop-params.json; then
-            echo "::error title=DROP PARAMS JSON MISMATCH (MAIN)::shared/drop-params/drop-params.json is stale vs shared/drop-params/drop-params.js. Run 'npm run dropparams:json' or 'npm run start' locally and commit + push the updated JSON."
+            echo "::error title=DROP PARAMS JSON MISMATCH (STAGING)::shared/drop-params/drop-params.json is stale vs shared/drop-params/drop-params.js. Run 'npm run dropparams:json' locally and commit the updated JSON."
             echo ""
             echo "=== Diff (expected: no changes) ==="
             git diff -- shared/drop-params/drop-params.json
