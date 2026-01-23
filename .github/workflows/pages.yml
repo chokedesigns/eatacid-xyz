@@ -45,9 +45,16 @@ jobs:
           # Ensure Parcel watcher native binary exists on Ubuntu runners
           npm i --no-save @parcel/watcher-linux-x64-glibc
 
-          # Fail fast if drop-params.json is stale vs drop-params.js
+          # Fail fast if drop-params.json is stale vs drop-params.js (MAIN)
           npm run dropparams:json
-          git diff --exit-code shared/drop-params/drop-params.json
+          if ! git diff --quiet -- shared/drop-params/drop-params.json; then
+            echo "::error title=DROP PARAMS JSON MISMATCH (MAIN)::shared/drop-params/drop-params.json is stale vs shared/drop-params/drop-params.js. Run 'npm run dropparams:json' or 'npm run start' locally and commit + push the updated JSON."
+            echo ""
+            echo "=== Diff (expected: no changes) ==="
+            git diff -- shared/drop-params/drop-params.json
+            echo ""
+            exit 1
+          fi
 
           npm run build:pages:prod -- --no-optimize
 
@@ -58,9 +65,16 @@ jobs:
           # Ensure Parcel watcher native binary exists on Ubuntu runners
           npm i --no-save @parcel/watcher-linux-x64-glibc
 
-          # Fail fast if drop-params.json is stale vs drop-params.js
+          # Fail fast if drop-params.json is stale vs drop-params.js (STAGING)
           npm run dropparams:json
-          git diff --exit-code shared/drop-params/drop-params.json
+          if ! git diff --quiet -- shared/drop-params/drop-params.json; then
+            echo "::error title=DROP PARAMS JSON MISMATCH (MAIN)::shared/drop-params/drop-params.json is stale vs shared/drop-params/drop-params.js. Run 'npm run dropparams:json' or 'npm run start' locally and commit + push the updated JSON."
+            echo ""
+            echo "=== Diff (expected: no changes) ==="
+            git diff -- shared/drop-params/drop-params.json
+            echo ""
+            exit 1
+          fi
 
           npm run build:pages:staging -- --no-optimize
 
