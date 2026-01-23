@@ -44,6 +44,11 @@ jobs:
           npm ci
           # Ensure Parcel watcher native binary exists on Ubuntu runners
           npm i --no-save @parcel/watcher-linux-x64-glibc
+
+          # Fail fast if drop-params.json is stale vs drop-params.js
+          npm run dropparams:json
+          git diff --exit-code shared/drop-params/drop-params.json
+
           npm run build:pages:prod -- --no-optimize
 
       - name: Build staging from staging
@@ -52,6 +57,11 @@ jobs:
           npm ci
           # Ensure Parcel watcher native binary exists on Ubuntu runners
           npm i --no-save @parcel/watcher-linux-x64-glibc
+
+          # Fail fast if drop-params.json is stale vs drop-params.js
+          npm run dropparams:json
+          git diff --exit-code shared/drop-params/drop-params.json
+
           npm run build:pages:staging -- --no-optimize
 
       - name: Assemble dist for Pages
