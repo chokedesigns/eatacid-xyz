@@ -3,12 +3,12 @@
   "dropName": "GHOSTNET",
   "dropDate": {
     "month": "January",
-    "day": "29",
+    "day": "28",
     "year": "2026"
   },
   "dropTime": {
-    "time": "12:59",
-    "period": "AM",
+    "time": "8:27",
+    "period": "PM",
     "timezone": "EST"
   },
   "burnTokens": [
