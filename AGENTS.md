@@ -41,9 +41,23 @@ Always end with:
 3) Verification steps (exact commands + manual checks)
 4) Rollback note (what to revert)
 
+## Patch artifact requirement (must include in completion workflow)
+Before writing the completion message, export a diff artifact that includes new/untracked files.
+
+In the repo you modified (outer repo or nested admin-ui):
+1) Run: `npm run ticket:diff`
+2) Confirm it created (overwrite OK):
+   - `ticket.<branch>.diff`
+   - `ticket.<branch>.stat.txt`
+
+Notes:
+- This overwrites the same files each run; on fix passes, re-run it.
+- Always run `git rev-parse --show-toplevel` first to confirm you are in the correct repo before exporting.
+
 ## Allowed commands (workspace)
 - Prefer using existing npm scripts only.
 - Outer repo useful scripts:
   - `npm run start`
   - `npm run build:pages:staging`
   - `npm run pages:sanity`
+  - `npm run ticket:diff`
