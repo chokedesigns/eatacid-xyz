@@ -61,3 +61,8 @@ Notes:
   - `npm run build:pages:staging`
   - `npm run pages:sanity`
   - `npm run ticket:diff`
+
+- Nested admin-ui useful scripts (run from /admin-ui):
+  - `npm run dev`
+  - `npm run build:clean`
+  - `npm run ticket:diff`
