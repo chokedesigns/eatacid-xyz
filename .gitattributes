@@ -1,2 +1,5 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+admin-ui/src/drop-params.mirror.json text eol=lf
+shared/drop-params/drop-params.json text eol=lf
