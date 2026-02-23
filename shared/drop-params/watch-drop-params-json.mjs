@@ -21,6 +21,19 @@ let t = null;
 function mirrorIntoAdmin() {
   try {
     const jsonText = fs.readFileSync(sharedJsonPath, "utf8");
+
+    let prevMirror = null;
+    try {
+      prevMirror = fs.readFileSync(adminMirrorPath, "utf8");
+    } catch (err) {
+      if (err.code !== "ENOENT") throw err;
+    }
+
+    if (prevMirror === jsonText) {
+      console.log("[drop-params] unchanged", adminMirrorPath);
+      return;
+    }
+
     fs.writeFileSync(adminMirrorPath, jsonText, "utf8");
     console.log("[drop-params] wrote", adminMirrorPath);
   } catch (e) {

@@ -9,6 +9,18 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const outPath = path.join(__dirname, "drop-params.json");
-fs.writeFileSync(outPath, JSON.stringify(DROP_PARAMS, null, 2) + "\n", "utf8");
+const nextJson = JSON.stringify(DROP_PARAMS, null, 2) + "\n";
 
-console.log("[drop-params] wrote", outPath);
+let prevJson = null;
+try {
+  prevJson = fs.readFileSync(outPath, "utf8");
+} catch (err) {
+  if (err.code !== "ENOENT") throw err;
+}
+
+if (prevJson === nextJson) {
+  console.log("[drop-params] unchanged", outPath);
+} else {
+  fs.writeFileSync(outPath, nextJson, "utf8");
+  console.log("[drop-params] wrote", outPath);
+}
