@@ -19,7 +19,7 @@ export default {
   // ============================================================
   dropDate: {
     month: "February",    // "January"–"December", "Jan"–"Dec", or "1"–"12"
-    day:   "16",          // "1"–"31"
+    day:   "28",          // "1"–"31"
     year:  "2026"         // four-digit year, "XXXX"
   },
 
