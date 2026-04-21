@@ -15,6 +15,7 @@ const sharedJsonPath = path.join(__dirname, "drop-params.json");
 // NEW: mirror output inside admin-ui/src so Parcel definitely sees it
 const repoRoot = path.resolve(__dirname, "..", "..");
 const adminMirrorPath = path.join(repoRoot, "admin-ui", "src", "drop-params.mirror.json");
+const once = process.argv.includes("--once");
 
 let t = null;
 let requestedEpoch = 0;
@@ -38,27 +39,22 @@ function writeFileAtomic(filePath, text) {
 }
 
 function mirrorIntoAdmin() {
+  const jsonText = fs.readFileSync(sharedJsonPath, "utf8");
+
+  let prevMirror = null;
   try {
-    const jsonText = fs.readFileSync(sharedJsonPath, "utf8");
-
-    let prevMirror = null;
-    try {
-      prevMirror = fs.readFileSync(adminMirrorPath, "utf8");
-    } catch (err) {
-      if (err.code !== "ENOENT") throw err;
-    }
-
-    if (prevMirror === jsonText) {
-      console.log("[drop-params] unchanged", adminMirrorPath);
-      return;
-    }
-
-    writeFileAtomic(adminMirrorPath, jsonText);
-    console.log("[drop-params] wrote", adminMirrorPath);
-  } catch (e) {
-    // If gen hasn't produced JSON yet (or transient write), don't crash the watcher.
-    console.warn("[drop-params] mirror skipped:", e?.message || e);
+    prevMirror = fs.readFileSync(adminMirrorPath, "utf8");
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
   }
+
+  if (prevMirror === jsonText) {
+    console.log("[drop-params] unchanged", adminMirrorPath);
+    return;
+  }
+
+  writeFileAtomic(adminMirrorPath, jsonText);
+  console.log("[drop-params] wrote", adminMirrorPath);
 }
 
 function generateOnce(epoch) {
@@ -68,16 +64,25 @@ function generateOnce(epoch) {
 
     child.on("exit", (code) => {
       if (code === 0) {
-        if (epoch === requestedEpoch) mirrorIntoAdmin();
+        if (epoch === requestedEpoch) {
+          try {
+            mirrorIntoAdmin();
+          } catch (err) {
+            console.warn("[drop-params] mirror stale:", err?.message || err);
+            resolve(false);
+            return;
+          }
+        }
+        resolve(true);
       } else {
-        console.warn("[drop-params] generator failed with code", code);
+        console.warn("[drop-params] mirror stale: generator failed with code", code);
+        resolve(false);
       }
-      resolve();
     });
 
     child.on("error", (err) => {
-      console.warn("[drop-params] generator spawn error:", err?.message || err);
-      resolve();
+      console.warn("[drop-params] mirror stale: generator spawn error:", err?.message || err);
+      resolve(false);
     });
   });
 }
@@ -99,10 +104,17 @@ function generate() {
   drainGenerateQueue();
 }
 
-console.log("[drop-params] watching", jsPath);
-generate();
+if (once) {
+  requestedEpoch += 1;
+  generateOnce(requestedEpoch).then((ok) => {
+    if (!ok) process.exitCode = 1;
+  });
+} else {
+  console.log("[drop-params] watching", jsPath);
+  generate();
 
-fs.watch(jsPath, () => {
-  clearTimeout(t);
-  t = setTimeout(generate, 150);
-});
+  fs.watch(jsPath, () => {
+    clearTimeout(t);
+    t = setTimeout(generate, 150);
+  });
+}
