@@ -20,6 +20,23 @@ let t = null;
 let requestedEpoch = 0;
 let inFlight = false;
 
+function writeFileAtomic(filePath, text) {
+  const tmpPath = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.${process.pid}.${Date.now()}.tmp`
+  );
+
+  try {
+    fs.writeFileSync(tmpPath, text, "utf8");
+    fs.renameSync(tmpPath, filePath);
+  } catch (err) {
+    try {
+      fs.unlinkSync(tmpPath);
+    } catch {}
+    throw err;
+  }
+}
+
 function mirrorIntoAdmin() {
   try {
     const jsonText = fs.readFileSync(sharedJsonPath, "utf8");
@@ -36,7 +53,7 @@ function mirrorIntoAdmin() {
       return;
     }
 
-    fs.writeFileSync(adminMirrorPath, jsonText, "utf8");
+    writeFileAtomic(adminMirrorPath, jsonText);
     console.log("[drop-params] wrote", adminMirrorPath);
   } catch (e) {
     // If gen hasn't produced JSON yet (or transient write), don't crash the watcher.
