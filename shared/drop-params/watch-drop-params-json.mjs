@@ -17,6 +17,8 @@ const repoRoot = path.resolve(__dirname, "..", "..");
 const adminMirrorPath = path.join(repoRoot, "admin-ui", "src", "drop-params.mirror.json");
 
 let t = null;
+let requestedEpoch = 0;
+let inFlight = false;
 
 function mirrorIntoAdmin() {
   try {
@@ -42,18 +44,42 @@ function mirrorIntoAdmin() {
   }
 }
 
-function generate() {
+function generateOnce(epoch) {
   // IMPORTANT: wait for generator to finish before mirroring
-  const child = spawn(process.execPath, [genPath], { stdio: "inherit" });
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [genPath], { stdio: "inherit" });
 
-  child.on("exit", (code) => {
-    if (code === 0) mirrorIntoAdmin();
-    else console.warn("[drop-params] generator failed with code", code);
-  });
+    child.on("exit", (code) => {
+      if (code === 0) {
+        if (epoch === requestedEpoch) mirrorIntoAdmin();
+      } else {
+        console.warn("[drop-params] generator failed with code", code);
+      }
+      resolve();
+    });
 
-  child.on("error", (err) => {
-    console.warn("[drop-params] generator spawn error:", err?.message || err);
+    child.on("error", (err) => {
+      console.warn("[drop-params] generator spawn error:", err?.message || err);
+      resolve();
+    });
   });
+}
+
+function drainGenerateQueue() {
+  if (inFlight) return;
+
+  const epoch = requestedEpoch;
+  inFlight = true;
+
+  generateOnce(epoch).finally(() => {
+    inFlight = false;
+    if (epoch !== requestedEpoch) drainGenerateQueue();
+  });
+}
+
+function generate() {
+  requestedEpoch += 1;
+  drainGenerateQueue();
 }
 
 console.log("[drop-params] watching", jsPath);
