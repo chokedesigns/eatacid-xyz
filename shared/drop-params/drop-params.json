@@ -1,6 +1,7 @@
 {
   "dropScheduled": true,
   "dropName": "GHOSTNET",
+  "mirrorNetwork": "testnet",
   "dropDate": {
     "month": "February",
     "day": "28",
