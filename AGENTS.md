@@ -56,13 +56,88 @@
 4. Export the patch artifact.
 5. Then write the completion message.
 
-## Verification requirements (must include in completion message)
-Always end with:
-1) Summary
-2) Files changed (grouped by repo)
-3) Verification steps (exact commands + manual checks)
-4) Patch artifact produced (filenames)
-5) Rollback note
+## Completion message format
+
+Always end with a copy/paste-ready completion summary for second-pass LLM review.
+
+The completion summary is meant to be pasted by the human into this review wrapper:
+
+Codex task finished.
+
+Codex completion message:
+<paste Codex completion summary here>
+
+Diff/stat artifacts attached.
+
+Please review thoroughly against the ticket goal and current repo rules:
+- Did the patch actually satisfy the ticket?
+- Is the diff minimal and in scope?
+- Are generated/build side effects handled correctly?
+- Are the verification claims sufficient and accurate?
+- Is this safe to check off / merge, or does it need a fix pass?
+
+Do not output the wrapper yourself.
+Only output the completion summary that belongs inside the `Codex completion message:` section.
+
+Use this exact completion summary structure:
+
+Task complete.
+
+Ticket:
+- <ticket number and title, if provided>
+- Branch: <current branch name>
+
+Summary:
+- <brief factual summary of what changed>
+- <explicitly mention any intentional behavior change, if the ticket requested one>
+- <explicitly mention important behavior that was intentionally left unchanged>
+
+Files changed:
+Outer repo:
+- <file path> — <brief reason>
+or
+- No changes.
+
+Nested admin-ui repo:
+- <file path> — <brief reason>
+or
+- No changes.
+
+Verification steps:
+- `<exact command>`
+  - Result: <passed/failed + relevant detail>
+- `<exact command>`
+  - Result: <passed/failed + relevant detail>
+
+Manual / reasoning checks:
+- <specific behavior or edge case checked>
+- <specific behavior or edge case checked>
+or
+- None.
+
+Patch artifact produced:
+- <path/to/ticket.branch.diff>
+- <path/to/ticket.branch.stat.txt>
+
+Artifact stat:
+- <paste the contents of the stat file, or a concise faithful summary>
+
+Scope control:
+- <confirm whether the patch stayed within intended ticket scope>
+- <mention any generated-file side effects and whether they were restored>
+- <mention any separate issues noticed but not changed>
+
+Rollback note:
+- <specific rollback instruction>
+
+Completion message rules:
+- Do not claim a check was run unless it was actually run.
+- Do not claim merge readiness.
+- Do not claim the ticket is safe to check off.
+- Do not ask the reviewer to trust the summary.
+- Keep the message factual, specific, and easy to paste into the review wrapper.
+- The diff/stat artifacts remain the source of truth for review.
+- If a section does not apply, say so directly instead of omitting it.
 
 ## Patch artifact requirement (must include in completion workflow)
 Before writing the completion message, export a diff artifact that includes new/untracked files.
