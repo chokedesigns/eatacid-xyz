@@ -828,7 +828,12 @@ subscribeToAppState(({ countdownPhase, redeemSupply }) => {
 /**
  * Handles the single‐token burn/redeem flow on the Events page.
  */
+let eventExchangeInFlight = false;
+
 async function handleEventExchange() {
+  if (eventExchangeInFlight) return;
+  eventExchangeInFlight = true;
+
   // Base URL for block-explorer links
   const EXPLORER_BASE = network === 'mainnet'
     ? 'https://tzkt.io'
@@ -1006,6 +1011,8 @@ async function handleEventExchange() {
     console.error('❌ Error during exchange process:', error);
     showModal('ERROR', `${error.message || 'Unknown issue'}`);
     setTimeout(hideModal, 3000);
+  } finally {
+    eventExchangeInFlight = false;
   }
 
   /**
