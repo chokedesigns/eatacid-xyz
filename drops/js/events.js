@@ -687,12 +687,16 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
 /**
  * Polls until each traded token’s on‑chain balance has dropped to zero (or timeout).
  */
-async function pollForNFTUpdate(address, tradedTokenIds, timeout = 30000, interval = 3000) {
+async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval = 3000) {
   const start = Date.now();
   while (Date.now() - start < timeout) {
     const nfts = await fetchNFTs(address);
-    const allGone = tradedTokenIds.every(id => {
-      const match = nfts.find(n => String(n.tokenId) === String(id));
+    const allGone = tradedTokens.every(token => {
+      const tradedContractAddress = String(token.contractAddress).toLowerCase();
+      const match = nfts.find(n =>
+        String(n.contractAddress).toLowerCase() === tradedContractAddress &&
+        String(n.tokenId) === String(token.tokenId)
+      );
       return !match || Number(match.balance) === 0;
     });
     if (allGone) return nfts;
@@ -991,8 +995,11 @@ async function handleEventExchange() {
     resetEventsUI();
 
     // Step 6: Wait for the actual NFT balances to update on-chain
-    const tradedTokenIds = burnCart.map(item => item.tokenId);
-    const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokenIds);
+    const tradedTokens = burnCart.map(item => ({
+      contractAddress: item.contractAddress,
+      tokenId: item.tokenId,
+    }));
+    const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokens);
     refreshConnectedState(refreshedNFTs);
 
     // After balances reflect, swap spinner to checkbox & finalize
