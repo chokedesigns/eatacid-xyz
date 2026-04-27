@@ -4,9 +4,21 @@
 - Preserve 100% of existing behavior unless the ticket explicitly requests a behavior change.
 - Prefer the smallest diff that satisfies the ticket.
 
+## Current-repo truth rule
+- Treat the current checked-out repo state as the source of truth.
+- Do not rely on earlier summaries, prior ticket assumptions, or inferred architecture if the current code does not support them.
+- If current files conflict with prior expectations, current files win.
+
+## Ticket authority rule
+- Treat the ticket goal and allowed scope as authoritative for execution.
+- Do not broaden beyond the ticket unless explicitly instructed.
+- Do not reframe the ticket into a broader audit, redesign, or cleanup task.
+
 ## Scope control
 - Only touch files required for the current ticket.
 - No drive-by cleanup: no formatting sweeps, renames, reorganizations, or “while we’re here” changes.
+- Do not invent new work beyond the current ticket.
+- If you discover a separate issue, note it briefly instead of expanding scope.
 
 ## Repo boundaries (VERY IMPORTANT)
 - This workspace contains two git repos: the outer repo and the nested admin-ui repo.
@@ -36,12 +48,21 @@
 - `catch {}` allowed only for optional cleanup (removeListener/detach).
 - Avoid adding always-on console noise; gate debug logging behind an explicit flag.
 
+## Verification workflow (must follow in this order)
+1. Confirm repo root first:
+   - `git rev-parse --show-toplevel`
+2. Run the required hard gate for the repo you modified.
+3. Only after the hard gate passes, do optional manual/dev checks if useful.
+4. Export the patch artifact.
+5. Then write the completion message.
+
 ## Verification requirements (must include in completion message)
 Always end with:
 1) Summary
 2) Files changed (grouped by repo)
 3) Verification steps (exact commands + manual checks)
-4) Rollback note (what to revert)
+4) Patch artifact produced (filenames)
+5) Rollback note
 
 ## Patch artifact requirement (must include in completion workflow)
 Before writing the completion message, export a diff artifact that includes new/untracked files.
@@ -56,15 +77,38 @@ Notes:
 - This overwrites the same files each run; on fix passes, re-run it.
 - Always run `git rev-parse --show-toplevel` first to confirm you are in the correct repo before exporting.
 
+## Routine permission-safe actions
+When required to complete the standard ticket workflow, the agent may proceed without additional confirmation for:
+- confirming repo root (`git rev-parse --show-toplevel`)
+- required hard-gate builds
+- required diff artifact export (`npm run ticket:diff`)
+- inspecting git status/diff shape to keep the patch clean and in scope
+- restoring generated files touched only as build side effects back to their intended state
+- refreshing git/index metadata when strictly necessary to produce a clean, in-scope artifact
+
+## Still ask before
+- broader filesystem cleanup beyond the current ticket
+- out-of-scope file modification
+- optional browser-opening commands requiring escalation
+- long-running watcher/dev-server escalation not required for the ticket
+- any destructive or unusual git operation not clearly required for implementation, verification, or artifact export
+
 ## Allowed commands (workspace)
 - Prefer using existing npm scripts only.
-- Outer repo useful scripts:
-  - `npm run start`
-  - `npm run build:pages:staging`
-  - `npm run pages:sanity`
-  - `npm run ticket:diff`
 
-- Nested admin-ui useful scripts (run from /admin-ui):
-  - `npm run dev`
-  - `npm run build:clean`
-  - `npm run ticket:diff`
+### Outer repo useful scripts:
+- `npm run start`
+- `npm run build:pages:staging`
+- `npm run pages:sanity`
+- `npm run ticket:diff`
+
+### Outer repo hard-gate guidance:
+- Use the smallest relevant existing hard gate for the ticket.
+- For most outer-repo implementation tickets, prefer:
+  - `npm run build:pages:staging`
+- Use `npm run pages:sanity` only when the ticket specifically benefits from that broader sanity flow.
+
+### Nested admin-ui useful scripts (run from /admin-ui):
+- `npm run dev`
+- `npm run build:clean`
+- `npm run ticket:diff`
