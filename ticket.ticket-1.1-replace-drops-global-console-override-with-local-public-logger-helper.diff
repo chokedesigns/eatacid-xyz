@@ -1,0 +1,356 @@
+﻿diff --git a/drops/js/events.js b/drops/js/events.js
+index a60e802..57a2354 100644
+--- a/drops/js/events.js
++++ b/drops/js/events.js
+@@ -1,16 +1,8 @@
+ // =============================================================================
+-// DEBUG CONFIG & GLOBAL LOGGER OVERRIDE
++// DEBUG CONFIG
+ // =============================================================================
+ const DEBUG = true; // ← flip to true when you want logs
+ 
+-// Keep a reference to the real console.log
+-const __log = console.log.bind(console);
+-
+-// Override console.log globally
+-console.log = (...args) => {
+-  if (DEBUG) __log(...args);
+-};
+-
+ // =============================================================================
+ // IMPORTS & CONFIGURATION
+ // =============================================================================
+@@ -18,6 +10,7 @@ console.log = (...args) => {
+ import eventsNetworkConfig from './events-config.js';
+ import dropParams from 'ea-drop-params';
+ import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
++import { createPublicLogger } from '../../shared/public-logger.js';
+ import {
+   buildApprovalOps as buildSharedApprovalOps,
+   fetchTokenPairId as fetchSharedTokenPairId,
+@@ -25,6 +18,8 @@ import {
+   pollForNFTUpdate as pollForSharedNFTUpdate
+ } from '../../shared/public-trade-ops.js';
+ 
++const logger = createPublicLogger({ enabled: DEBUG, scope: 'drops' });
++
+ /**
+  * Convert a collection key to its CSS slug.
+  * INTRODUCTIONS → "intros", everything else → lowercased.
+@@ -66,17 +61,17 @@ const {
+ const REDEEM_CONTRACT_ADDRESS = collections[redeemToken.collection];
+ 
+ // ── Debug Logging ───────────────────────────────────────────────────────────
+-console.groupCollapsed('🚀 Events.js config');
+-console.log(`Network: ${network}`);
+-console.log(`RPC endpoint: ${RPC_ENDPOINT}`);
+-console.log(`TzKT base URL: ${TZKT_BASE}`);
+-console.log(`Burn-Redeem escrow contract: ${BURN_REDEEM_CONTRACT_ADDRESS}`);
+-console.log('Collections defined:', collections);
+-console.log('Drop parameters:', { dropName, dropDate, dropTime });
+-console.log('Burn tokens config:', burnTokens);
+-console.log('Redeem token config:', redeemToken);
+-console.log('Token mapping defined:', tokenMapping);
+-console.groupEnd();
++logger.groupCollapsed('🚀 Events.js config');
++logger.log(`Network: ${network}`);
++logger.log(`RPC endpoint: ${RPC_ENDPOINT}`);
++logger.log(`TzKT base URL: ${TZKT_BASE}`);
++logger.log(`Burn-Redeem escrow contract: ${BURN_REDEEM_CONTRACT_ADDRESS}`);
++logger.log('Collections defined:', collections);
++logger.log('Drop parameters:', { dropName, dropDate, dropTime });
++logger.log('Burn tokens config:', burnTokens);
++logger.log('Redeem token config:', redeemToken);
++logger.log('Token mapping defined:', tokenMapping);
++logger.groupEnd();
+ 
+ // =============================================================================
+ // GLOBAL UI STATE PLACEHOLDERS
+@@ -719,7 +714,7 @@ async function handleEventExchange() {
+     ? 'https://tzkt.io'
+     : 'https://ghostnet.tzkt.io';
+   try {
+-    console.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
++    logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
+ 
+     // Step 1: Show waiting for wallet confirmation modal
+     showModal('PROCESSING...', '[WAITING FOR WALLET CONFIRMATION...]');
+@@ -733,19 +728,19 @@ async function handleEventExchange() {
+       return;
+     }
+     const myAddr = activeAccount.address;
+-    console.log('✅ User wallet address:', myAddr);
++    logger.log('✅ User wallet address:', myAddr);
+ 
+     // Gather burn-cart items
+     const { contractAddress, tokenId, oldBalance } = getSelectedEventTokenWithBalance();
+     const burnCart = [{ contractAddress, tokenId, quantity: 1 }];
+-    console.log('📜 Burn cart:', burnCart);
++    logger.log('📜 Burn cart:', burnCart);
+ 
+     // Build or skip operator-approval ops
+     const approvalOps = await buildApprovalOps(myAddr, burnCart);
+     if (approvalOps.length > 0) {
+-      console.log('🚀 Approval operations to include:', approvalOps);
++      logger.log('🚀 Approval operations to include:', approvalOps);
+     } else {
+-      console.log('✅ All tokens already approved.');
++      logger.log('✅ All tokens already approved.');
+     }
+ 
+     // Lookup token_pair_id for each burn item
+@@ -758,7 +753,7 @@ async function handleEventExchange() {
+         return;
+       }
+     }
+-    console.log('✅ Updated burnCart with token_pair_id:', burnCart);
++    logger.log('✅ Updated burnCart with token_pair_id:', burnCart);
+ 
+     // Group by contract and build trade payloads
+     const tradesByContract = burnCart.reduce((acc, item) => {
+@@ -819,13 +814,13 @@ async function handleEventExchange() {
+       ? [...approvalOps, ...tradeOperations]
+       : tradeOperations;
+ 
+-    console.log('🚀 Sending batched approval and trade operations:', JSON.stringify(batchedOps, null, 2));
++    logger.log('🚀 Sending batched approval and trade operations:', JSON.stringify(batchedOps, null, 2));
+ 
+     // Step 2: Prompt wallet to sign and send
+     const opResponse = await window.dAppClient.requestOperation({
+       operationDetails: batchedOps
+     });
+-    console.log('✅ Operation submitted!', opResponse);
++    logger.log('✅ Operation submitted!', opResponse);
+ 
+     // Step 3: Update modal to processing state
+     showModal('PROCESSING...', '[APPROVING TRANSFERS + EXECUTING BURN... 🔥]');
+@@ -1016,7 +1011,7 @@ function setEventContractAndTokenAttributes() {
+ 
+   // 3) Expose map for lookups elsewhere
+   window.cmsRowsByCollection = allRows;
+-  console.log("CMS rows grouped by collection:", window.cmsRowsByCollection);
++  logger.log("CMS rows grouped by collection:", window.cmsRowsByCollection);
+ }
+ 
+ /**
+@@ -1080,7 +1075,7 @@ function updateDropName() {
+   const el = document.querySelector('.drop-title-header-text');
+   if (el && dropName) {
+     el.innerHTML = dropName.toUpperCase() + " DROP //";
+-    console.log("Drop name updated to:", el.innerHTML);
++    logger.log("Drop name updated to:", el.innerHTML);
+   }
+ }
+ 
+@@ -1153,7 +1148,7 @@ function updateDropDateTime() {
+     }
+   }
+ 
+-  console.log(
++  logger.log(
+     "Drop date/time updated to:",
+     dateEl?.innerHTML,
+     timeEl?.innerHTML
+@@ -1207,7 +1202,7 @@ function updateDropExclusions() {
+     exclEl.innerHTML = all.length ? all.join(", ") : "[NONE]";
+   }
+ 
+-  console.log("Drop exclusions updated:", exclEl?.innerHTML);
++  logger.log("Drop exclusions updated:", exclEl?.innerHTML);
+ }
+ 
+ /**
+@@ -1237,7 +1232,7 @@ function updateDropExclusionsList() {
+   });
+ 
+   listEl.innerHTML = titles.join(", ");
+-  console.log("Drop exclusion list updated:", listEl.innerHTML);
++  logger.log("Drop exclusion list updated:", listEl.innerHTML);
+ }
+ 
+ /**
+@@ -1318,7 +1313,7 @@ function renderBalances(balances) {
+ function updateOwnedTokenCounts(nfts) {
+   const balances = computeBalances(nfts);
+   renderBalances(balances);
+-  console.log("Owned token counts updated.");
++  logger.log("Owned token counts updated.");
+ }
+ 
+ /**
+@@ -1329,7 +1324,7 @@ function updateOwnedTokenCounts(nfts) {
+  * @param {Array} nfts - Array of NFT objects.
+  */
+ async function updateTokensWithWalletData(nfts) {
+-  console.log("updateTokensWithWalletData called with NFTs:", nfts);
++  logger.log("updateTokensWithWalletData called with NFTs:", nfts);
+ 
+   // Preserve previous selection
+   const prevRow = document.querySelector('.w-checkbox-input.events_checkbox:checked')
+@@ -1366,7 +1361,7 @@ async function updateTokensWithWalletData(nfts) {
+     );
+     return Boolean(entry);
+   });
+-  console.log("Eligible NFTs:", eligible);
++  logger.log("Eligible NFTs:", eligible);
+ 
+   // Toggle “no tokens” message
+   const noTokens = document.querySelector('.no-tokens-in-walet-div---events');
+@@ -1411,7 +1406,7 @@ async function updateTokensWithWalletData(nfts) {
+           parent.appendChild(wrappedRow);
+ 
+           // — DEBUG —
+-          console.log(
++          logger.log(
+             `[DEBUG] Appended row for ${key} token ${testId} in .${slug}-collection (contract=${collections[key]})`
+           );
+         }
+@@ -1641,7 +1636,7 @@ function preloadRedeemImage(imgWrap, row, spinner) {
+   pre.onload = () => {
+     spinner && (spinner.style.display = 'none');
+     pre.style.visibility = 'visible';
+-    console.log("Event cart redeem token image loaded:", cmsImg.src);
++    logger.log("Event cart redeem token image loaded:", cmsImg.src);
+   };
+ 
+   // Replace any previous image
+@@ -1654,7 +1649,7 @@ function preloadRedeemImage(imgWrap, row, spinner) {
+  * Hides both spinners once the rows are back in the DOM.
+  */
+ function displayDefaultTokens() {
+-  console.log("Displaying default tokens.");
++  logger.log("Displaying default tokens.");
+   ['hen','introductions'].forEach(coll => {
+     const pane = document.querySelector(`.${coll}-collection.w-dyn-list`);
+     if (!pane) return;
+@@ -1687,20 +1682,20 @@ async function pollForUnpause(contractAddress, interval = 3000) {
+   // entering standby-polling: mark on-chain paused
+   updateAppState({ contractPaused: true });
+ 
+-  console.log(`[pollForUnpause] polling ${contractAddress} every ${interval}ms`);
++  logger.log(`[pollForUnpause] polling ${contractAddress} every ${interval}ms`);
+   let attempt = 0;
+   while (true) {
+     attempt++;
+-    console.log(`[pollForUnpause] attempt #${attempt}`);
++    logger.log(`[pollForUnpause] attempt #${attempt}`);
+     try {
+       const res = await fetch(
+         `${TZKT_BASE}/v1/contracts/${contractAddress}/storage`
+       );
+       const storage = await res.json();
+-      console.log(`[pollForUnpause] paused =`, storage.paused);
++      logger.log(`[pollForUnpause] paused =`, storage.paused);
+ 
+       if (storage.paused === false) {
+-        console.log("[pollForUnpause] detected unpause!");
++        logger.log("[pollForUnpause] detected unpause!");
+         updateAppState({ contractPaused: false });
+ 
+         if (AppState.walletConnected) {
+@@ -1767,20 +1762,20 @@ function startCountdown() {
+   }
+ 
+   const dropDateTime = result.date;
+-  console.log("[startCountdown] Drop date/time:", dropDateTime);
++  logger.log("[startCountdown] Drop date/time:", dropDateTime);
+ 
+   // initial phase = pre
+   updateAppState({ countdownPhase: 'pre', currentCountdown: '00:00:00' });
+ 
+   // if already past drop → immediately standby + poll
+   if (new Date() >= dropDateTime) {
+-    console.log("[startCountdown] Past drop time; entering standby immediately");
++    logger.log("[startCountdown] Past drop time; entering standby immediately");
+     updateAppState({ countdownPhase: 'standby' });
+     setCountdownText("STANDBY…");
+ 
+     pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS)
+       .then(() => {
+-        console.log("[startCountdown] Unpaused → LIVE");
++        logger.log("[startCountdown] Unpaused → LIVE");
+         updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
+         setCountdownText("LIVE NOW!");
+       })
+@@ -1799,13 +1794,13 @@ function startCountdown() {
+       clearInterval(AppState.countdownTimerId);
+       AppState.countdownTimerId = null;
+ 
+-      console.log("[startCountdown] Hit zero → entering standby");
++      logger.log("[startCountdown] Hit zero → entering standby");
+       updateAppState({ countdownPhase: 'standby' });
+       setCountdownText("STANDBY…");
+ 
+       pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS)
+         .then(() => {
+-          console.log("[startCountdown] Unpaused → LIVE");
++          logger.log("[startCountdown] Unpaused → LIVE");
+           updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
+           setCountdownText("LIVE NOW!");
+         })
+@@ -2043,7 +2038,7 @@ function attachExchangeButtonHandlers() {
+   if (!btn) return;
+ 
+   btn.addEventListener('mouseover', () => {
+-    console.log('👆 Hover exchange:', {
++    logger.log('👆 Hover exchange:', {
+       selectedTokenId: AppState.selectedTokenId,
+       walletConnected: AppState.walletConnected
+     });
+@@ -2065,7 +2060,7 @@ function attachExchangeButtonHandlers() {
+  * re-create a selectedTokenId, then resets the UI.
+  */
+ function handleWalletConnected(account) {
+-  console.log("Wallet connected; resetting burn-token display to default state.");
++  logger.log("Wallet connected; resetting burn-token display to default state.");
+ 
+   // Persist active account in AppState instead of window.activeAccount
+   updateAppState({ activeAccount: account });
+@@ -2094,7 +2089,7 @@ function handleWalletConnected(account) {
+  * and switches headers/buttons back to their disconnected defaults.
+  */
+ function handleWalletDisconnected() {
+-  console.log("Wallet disconnected; restoring default tokens and clearing selections.");
++  logger.log("Wallet disconnected; restoring default tokens and clearing selections.");
+ 
+   // Clear active account & related flags in AppState
+   updateAppState({
+@@ -2134,7 +2129,7 @@ function handleWalletDisconnected() {
+ 
+ // Ensure external disconnect events also clear AppState
+ window.addEventListener('walletDisconnected', () => {
+-  console.log("Wallet forcibly disconnected");
++  logger.log("Wallet forcibly disconnected");
+ 
+   updateAppState({
+     activeAccount: null,
+diff --git a/shared/public-logger.js b/shared/public-logger.js
+new file mode 100644
+index 0000000..4a80cf3
+--- /dev/null
++++ b/shared/public-logger.js
+@@ -0,0 +1,24 @@
++export function createPublicLogger({ enabled = false, scope = '' } = {}) {
++  return {
++    scope,
++    log: (...args) => {
++      if (enabled) console.log(...args);
++    },
++    debug: (...args) => {
++      if (!enabled) return;
++      if (console.debug) {
++        console.debug(...args);
++      } else {
++        console.log(...args);
++      }
++    },
++    groupCollapsed: (...args) => {
++      if (enabled && console.groupCollapsed) console.groupCollapsed(...args);
++    },
++    groupEnd: () => {
++      if (enabled && console.groupEnd) console.groupEnd();
++    },
++    warn: (...args) => console.warn(...args),
++    error: (...args) => console.error(...args),
++  };
++}
