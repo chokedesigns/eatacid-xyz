@@ -334,54 +334,18 @@ function getBurnCart() {
 }
 
 /**
- * (Unused in the main flow, but cleaned up to use the dynamic constant.)
+ * Legacy helper retained for any local callers.
  *
  * Prepares a batch of update_operators operations for the tokens in the burn cart,
  * granting the escrow contract permission to burn.
  *
  * @param {string} userWalletAddress - The user's Tezos address.
  * @param {Array<{tokenId:string,quantity:number,contractAddress:string}>} burnCart
- * @returns {Array} Array of batch operations ready for submission.
+ * @returns {Promise<Array>} Array of batch operations ready for submission.
  */
-function prepareUpdateOperators(userWalletAddress, burnCart) {
+async function prepareUpdateOperators(userWalletAddress, burnCart) {
   console.log('Preparing update_operators via dynamic BURN_REDEEM_CONTRACT:', BURN_REDEEM_CONTRACT);
-
-  // Group tokens by their contract address
-  const groupedByContract = burnCart.reduce((acc, item) => {
-    (acc[item.contractAddress] ||= []).push(item);
-    return acc;
-  }, {});
-
-  // Build a transaction per contract
-  const batches = Object.entries(groupedByContract).map(
-    ([contractAddress, items]) => ({
-      kind: 'transaction',
-      destination: contractAddress,
-      amount: '0',
-      parameters: {
-        entrypoint: 'update_operators',
-        value: items.map(item => ({
-          prim: "Left",  // add_operator
-          args: [{
-            prim: "Pair",
-            args: [
-              { string: userWalletAddress },           // owner
-              {
-                prim: "Pair",
-                args: [
-                  { string: BURN_REDEEM_CONTRACT },    // now dynamic
-                  { int: item.tokenId.toString() }     // tokenId
-                ]
-              }
-            ]
-          }]
-        }))
-      }
-    })
-  );
-
-  console.log('Batched update_operators ops:', batches);
-  return batches;
+  return buildApprovalOps(userWalletAddress, burnCart);
 }
 
 // =============================================================================
