@@ -20,7 +20,9 @@ import dropParams from 'ea-drop-params';
 import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
 import {
   buildApprovalOps as buildSharedApprovalOps,
-  fetchTokenPairId as fetchSharedTokenPairId
+  fetchTokenPairId as fetchSharedTokenPairId,
+  pollForConfirmation as pollForSharedConfirmation,
+  pollForNFTUpdate as pollForSharedNFTUpdate
 } from '../../shared/public-trade-ops.js';
 
 /**
@@ -557,38 +559,26 @@ async function buildApprovalOps(userWalletAddress, burnCart) {
  * Polls the TzKT API for operation confirmation until the transaction is applied or timeout.
  */
 async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    const res = await fetch(`${TZKT_BASE}/v1/operations/${opHash}`);
-    const ops = await res.json();
-    const confirmed = Array.isArray(ops)
-      ? ops.some(o => o.status === 'applied' || o.metadata?.operation_result?.status === 'applied')
-      : ops.status === 'applied';
-    if (confirmed) return ops;
-    await new Promise(r => setTimeout(r, interval));
-  }
-  throw new Error('Transaction confirmation timed out.');
+  return pollForSharedConfirmation({
+    tzktBase: TZKT_BASE,
+    opHash,
+    timeout,
+    interval
+  });
 }
 
 /**
  * Polls until each traded token’s on‑chain balance has dropped to zero (or timeout).
  */
 async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval = 3000) {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    const nfts = await fetchNFTs(address);
-    const allGone = tradedTokens.every(token => {
-      const tradedContractAddress = String(token.contractAddress).toLowerCase();
-      const match = nfts.find(n =>
-        String(n.contractAddress).toLowerCase() === tradedContractAddress &&
-        String(n.tokenId) === String(token.tokenId)
-      );
-      return !match || Number(match.balance) === 0;
-    });
-    if (allGone) return nfts;
-    await new Promise(r => setTimeout(r, interval));
-  }
-  return await fetchNFTs(address);
+  return pollForSharedNFTUpdate({
+    fetchNFTs,
+    address,
+    tradedTokens,
+    timeout,
+    interval,
+    refetchOnTimeout: true
+  });
 }
 
 // =============================================================================

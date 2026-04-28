@@ -5,7 +5,9 @@
 import cfg from './exchange-config.js';
 import {
   buildApprovalOps as buildSharedApprovalOps,
-  fetchTokenPairId as fetchSharedTokenPairId
+  fetchTokenPairId as fetchSharedTokenPairId,
+  pollForConfirmation as pollForSharedConfirmation,
+  pollForNFTUpdate as pollForSharedNFTUpdate
 } from '../../shared/public-trade-ops.js';
 const { network, rpc, tzkt, contracts } = cfg;
 // pick the right network’s contract set
@@ -785,30 +787,15 @@ function refreshConnectedState(nfts) {
 // -----------------------------------------------------
 
 async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval = 3000) {
-  const startTime = Date.now();
-  let nfts = await fetchNFTs(address);
-  while (Date.now() - startTime < timeout) {
-    nfts = await fetchNFTs(address);
-    let allDepleted = true;
-    for (const tradedToken of tradedTokens) {
-      const tradedContractAddress = String(tradedToken.contractAddress).toLowerCase();
-      const matching = nfts.find(nft =>
-        String(nft.contractAddress).toLowerCase() === tradedContractAddress &&
-        String(nft.tokenId) === String(tradedToken.tokenId)
-      );
-      if (matching && Number(matching.balance) > 0) {
-        allDepleted = false;
-        break;
-      }
-    }
-    if (allDepleted) {
-      console.log("All traded tokens are depleted or no longer present.");
-      return nfts;
-    }
-    console.log("Waiting for NFT update...");
-    await new Promise(resolve => setTimeout(resolve, interval));
-  }
-  return nfts;
+  return pollForSharedNFTUpdate({
+    fetchNFTs,
+    address,
+    tradedTokens,
+    timeout,
+    interval,
+    logPrefix: '',
+    fetchBeforePolling: true
+  });
 }
 
 // -----------------------------------------------------
@@ -824,32 +811,13 @@ async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval
  * @returns {Promise<Object>} - The operation data once confirmed.
  */
 async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
-  const startTime = Date.now();
-  while (Date.now() - startTime < timeout) {
-    const response = await fetch(`${TZKT_BASE}/v1/operations/${opHash}`);
-    const ops = await response.json();
-    console.log("Polling confirmation from", TZKT_BASE, "ops:", ops);
-
-    // Check for confirmation: either at the top level or within metadata.
-    let confirmed = false;
-    if (Array.isArray(ops)) {
-      confirmed = ops.some(op =>
-        op.status === "applied" ||
-        (op.metadata?.operation_result?.status === "applied")
-      );
-    } else if (ops?.status) {
-      confirmed = ops.status === "applied";
-    }
-
-    if (confirmed) {
-      console.log("Transaction confirmed on-chain.");
-      return ops;
-    }
-
-    console.log("Waiting for transaction confirmation...");
-    await new Promise(resolve => setTimeout(resolve, interval));
-  }
-  throw new Error("Transaction confirmation timed out.");
+  return pollForSharedConfirmation({
+    tzktBase: TZKT_BASE,
+    opHash,
+    timeout,
+    interval,
+    logPrefix: ''
+  });
 }
 
 // -----------------------------------------------------

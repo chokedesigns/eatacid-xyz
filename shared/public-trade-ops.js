@@ -120,6 +120,91 @@ export async function buildApprovalOps({
   return approvalOps;
 }
 
+/**
+ * Polls TzKT for operation confirmation until the operation is applied or times out.
+ *
+ * @param {Object} args
+ * @param {string} args.tzktBase
+ * @param {string} args.opHash
+ * @param {number} [args.timeout=120000]
+ * @param {number} [args.interval=5000]
+ * @param {string} [args.logPrefix]
+ * @returns {Promise<Object|Array>}
+ */
+export async function pollForConfirmation({
+  tzktBase,
+  opHash,
+  timeout = 120000,
+  interval = 5000,
+  logPrefix
+}) {
+  const startTime = Date.now();
+
+  while (Date.now() - startTime < timeout) {
+    const response = await fetch(`${tzktBase}/v1/operations/${opHash}`);
+    const ops = await response.json();
+    logIfEnabled(logPrefix, "Polling confirmation from", tzktBase, "ops:", ops);
+
+    if (isAppliedOperationResponse(ops)) {
+      logIfEnabled(logPrefix, "Transaction confirmed on-chain.");
+      return ops;
+    }
+
+    logIfEnabled(logPrefix, "Waiting for transaction confirmation...");
+    await delay(interval);
+  }
+
+  throw new Error("Transaction confirmation timed out.");
+}
+
+/**
+ * Polls wallet NFTs until each traded token is gone or has zero balance.
+ *
+ * @param {Object} args
+ * @param {Function} args.fetchNFTs
+ * @param {string} args.address
+ * @param {Array<{contractAddress:string,tokenId:string|number}>} args.tradedTokens
+ * @param {number} [args.timeout=30000]
+ * @param {number} [args.interval=3000]
+ * @param {string} [args.logPrefix]
+ * @param {string} [args.timeoutMessage]
+ * @param {boolean} [args.fetchBeforePolling=false]
+ * @param {boolean} [args.refetchOnTimeout=false]
+ * @returns {Promise<Array>}
+ */
+export async function pollForNFTUpdate({
+  fetchNFTs,
+  address,
+  tradedTokens,
+  timeout = 30000,
+  interval = 3000,
+  logPrefix,
+  timeoutMessage,
+  fetchBeforePolling = false,
+  refetchOnTimeout = false
+}) {
+  const startTime = Date.now();
+  let nfts = fetchBeforePolling ? await fetchNFTs(address) : [];
+
+  while (Date.now() - startTime < timeout) {
+    nfts = await fetchNFTs(address);
+
+    if (areTradedTokensDepleted(nfts, tradedTokens)) {
+      logIfEnabled(logPrefix, "All traded tokens are depleted or no longer present.");
+      return nfts;
+    }
+
+    logIfEnabled(logPrefix, "Waiting for NFT update...");
+    await delay(interval);
+  }
+
+  if (timeoutMessage) {
+    logIfEnabled(logPrefix, timeoutMessage);
+  }
+
+  return refetchOnTimeout ? await fetchNFTs(address) : nfts;
+}
+
 function createApprovalOp({
   contractAddress,
   escrowAddress,
@@ -154,4 +239,41 @@ function createApprovalOp({
       ]
     }
   };
+}
+
+function isAppliedOperationResponse(ops) {
+  if (Array.isArray(ops)) {
+    return ops.some(isAppliedOperation);
+  }
+
+  return isAppliedOperation(ops);
+}
+
+function isAppliedOperation(op) {
+  return (
+    op?.status === "applied" ||
+    op?.metadata?.operation_result?.status === "applied"
+  );
+}
+
+function areTradedTokensDepleted(nfts, tradedTokens) {
+  return tradedTokens.every(token => {
+    const tradedContractAddress = String(token.contractAddress).toLowerCase();
+    const match = nfts.find(nft =>
+      String(nft.contractAddress).toLowerCase() === tradedContractAddress &&
+      String(nft.tokenId) === String(token.tokenId)
+    );
+
+    return !match || Number(match.balance) === 0;
+  });
+}
+
+function logIfEnabled(logPrefix, ...args) {
+  if (logPrefix !== undefined) {
+    console.log(`${logPrefix}${args[0]}`, ...args.slice(1));
+  }
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
