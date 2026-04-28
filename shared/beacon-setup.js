@@ -4,20 +4,23 @@
 
 import { DAppClient, NetworkType, BeaconEvent } from '@airgap/beacon-sdk';
 import cfg from './network.js';
+import { createPublicLogger } from './public-logger.js';
 const { network, tzkt } = cfg;
+const DEBUG = true;
+const logger = createPublicLogger({ enabled: DEBUG, scope: 'wallet' });
 
 // ----------------------------------------------------------------------------
 // Initialize or reuse the Beacon client
 // ----------------------------------------------------------------------------
 if (!window.dAppClient) {
-  console.log('Initializing Beacon DAppClient on network:', network);
+  logger.log('Initializing Beacon DAppClient on network:', network);
   window.dAppClient = new DAppClient({
     name: 'eatacid.xyz',
     preferredNetwork:
       network === 'mainnet' ? NetworkType.MAINNET : NetworkType.GHOSTNET
   });
 } else {
-  console.log('Reusing existing Beacon DAppClient on network:', network);
+  logger.log('Reusing existing Beacon DAppClient on network:', network);
 }
 const dAppClient = window.dAppClient;
 
@@ -45,12 +48,12 @@ function getWalletButtons() {
 // Fetch NFT Balances
 // ----------------------------------------------------------------------------
 async function fetchNFTs(address) {
-  console.log('Fetching NFTs for wallet address:', address);
+  logger.log('Fetching NFTs for wallet address:', address);
   const apiUrl = `${tzkt[network]}/v1/tokens/balances?account=${address}&token.standard=fa2`;
   try {
     const response = await fetch(apiUrl);
     const nfts = await response.json();
-    console.log(`NFTs fetched from ${network}:`, nfts);
+    logger.log(`NFTs fetched from ${network}:`, nfts);
     return nfts.map(nft => ({
       tokenId: nft.token.tokenId,
       contractAddress: nft.token.contract.address,
@@ -114,9 +117,9 @@ async function connectWallet() {
 
 async function disconnectWallet() {
   try {
-    console.log('Disconnecting wallet...');
+    logger.log('Disconnecting wallet...');
     await dAppClient.clearActiveAccount();
-    console.log('Wallet disconnected.');
+    logger.log('Wallet disconnected.');
     typeof resetUI === 'function' && resetUI();
     updateButtonState('unconnected');
     document.dispatchEvent(new Event('walletDisconnected'));
@@ -130,11 +133,11 @@ async function disconnectWallet() {
 // ----------------------------------------------------------------------------
 dAppClient.subscribeToEvent(BeaconEvent.ACTIVE_ACCOUNT_SET, async account => {
   if (account) {
-    console.log(`${BeaconEvent.ACTIVE_ACCOUNT_SET} triggered:`, account.address);
+    logger.log(`${BeaconEvent.ACTIVE_ACCOUNT_SET} triggered:`, account.address);
     await fetchNFTs(account.address);
     updateButtonState('connected', account.address);
   } else {
-    console.log('No active account detected via subscription.');
+    logger.log('No active account detected via subscription.');
     updateButtonState('unconnected');
   }
 });
@@ -147,14 +150,14 @@ async function bootWalletButtons() {
   if (window.__EA_WALLET_BUTTONS_BOOTED__) return;
   window.__EA_WALLET_BUTTONS_BOOTED__ = true;
 
-  console.log('bootWalletButtons → initializing wallet buttons');
+  logger.log('bootWalletButtons → initializing wallet buttons');
   const { connectButton, connectedButton, disconnectButton } = getWalletButtons();
 
   updateButtonState('unconnected');
 
   const activeAccount = await dAppClient.getActiveAccount();
   if (activeAccount) {
-    console.log('Active account on load:', activeAccount.address);
+    logger.log('Active account on load:', activeAccount.address);
 
     // Flip UI immediately (don’t wait for NFT fetch)
     updateButtonState('connected', activeAccount.address);

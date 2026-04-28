@@ -9,11 +9,15 @@ import {
   pollForConfirmation as pollForSharedConfirmation,
   pollForNFTUpdate as pollForSharedNFTUpdate
 } from '../../shared/public-trade-ops.js';
+import { createPublicLogger } from '../../shared/public-logger.js';
 const { network, rpc, tzkt, contracts } = cfg;
 // pick the right network’s contract set
 const current = contracts[network];
 
-console.log('Script running on network:', network);
+const DEBUG = true;
+const logger = createPublicLogger({ enabled: DEBUG, scope: 'exchange' });
+
+logger.log('Script running on network:', network);
 
 /**
  * RPC & TzKT endpoints based on network
@@ -37,7 +41,7 @@ const tabContractAddresses = {
   'w-tabs-0-data-w-pane-1': current.collections.pane1   // Canaan
 };
 
-console.log("📌 Contract Addresses Loaded:", tabContractAddresses);
+logger.log("📌 Contract Addresses Loaded:", tabContractAddresses);
 
 /**
  * Escrow & Redeem contract addresses
@@ -110,10 +114,10 @@ function setBurnTokensHeader(isConnected) {
  * @param {Array} nfts - Array of NFTs fetched from the wallet.
  */
 window.receiveNFTs = function (nfts) {
-  console.log('Resetting UI in receiveNFTs...');
+  logger.log('Resetting UI in receiveNFTs...');
   resetUI();
 
-  console.log('Processing NFTs:', nfts);
+  logger.log('Processing NFTs:', nfts);
   setContractAndTokenAttributes();
   processWalletNFTs(nfts);
   updateBurnCart();
@@ -121,7 +125,7 @@ window.receiveNFTs = function (nfts) {
   // Wallet is connected if we received NFTs for an active account.
   setBurnTokensHeader(true);
 
-  console.log('NFT processing complete.');
+  logger.log('NFT processing complete.');
 };
 
 // =============================================================================
@@ -133,7 +137,7 @@ window.receiveNFTs = function (nfts) {
 if (window.dAppClient && typeof window.dAppClient.subscribeToEvent === 'function') {
   window.dAppClient.subscribeToEvent('ACTIVE_ACCOUNT_SET', (account) => {
     if (account) {
-      console.log("ACTIVE_ACCOUNT_SET event triggered:", account.address);
+      logger.log("ACTIVE_ACCOUNT_SET event triggered:", account.address);
       fetchNFTs(account.address).then((nfts) => {
         if (typeof window.receiveNFTs === 'function') {
           window.receiveNFTs(nfts);
@@ -217,7 +221,7 @@ function hideModal() {
  * - Clears the burn cart and resets the total display.
  */
 function resetUI() {
-  console.log('Executing resetUI...');
+  logger.log('Executing resetUI...');
 
   // Reset dropdown selections: repopulate options based on edition count.
   const dropdowns = document.querySelectorAll('.token-qty.w-select');
@@ -329,7 +333,7 @@ function getBurnCart() {
     }
   });
 
-  console.log('Tokens in burn cart:', burnCart);
+  logger.log('Tokens in burn cart:', burnCart);
   return burnCart;
 }
 
@@ -344,7 +348,7 @@ function getBurnCart() {
  * @returns {Promise<Array>} Array of batch operations ready for submission.
  */
 async function prepareUpdateOperators(userWalletAddress, burnCart) {
-  console.log('Preparing update_operators via dynamic BURN_REDEEM_CONTRACT:', BURN_REDEEM_CONTRACT);
+  logger.log('Preparing update_operators via dynamic BURN_REDEEM_CONTRACT:', BURN_REDEEM_CONTRACT);
   return buildApprovalOps(userWalletAddress, burnCart);
 }
 
@@ -360,7 +364,7 @@ async function prepareUpdateOperators(userWalletAddress, burnCart) {
  * @returns {Promise<Array>} Promise resolving to an array of NFT objects.
  */
 async function fetchNFTs(walletAddress) {
-  console.log("Fetching NFTs for wallet address:", walletAddress);
+  logger.log("Fetching NFTs for wallet address:", walletAddress);
 
   // Use dynamic base URL
   const apiUrl = `${TZKT_BASE}/v1/tokens/balances?account=${walletAddress}&token.standard=fa2`;
@@ -368,7 +372,7 @@ async function fetchNFTs(walletAddress) {
   try {
     const response = await fetch(apiUrl);
     const nfts = await response.json();
-    console.log(`NFTs fetched from ${network}:`, nfts);
+    logger.log(`NFTs fetched from ${network}:`, nfts);
 
     // Map to extract tokenId, contractAddress, and balance.
     return nfts.map(nft => ({
@@ -387,7 +391,7 @@ async function fetchNFTs(walletAddress) {
  */
 function processWalletNFTs(nfts) {
   const cmsRows = document.querySelectorAll('.collection-item-01-div');
-  console.log("Processing wallet NFTs:", JSON.stringify(nfts, null, 2));
+  logger.log("Processing wallet NFTs:", JSON.stringify(nfts, null, 2));
 
   cmsRows.forEach(row => {
     const dropdown = row.querySelector('.token-qty.w-select');
@@ -476,7 +480,7 @@ function populateDropdown(dropdown, maxQty) {
  * and toggle the empty cart state.
  */
 function updateBurnCart() {
-  console.log('Updating Burn Cart...');
+  logger.log('Updating Burn Cart...');
 
   const burnCartContainer = document.querySelector('.burn-cart-display');
   if (!burnCartContainer) {
@@ -495,7 +499,7 @@ function updateBurnCart() {
   burnCartStructureDiv.innerHTML = '';
 
   const dropdowns = document.querySelectorAll('.token-qty.w-select');
-  console.log(`Found ${dropdowns.length} dropdowns.`);
+  logger.log(`Found ${dropdowns.length} dropdowns.`);
 
   let hasItems = false; // Flag to track if the cart contains items.
 
@@ -503,7 +507,7 @@ function updateBurnCart() {
     const quantity = parseInt(dropdown.value) || 0;
     if (quantity === 0) return; // Skip if no quantity is selected.
 
-    console.log(`Processing dropdown #${index + 1}:`, dropdown);
+    logger.log(`Processing dropdown #${index + 1}:`, dropdown);
 
     const row = dropdown.closest('.collection-item-01-div');
     if (!row) {
@@ -527,7 +531,7 @@ function updateBurnCart() {
     const editionCount = parseInt(editionElement.textContent.trim());
     const redeemValue = Math.ceil(100 / editionCount) * quantity;
 
-    console.log(`Adding to cart: Title = ${tokenTitle}, Quantity = ${quantity}, Redeem Value = ${redeemValue}`);
+    logger.log(`Adding to cart: Title = ${tokenTitle}, Quantity = ${quantity}, Redeem Value = ${redeemValue}`);
 
     hasItems = true;
 
@@ -584,7 +588,7 @@ function updateBurnCart() {
   exchangeState.hasCartItems = hasItems;
   updateCartButtons();
 
-  console.log('Burn Cart Update Complete!');
+  logger.log('Burn Cart Update Complete!');
 }
 
 /**
@@ -595,7 +599,7 @@ function updateBurnCart() {
  * @param {HTMLElement} dropdown - Dropdown element linked to the cart row.
  */
 function handleRemoveRow(index, dropdown) {
-  console.log(`Removing row for dropdown #${index + 1}`);
+  logger.log(`Removing row for dropdown #${index + 1}`);
   dropdown.value = ''; // Reset the dropdown value.
   updateTotal(); // Recalculate totals and update the cart.
 }
@@ -644,7 +648,7 @@ function updateCartButtons() {
  * sums them, and updates the UI accordingly.
  */
 function updateTotal() {
-  console.log('Running updateTotal: Checking dropdowns for quantities.');
+  logger.log('Running updateTotal: Checking dropdowns for quantities.');
 
   let total = 0; // Initialize total redeem value
   const dropdowns = document.querySelectorAll('.token-qty.w-select');
@@ -660,7 +664,7 @@ function updateTotal() {
     total += quantity * redeemValue;
   });
 
-  console.log(`Final total calculated: ${total}`);
+  logger.log(`Final total calculated: ${total}`);
 
   // Update the total display element.
   const totalDisplay = document.querySelector('.total-display');
@@ -687,7 +691,7 @@ function handleDropdownChange(event) {
     event.target.classList.contains('token-qty') &&
     event.target.classList.contains('w-select')
   ) {
-    console.log('Dropdown changed, updating total...');
+    logger.log('Dropdown changed, updating total...');
     updateTotal();
   }
 }
@@ -728,7 +732,7 @@ async function buildApprovalOps(userWalletAddress, burnCart) {
     burnCart,
     operatorErrorPrefix: '❌ ',
     onApprovalCheck: ({ token, contractAddress, isApproved }) => {
-      console.log(
+      logger.log(
         `🔍 Checking token ${token.tokenId} on ${contractAddress}:`,
         isApproved ? "Approved ✅" : "Not approved ❌"
       );
@@ -793,7 +797,7 @@ async function handleExchange() {
   exchangeInFlight = true;
 
   try {
-    console.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
+    logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
 
     // Step 1: Show waiting for wallet confirmation modal.
     showModal('PROCESSING...', '[WAITING FOR WALLET CONFIRMATION...]');
@@ -807,7 +811,7 @@ async function handleExchange() {
       return;
     }
     const userWalletAddress = activeAccount.address;
-    console.log('✅ User wallet address:', userWalletAddress);
+    logger.log('✅ User wallet address:', userWalletAddress);
 
     // Gather burn-cart items.
     const burnCart = getBurnCart();
@@ -817,14 +821,14 @@ async function handleExchange() {
       setTimeout(hideModal, 3000);
       return;
     }
-    console.log('📜 Raw burnCart:', burnCart);
+    logger.log('📜 Raw burnCart:', burnCart);
 
     // Build or skip operator-approval ops.
     const approvalOps = await buildApprovalOps(userWalletAddress, burnCart);
     if (approvalOps.length > 0) {
-      console.log('🚀 Approval operations to include:', approvalOps);
+      logger.log('🚀 Approval operations to include:', approvalOps);
     } else {
-      console.log('✅ All tokens already approved.');
+      logger.log('✅ All tokens already approved.');
     }
 
     // Lookup token_pair_id for each burn item.
@@ -836,7 +840,7 @@ async function handleExchange() {
         return;
       }
     }
-    console.log('✅ Updated burnCart with token_pair_id:', burnCart);
+    logger.log('✅ Updated burnCart with token_pair_id:', burnCart);
 
     // Group by contract and build trade payloads.
     const tradesByContract = burnCart.reduce((acc, item) => {
@@ -897,13 +901,13 @@ async function handleExchange() {
       ? [...approvalOps, ...tradeOperations]
       : tradeOperations;
 
-    console.log('🚀 Sending batched approval and trade operations:', JSON.stringify(batchedOps, null, 2));
+    logger.log('🚀 Sending batched approval and trade operations:', JSON.stringify(batchedOps, null, 2));
 
     // Step 2: Prompt wallet to sign and send.
     const opResponse = await window.dAppClient.requestOperation({
       operationDetails: batchedOps
     });
-    console.log('✅ Operation submitted!', opResponse);
+    logger.log('✅ Operation submitted!', opResponse);
 
     // Update modal to processing state.
     showModal('PROCESSING...', '[APPROVING TRANSFERS + EXECUTING BURN... ️‍🔥]');
@@ -1029,7 +1033,7 @@ function bootExchangePage() {
   if (window.__EA_EXCHANGE_BOOTED__) return;
   window.__EA_EXCHANGE_BOOTED__ = true;
 
-  console.log('DOM fully loaded. Initializing UI...');
+  logger.log('DOM fully loaded. Initializing UI...');
 
   setTimeout(() => {
     // Initialize dropdowns with token edition counts.
@@ -1049,7 +1053,7 @@ function bootExchangePage() {
       const controlledPaneId = activeTab.getAttribute('aria-controls');
       const contractAddress = tabContractAddresses[controlledPaneId];
       if (contractAddress) {
-        console.log(`Active tab: ${controlledPaneId}, Contract address: ${contractAddress}`);
+        logger.log(`Active tab: ${controlledPaneId}, Contract address: ${contractAddress}`);
       }
     }
 
@@ -1085,7 +1089,7 @@ function bootExchangePage() {
     const exchangeConnectButton = document.querySelector('.exchange-button-connect.w-button');
     if (exchangeConnectButton) {
       exchangeConnectButton.addEventListener('click', async () => {
-        console.log('Exchange Connect button clicked.');
+        logger.log('Exchange Connect button clicked.');
         const primaryConnectButton = document.querySelector('.button-primary.w-button');
         if (primaryConnectButton) {
           primaryConnectButton.click();
@@ -1098,7 +1102,7 @@ function bootExchangePage() {
     // Fetch NFTs on page load if wallet is connected and update UI.
     window.dAppClient.getActiveAccount().then((account) => {
       if (account) {
-        console.log("Active account detected on page load:", account.address);
+        logger.log("Active account detected on page load:", account.address);
         fetchNFTs(account.address).then((nfts) => {
           if (typeof window.receiveNFTs === 'function') {
             window.receiveNFTs(nfts);
@@ -1107,7 +1111,7 @@ function bootExchangePage() {
           }
         });
       } else {
-        console.log('No active account detected on page load.');
+        logger.log('No active account detected on page load.');
       }
     });
 
@@ -1134,7 +1138,7 @@ function bootExchangePage() {
       if (divCanaan) {
         divCanaan.style.display = 'none';
       }
-      console.log('UI reset after wallet disconnect');
+      logger.log('UI reset after wallet disconnect');
     });
 
   }, INIT_DELAY_MS);
