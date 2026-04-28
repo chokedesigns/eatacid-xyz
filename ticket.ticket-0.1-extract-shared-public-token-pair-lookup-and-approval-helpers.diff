@@ -1,0 +1,512 @@
+﻿diff --git a/drops/js/events.js b/drops/js/events.js
+index 5836fff..1939e4c 100644
+--- a/drops/js/events.js
++++ b/drops/js/events.js
+@@ -18,6 +18,10 @@ console.log = (...args) => {
+ import eventsNetworkConfig from './events-config.js';
+ import dropParams from 'ea-drop-params';
+ import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
++import {
++  buildApprovalOps as buildSharedApprovalOps,
++  fetchTokenPairId as fetchSharedTokenPairId
++} from '../../shared/public-trade-ops.js';
+ 
+ /**
+  * Convert a collection key to its CSS slug.
+@@ -503,50 +507,13 @@ function stampRowAttributes(row, contractAddress) {
+ // HELPERS: BLOCKCHAIN CALLS
+ // =============================================================================
+ 
+-/**
+- * Looks up the on‑chain token_pair_id for a given burn contract & token.
+- *
+- * @param {string} burnContractAddress - FA2 contract address.
+- * @param {number|string} burnTokenId   - Token ID to look up.
+- * @returns {Promise<number>}           - The token_pair_id.
+- */
+ async function fetchTokenPairId(burnContractAddress, burnTokenId) {
+-  try {
+-    console.log(`🔍 Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
+-
+-    // Only fetch ACTIVE entries from token_mapping
+-    const url =
+-      `${TZKT_BASE}/v1/contracts/${BURN_REDEEM_CONTRACT_ADDRESS}` +
+-      `/bigmaps/token_mapping/keys?active=true&limit=10000`;
+-
+-    const response = await fetch(url);
+-    const raw = await response.json();
+-    console.log("📜 Retrieved raw token_mapping data:", raw);
+-
+-    // Mirror admin logic: drop inactive / null-valued rows
+-    const tokenMappings = (raw || []).filter(
+-      (entry) => entry && entry.active !== false && entry.value != null
+-    );
+-
+-    console.log("📜 Filtered active token_mapping data:", tokenMappings);
+-
+-    const matching = tokenMappings.find(
+-      (entry) =>
+-        entry.value.burn_contract_address === burnContractAddress &&
+-        parseInt(entry.value.burn_token_id, 10) === parseInt(burnTokenId, 10)
+-    );
+-
+-    if (matching) {
+-      console.log(`✅ Found token_pair_id: ${matching.key}`);
+-      return Number(matching.key);
+-    }
+-
+-    console.warn(`❌ No token_pair_id for ${burnContractAddress} / ${burnTokenId}`);
+-    return null;
+-  } catch (err) {
+-    console.error("❌ Error fetching token_pair_id:", err);
+-    return null;
+-  }
++  return fetchSharedTokenPairId({
++    tzktBase: TZKT_BASE,
++    escrowAddress: BURN_REDEEM_CONTRACT_ADDRESS,
++    burnContractAddress,
++    burnTokenId
++  });
+ }
+ 
+ // =============================================================================
+@@ -574,93 +541,12 @@ function computeBalances(nfts) {
+  * and returns only the missing update_operators calls.
+  */
+ async function buildApprovalOps(userWalletAddress, burnCart) {
+-  const groups = burnCart.reduce((acc, item) => {
+-    (acc[item.contractAddress] ||= []).push(item);
+-    return acc;
+-  }, {});
+-  const approvalOps = [];
+-
+-  for (const contractAddress of Object.keys(groups)) {
+-    try {
+-      const url = `${TZKT_BASE}/v1/contracts/${contractAddress}/bigmaps/operators/keys?active=true`;
+-      const response = await fetch(url);
+-      const operators = await response.json();
+-
+-      groups[contractAddress].forEach(token => {
+-        const isApproved = operators.some(op =>
+-          op.key.owner    === userWalletAddress &&
+-          op.key.operator === BURN_REDEEM_CONTRACT_ADDRESS &&
+-          parseInt(op.key.token_id, 10) === parseInt(token.tokenId, 10)
+-        );
+-
+-        if (!isApproved) {
+-          approvalOps.push({
+-            kind:        'transaction',
+-            destination: contractAddress,
+-            amount:      '0',
+-            parameters: {
+-              entrypoint: 'update_operators',
+-              value: [
+-                {
+-                  prim: 'Left',
+-                  args: [
+-                    {
+-                      prim: 'Pair',
+-                      args: [
+-                        { string: userWalletAddress },
+-                        {
+-                          prim: 'Pair',
+-                          args: [
+-                            { string: BURN_REDEEM_CONTRACT_ADDRESS },
+-                            { int: token.tokenId.toString() }
+-                          ]
+-                        }
+-                      ]
+-                    }
+-                  ]
+-                }
+-              ]
+-            }
+-          });
+-        }
+-      });
+-    } catch (error) {
+-      console.error(`Error checking operators for ${contractAddress}:`, error);
+-      // Optimistically queue approvals if the check fails
+-      groups[contractAddress].forEach(token => {
+-        approvalOps.push({
+-          kind:        'transaction',
+-          destination: contractAddress,
+-          amount:      '0',
+-          parameters: {
+-            entrypoint: 'update_operators',
+-            value: [
+-              {
+-                prim: 'Left',
+-                args: [
+-                  {
+-                    prim: 'Pair',
+-                    args: [
+-                      { string: userWalletAddress },
+-                      {
+-                        prim: 'Pair',
+-                        args: [
+-                          { string: BURN_REDEEM_CONTRACT_ADDRESS },
+-                          { int: token.tokenId.toString() }
+-                        ]
+-                      }
+-                    ]
+-                  }
+-                ]
+-              }
+-            ]
+-          }
+-        });
+-      });
+-    }
+-  }
+-
+-  return approvalOps;
++  return buildSharedApprovalOps({
++    tzktBase: TZKT_BASE,
++    escrowAddress: BURN_REDEEM_CONTRACT_ADDRESS,
++    userWalletAddress,
++    burnCart
++  });
+ }
+ 
+ // =============================================================================
+diff --git a/exchange/js/exchange.js b/exchange/js/exchange.js
+index f500d90..c133680 100644
+--- a/exchange/js/exchange.js
++++ b/exchange/js/exchange.js
+@@ -3,6 +3,10 @@
+ // =============================================================================
+ 
+ import cfg from './exchange-config.js';
++import {
++  buildApprovalOps as buildSharedApprovalOps,
++  fetchTokenPairId as fetchSharedTokenPairId
++} from '../../shared/public-trade-ops.js';
+ const { network, rpc, tzkt, contracts } = cfg;
+ // pick the right network’s contract set
+ const current = contracts[network];
+@@ -730,50 +734,13 @@ function handleDropdownChange(event) {
+ // FETCH TOKEN PAIR ID
+ // -----------------------------------------------------
+ 
+-/**
+- * Looks up the on-chain token_pair_id for a given burn contract & token.
+- *
+- * @param {string} burnContractAddress - FA2 contract address.
+- * @param {number|string} burnTokenId   - Token ID to look up.
+- * @returns {Promise<number|null>}      - The token_pair_id, or null if not found.
+- */
+ async function fetchTokenPairId(burnContractAddress, burnTokenId) {
+-  try {
+-    console.log(`🔍 Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
+-
+-    // Only fetch ACTIVE entries from token_mapping
+-    const url =
+-      `${TZKT_BASE}/v1/contracts/${BURN_REDEEM_CONTRACT}` +
+-      `/bigmaps/token_mapping/keys?active=true&limit=10000`;
+-
+-    const response = await fetch(url);
+-    const raw = await response.json();
+-    console.log("📜 Retrieved raw token_mapping data:", raw);
+-
+-    // Mirror admin behavior: ignore inactive / null-valued rows defensively
+-    const tokenMappings = (raw || []).filter(
+-      (entry) => entry && entry.active !== false && entry.value != null
+-    );
+-
+-    console.log("📜 Filtered active token_mapping data:", tokenMappings);
+-
+-    const matching = tokenMappings.find(
+-      (entry) =>
+-        entry.value.burn_contract_address === burnContractAddress &&
+-        parseInt(entry.value.burn_token_id, 10) === parseInt(burnTokenId, 10)
+-    );
+-
+-    if (matching) {
+-      console.log(`✅ Found token_pair_id: ${matching.key}`);
+-      return Number(matching.key);
+-    }
+-
+-    console.warn(`❌ No token_pair_id for ${burnContractAddress} / ${burnTokenId}`);
+-    return null;
+-  } catch (error) {
+-    console.error("❌ Error fetching token_pair_id:", error);
+-    return null;
+-  }
++  return fetchSharedTokenPairId({
++    tzktBase: TZKT_BASE,
++    escrowAddress: BURN_REDEEM_CONTRACT,
++    burnContractAddress,
++    burnTokenId
++  });
+ }
+ 
+ // -----------------------------------------------------
+@@ -788,92 +755,19 @@ async function fetchTokenPairId(burnContractAddress, burnTokenId) {
+  * @returns {Promise<Array>} List of Michelson transactions to send.
+  */
+ async function buildApprovalOps(userWalletAddress, burnCart) {
+-  const groups = burnCart.reduce((acc, item) => {
+-    const contract = item.contractAddress;
+-    (acc[contract] ||= []).push(item);
+-    return acc;
+-  }, {});
+-  const approvalOps = [];
+-
+-  for (const contract of Object.keys(groups)) {
+-    try {
+-      // Fetch existing operators using the dynamic TZKT_BASE URL
+-      const url = `${TZKT_BASE}/v1/contracts/${contract}/bigmaps/operators/keys?active=true`;
+-      const response = await fetch(url);
+-      const operators = await response.json();
+-
+-      groups[contract].forEach(token => {
+-        const isApproved = operators.some(op =>
+-          op.key.owner    === userWalletAddress &&
+-          op.key.operator === BURN_REDEEM_CONTRACT &&
+-          parseInt(op.key.token_id, 10) === parseInt(token.tokenId, 10)
+-        );
+-
+-        console.log(
+-          `🔍 Checking token ${token.tokenId} on ${contract}:`,
+-          isApproved ? "Approved ✅" : "Not approved ❌"
+-        );
+-
+-        if (!isApproved) {
+-          approvalOps.push({
+-            kind: "transaction",
+-            destination: contract,
+-            amount: "0",
+-            parameters: {
+-              entrypoint: "update_operators",
+-              value: [{
+-                prim: "Left",
+-                args: [{
+-                  prim: "Pair",
+-                  args: [
+-                    { string: userWalletAddress },
+-                    {
+-                      prim: "Pair",
+-                      args: [
+-                        { string: BURN_REDEEM_CONTRACT },
+-                        { int: String(token.tokenId) }
+-                      ]
+-                    }
+-                  ]
+-                }]
+-              }]
+-            }
+-          });
+-        }
+-      });
+-    } catch (error) {
+-      console.error(`❌ Error checking operators for ${contract}:`, error);
+-      // On error, optimistically queue approvals
+-      groups[contract].forEach(token => {
+-        approvalOps.push({
+-          kind: "transaction",
+-          destination: contract,
+-          amount: "0",
+-          parameters: {
+-            entrypoint: "update_operators",
+-            value: [{
+-              prim: "Left",
+-              args: [{
+-                prim: "Pair",
+-                args: [
+-                  { string: userWalletAddress },
+-                  {
+-                    prim: "Pair",
+-                    args: [
+-                      { string: BURN_REDEEM_CONTRACT },
+-                      { int: String(token.tokenId) }
+-                    ]
+-                  }
+-                ]
+-              }]
+-            }]
+-          }
+-        });
+-      });
++  return buildSharedApprovalOps({
++    tzktBase: TZKT_BASE,
++    escrowAddress: BURN_REDEEM_CONTRACT,
++    userWalletAddress,
++    burnCart,
++    operatorErrorPrefix: '❌ ',
++    onApprovalCheck: ({ token, contractAddress, isApproved }) => {
++      console.log(
++        `🔍 Checking token ${token.tokenId} on ${contractAddress}:`,
++        isApproved ? "Approved ✅" : "Not approved ❌"
++      );
+     }
+-  }
+-
+-  return approvalOps;
++  });
+ }
+ 
+ // -----------------------------------------------------
+diff --git a/shared/public-trade-ops.js b/shared/public-trade-ops.js
+new file mode 100644
+index 0000000..871b67c
+--- /dev/null
++++ b/shared/public-trade-ops.js
+@@ -0,0 +1,157 @@
++/**
++ * Looks up the on-chain token_pair_id for a given burn contract and token.
++ *
++ * @param {Object} args
++ * @param {string} args.tzktBase
++ * @param {string} args.escrowAddress
++ * @param {string} args.burnContractAddress
++ * @param {number|string} args.burnTokenId
++ * @returns {Promise<number|null>}
++ */
++export async function fetchTokenPairId({
++  tzktBase,
++  escrowAddress,
++  burnContractAddress,
++  burnTokenId
++}) {
++  try {
++    console.log(`\u{1F50D} Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
++
++    const url =
++      `${tzktBase}/v1/contracts/${escrowAddress}` +
++      `/bigmaps/token_mapping/keys?active=true&limit=10000`;
++
++    const response = await fetch(url);
++    const raw = await response.json();
++    console.log("\u{1F4DC} Retrieved raw token_mapping data:", raw);
++
++    const tokenMappings = (raw || []).filter(
++      (entry) => entry && entry.active !== false && entry.value != null
++    );
++
++    console.log("\u{1F4DC} Filtered active token_mapping data:", tokenMappings);
++
++    const burnContract = String(burnContractAddress).toLowerCase();
++    const tokenId = String(burnTokenId);
++    const matching = tokenMappings.find(
++      (entry) =>
++        String(entry.value.burn_contract_address).toLowerCase() === burnContract &&
++        String(entry.value.burn_token_id) === tokenId
++    );
++
++    if (matching) {
++      console.log(`\u2705 Found token_pair_id: ${matching.key}`);
++      return Number(matching.key);
++    }
++
++    console.warn(`\u274C No token_pair_id for ${burnContractAddress} / ${burnTokenId}`);
++    return null;
++  } catch (error) {
++    console.error("\u274C Error fetching token_pair_id:", error);
++    return null;
++  }
++}
++
++/**
++ * Builds update_operators ops for burn-cart tokens missing escrow approval.
++ *
++ * @param {Object} args
++ * @param {string} args.tzktBase
++ * @param {string} args.escrowAddress
++ * @param {string} args.userWalletAddress
++ * @param {Array<{tokenId:string,quantity:number,contractAddress:string}>} args.burnCart
++ * @param {Function} [args.onApprovalCheck]
++ * @param {string} [args.operatorErrorPrefix]
++ * @returns {Promise<Array>}
++ */
++export async function buildApprovalOps({
++  tzktBase,
++  escrowAddress,
++  userWalletAddress,
++  burnCart,
++  onApprovalCheck,
++  operatorErrorPrefix = ''
++}) {
++  const groups = burnCart.reduce((acc, item) => {
++    (acc[item.contractAddress] ||= []).push(item);
++    return acc;
++  }, {});
++  const approvalOps = [];
++
++  for (const contractAddress of Object.keys(groups)) {
++    try {
++      const url = `${tzktBase}/v1/contracts/${contractAddress}/bigmaps/operators/keys?active=true`;
++      const response = await fetch(url);
++      const operators = await response.json();
++
++      groups[contractAddress].forEach(token => {
++        const isApproved = operators.some(op =>
++          op.key.owner === userWalletAddress &&
++          op.key.operator === escrowAddress &&
++          parseInt(op.key.token_id, 10) === parseInt(token.tokenId, 10)
++        );
++
++        if (onApprovalCheck) {
++          onApprovalCheck({ token, contractAddress, isApproved });
++        }
++
++        if (!isApproved) {
++          approvalOps.push(createApprovalOp({
++            contractAddress,
++            escrowAddress,
++            userWalletAddress,
++            tokenId: token.tokenId
++          }));
++        }
++      });
++    } catch (error) {
++      console.error(`${operatorErrorPrefix}Error checking operators for ${contractAddress}:`, error);
++      groups[contractAddress].forEach(token => {
++        approvalOps.push(createApprovalOp({
++          contractAddress,
++          escrowAddress,
++          userWalletAddress,
++          tokenId: token.tokenId
++        }));
++      });
++    }
++  }
++
++  return approvalOps;
++}
++
++function createApprovalOp({
++  contractAddress,
++  escrowAddress,
++  userWalletAddress,
++  tokenId
++}) {
++  return {
++    kind: 'transaction',
++    destination: contractAddress,
++    amount: '0',
++    parameters: {
++      entrypoint: 'update_operators',
++      value: [
++        {
++          prim: 'Left',
++          args: [
++            {
++              prim: 'Pair',
++              args: [
++                { string: userWalletAddress },
++                {
++                  prim: 'Pair',
++                  args: [
++                    { string: escrowAddress },
++                    { int: tokenId.toString() }
++                  ]
++                }
++              ]
++            }
++          ]
++        }
++      ]
++    }
++  };
++}
