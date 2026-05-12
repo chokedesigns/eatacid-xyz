@@ -1,0 +1,83 @@
+﻿diff --git a/shared/chain-registry.js b/shared/chain-registry.js
+new file mode 100644
+index 0000000..ffc170c
+--- /dev/null
++++ b/shared/chain-registry.js
+@@ -0,0 +1,77 @@
++// =============================================================================
++// SHARED: CHAIN REGISTRY
++// =============================================================================
++
++export const chainRegistry = {
++  testnet: {
++    label: 'Ghostnet',
++    beaconNetwork: 'ghostnet',
++    rpc: 'https://ghostnet.smartpy.io',
++    tzkt: 'https://api.ghostnet.tzkt.io',
++    escrow: 'KT1XTgLfSM91seY8o61mcTemZec947agaXdG',
++    pairsMapPath: 'token_mapping',
++    collections: {
++      CANAAN: 'KT1EUVvXwN4GcBUgQGomwCxRjj96F99cF69u',
++      'THE 419 SCRIPT': 'KT194J5ips31A3ZDKn11cL8GZZ7wxRTBifPN',
++      HEN: 'KT1MzZz5T5MqYrBoeqdKPfG6qx1AmyjxE8Gp',
++      INTRODUCTIONS: 'KT1DmDSBFJXX76Q2SFfyTBe9XSsw11FYyEHP',
++      'ACID COIN': 'KT1JCjaj6HYj8MwhaWTBFQLyAGu6YGtUoxNd'
++    },
++    exchange: {
++      redeemMaster: 'KT1JCjaj6HYj8MwhaWTBFQLyAGu6YGtUoxNd'
++    },
++    pairIdRanges: {
++      drops: { start: 1000, end: null }
++    },
++    mirrors: {
++      HEN: {
++        '94684': '0',
++        '103062': '1',
++        '104492': '2',
++        '114368': '3',
++        '125115': '4',
++        '135460': '5',
++        '141634': '6',
++        '147893': '7',
++        '175592': '8',
++        '200717': '9',
++        '209650': '10',
++        '279300': '11',
++        '369693': '12',
++        '397098': '13',
++        '422822': '14',
++        '455835': '15',
++        '526531': '16'
++      }
++    }
++  },
++
++  mainnet: {
++    label: 'Mainnet',
++    beaconNetwork: 'mainnet',
++    rpc: 'https://mainnet.smartpy.io',
++    tzkt: 'https://api.tzkt.io',
++    escrow: '',
++    pairsMapPath: 'token_mapping',
++    collections: {},
++    exchange: {
++      redeemMaster: ''
++    },
++    pairIdRanges: {
++      drops: { start: 1000, end: null }
++    },
++    mirrors: {}
++  }
++};
++
++export function getChainConfig(network) {
++  return chainRegistry[network] || null;
++}
++
++export function getRequiredChainConfig(network) {
++  const config = getChainConfig(network);
++  if (!config) throw new Error(`Unknown network: ${network}`);
++  return config;
++}
++
++export default chainRegistry;
