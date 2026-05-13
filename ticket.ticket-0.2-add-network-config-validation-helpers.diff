@@ -1,0 +1,115 @@
+﻿diff --git a/shared/chain-registry.js b/shared/chain-registry.js
+index ffc170c..e81c517 100644
+--- a/shared/chain-registry.js
++++ b/shared/chain-registry.js
+@@ -74,4 +74,110 @@ export function getRequiredChainConfig(network) {
+   return config;
+ }
+ 
++const dropCollectionKeys = ['HEN', 'INTRODUCTIONS', 'CANAAN'];
++const exchangeCollectionKeys = ['THE 419 SCRIPT', 'CANAAN', 'ACID COIN'];
++const adminCollectionKeys = [
++  'HEN',
++  'INTRODUCTIONS',
++  'CANAAN',
++  'THE 419 SCRIPT',
++  'ACID COIN'
++];
++
++function resolveChainConfig(configOrNetwork) {
++  if (typeof configOrNetwork === 'string') {
++    return getChainConfig(configOrNetwork);
++  }
++  return configOrNetwork || null;
++}
++
++function validationResult(missing) {
++  return { ok: missing.length === 0, missing };
++}
++
++function addMissingText(missing, config, path) {
++  const value = path.split('.').reduce((target, key) => target?.[key], config);
++  if (typeof value !== 'string' || value.trim() === '') missing.push(path);
++}
++
++function addMissingAddress(missing, config, path) {
++  const value = path.split('.').reduce((target, key) => target?.[key], config);
++  if (isPlaceholderAddress(value)) missing.push(path);
++}
++
++function addMissingCollections(missing, config, keys) {
++  keys.forEach((key) => {
++    addMissingAddress(missing, config, `collections.${key}`);
++  });
++}
++
++export function isPlaceholderAddress(value) {
++  if (value == null) return true;
++  if (typeof value !== 'string') return true;
++
++  const trimmed = value.trim();
++  if (trimmed === '') return true;
++  if (!trimmed.startsWith('KT1')) return true;
++
++  const lower = trimmed.toLowerCase();
++  if (lower.includes('placeholder') || lower.includes('your-') || lower.includes('tbd')) {
++    return true;
++  }
++
++  const body = trimmed.slice(3);
++  return /^[.\-_]+$/.test(body) || /^(.)\1+$/.test(body);
++}
++
++export function validateNetworkBase(configOrNetwork) {
++  const config = resolveChainConfig(configOrNetwork);
++  const missing = [];
++
++  if (!config) return validationResult(['network']);
++
++  addMissingText(missing, config, 'rpc');
++  addMissingText(missing, config, 'tzkt');
++  addMissingText(missing, config, 'beaconNetwork');
++
++  return validationResult(missing);
++}
++
++export function validatePublicDropsConfig(configOrNetwork) {
++  const config = resolveChainConfig(configOrNetwork);
++  const missing = validateNetworkBase(config).missing.slice();
++
++  if (!config) return validationResult(missing);
++
++  addMissingAddress(missing, config, 'escrow');
++  addMissingText(missing, config, 'pairsMapPath');
++  addMissingCollections(missing, config, dropCollectionKeys);
++
++  return validationResult(missing);
++}
++
++export function validatePublicExchangeConfig(configOrNetwork) {
++  const config = resolveChainConfig(configOrNetwork);
++  const missing = validateNetworkBase(config).missing.slice();
++
++  if (!config) return validationResult(missing);
++
++  addMissingAddress(missing, config, 'escrow');
++  addMissingAddress(missing, config, 'exchange.redeemMaster');
++  addMissingCollections(missing, config, exchangeCollectionKeys);
++
++  return validationResult(missing);
++}
++
++export function validateAdminNetworkConfig(configOrNetwork) {
++  const config = resolveChainConfig(configOrNetwork);
++  const missing = validateNetworkBase(config).missing.slice();
++
++  if (!config) return validationResult(missing);
++
++  addMissingAddress(missing, config, 'escrow');
++  addMissingText(missing, config, 'pairsMapPath');
++  addMissingCollections(missing, config, adminCollectionKeys);
++
++  return validationResult(missing);
++}
++
+ export default chainRegistry;
