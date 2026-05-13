@@ -5,9 +5,13 @@
 import { DAppClient, NetworkType, BeaconEvent } from '@airgap/beacon-sdk';
 import cfg from './network.js';
 import { createPublicLogger } from './public-logger.js';
-const { network, tzkt } = cfg;
+const { network, tzkt, getCurrentPublicNetworkConfig } = cfg;
 const DEBUG = true;
 const logger = createPublicLogger({ enabled: DEBUG, scope: 'wallet' });
+const beaconNetwork = getCurrentPublicNetworkConfig()?.beaconNetwork ||
+  (network === 'mainnet' ? 'mainnet' : 'ghostnet');
+const preferredNetwork =
+  beaconNetwork === 'mainnet' ? NetworkType.MAINNET : NetworkType.GHOSTNET;
 
 // ----------------------------------------------------------------------------
 // Initialize or reuse the Beacon client
@@ -16,8 +20,7 @@ if (!window.dAppClient) {
   logger.log('Initializing Beacon DAppClient on network:', network);
   window.dAppClient = new DAppClient({
     name: 'eatacid.xyz',
-    preferredNetwork:
-      network === 'mainnet' ? NetworkType.MAINNET : NetworkType.GHOSTNET
+    preferredNetwork
   });
 } else {
   logger.log('Reusing existing Beacon DAppClient on network:', network);

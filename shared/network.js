@@ -2,6 +2,8 @@
 // SHARED: NETWORK CONFIGURATION
 // =============================================================================
 
+import { chainRegistry, getChainConfig } from './chain-registry.js';
+
 // Single source of truth:
 // - Change this to 'mainnet' when you're ready to flip that branch to mainnet.
 // - Keep it 'testnet' on staging if you want staging to stay ghostnet.
@@ -14,18 +16,30 @@ const ENV_NETWORK =
 
 const network = ENV_NETWORK || DEFAULT_NETWORK;
 
-const rpc = {
-  testnet: 'https://ghostnet.smartpy.io',
-  mainnet: 'https://mainnet.smartpy.io'
-};
+const rpc = Object.fromEntries(
+  Object.entries(chainRegistry).map(([key, config]) => [key, config.rpc])
+);
 
-const tzkt = {
-  testnet: 'https://api.ghostnet.tzkt.io',
-  mainnet: 'https://api.tzkt.io'
+const tzkt = Object.fromEntries(
+  Object.entries(chainRegistry).map(([key, config]) => [key, config.tzkt])
+);
+
+function getCurrentPublicNetworkConfig() {
+  return getChainConfig(network);
+}
+
+export {
+  DEFAULT_NETWORK,
+  ENV_NETWORK,
+  network,
+  rpc,
+  tzkt,
+  getCurrentPublicNetworkConfig
 };
 
 export default {
   network,
   rpc,
-  tzkt
+  tzkt,
+  getCurrentPublicNetworkConfig
 };
