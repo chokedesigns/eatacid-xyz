@@ -34,8 +34,22 @@ function getCollectionSlug(collKey) {
 }
 
 // ── Network & Contract Endpoints ─────────────────────────────────────────────
-const { network, rpc, tzkt, contracts } = eventsNetworkConfig;
-const current = contracts[network];
+const {
+  network,
+  rpc,
+  tzkt,
+  contracts,
+  validation,
+  isConfigured,
+  unavailableMessage
+} = eventsNetworkConfig;
+const current = contracts[network] || {
+  escrow: '',
+  collections: {},
+  tokenMapping: {}
+};
+const networkConfigAvailable = isConfigured !== false;
+const networkUnavailableMessage = unavailableMessage || 'This network is not configured yet.';
 
 // RPC & TzKT endpoints for the active network:
 const RPC_ENDPOINT = rpc[network];
@@ -58,7 +72,7 @@ const {
 } = dropParams;
 
 // Derive the redeem contract address for your redeem token:
-const REDEEM_CONTRACT_ADDRESS = collections[redeemToken.collection];
+const REDEEM_CONTRACT_ADDRESS = collections[redeemToken.collection] || '';
 
 // ── Debug Logging ───────────────────────────────────────────────────────────
 logger.groupCollapsed('🚀 Events.js config');
@@ -72,6 +86,11 @@ logger.log('Burn tokens config:', burnTokens);
 logger.log('Redeem token config:', redeemToken);
 logger.log('Token mapping defined:', tokenMapping);
 logger.groupEnd();
+if (!networkConfigAvailable) {
+  console.error(
+    `Drops network config missing required values for ${network}: ${validation?.missing?.join(', ') || 'unknown'}`
+  );
+}
 
 // =============================================================================
 // GLOBAL UI STATE PLACEHOLDERS
@@ -329,6 +348,25 @@ function applyDropScheduledGate() {
     if (dropsUI) dropsUI.style.display = 'none';
     if (noDrops) noDrops.style.display = 'flex';
     return false;
+  }
+}
+
+function renderNetworkUnavailable() {
+  const spinner = document.querySelector('.drops-page-load-spinner-div');
+  const dropsUI = document.querySelector('.drops-ui-div');
+  const noDrops = document.querySelector('.no-drops-scheduled-div');
+  const exchangeButton = document.querySelector('.event-cart-exchange-button-no-select.w-button');
+
+  if (spinner) spinner.style.display = 'none';
+  if (dropsUI) dropsUI.style.display = 'none';
+  if (noDrops) {
+    noDrops.style.display = 'flex';
+    noDrops.textContent = networkUnavailableMessage;
+  }
+  if (exchangeButton) {
+    exchangeButton.textContent = networkUnavailableMessage;
+    exchangeButton.setAttribute('aria-disabled', 'true');
+    if ('disabled' in exchangeButton) exchangeButton.disabled = true;
   }
 }
 
@@ -636,6 +674,11 @@ let redeemSupplyIntervalId = null;
  * @returns {Promise<number>} The on‑chain balance of the redeem token.
  */
 async function fetchRedeemSupply() {
+  if (!networkConfigAvailable) {
+    console.error(networkUnavailableMessage);
+    return 0;
+  }
+
   const holdings = await fetchNFTs(BURN_REDEEM_CONTRACT_ADDRESS);
   const redeemAddr = collections[redeemToken.collection];
   const match = holdings.find(n =>
@@ -706,6 +749,13 @@ subscribeToAppState(({ countdownPhase, redeemSupply }) => {
 let eventExchangeInFlight = false;
 
 async function handleEventExchange() {
+  if (!networkConfigAvailable) {
+    console.error(networkUnavailableMessage);
+    showModal('ERROR', networkUnavailableMessage);
+    setTimeout(hideModal, 3000);
+    return;
+  }
+
   if (eventExchangeInFlight) return;
   eventExchangeInFlight = true;
 
@@ -1276,6 +1326,11 @@ function updateRedeemTokenTitle() {
  * @returns {Promise<Array>} Array of NFT objects.
  */
 async function fetchNFTs(address) {
+  if (!networkConfigAvailable) {
+    console.error(networkUnavailableMessage);
+    return [];
+  }
+
   if (typeof window.fetchNFTs === 'function') {
     return await window.fetchNFTs(address);
   } else {
@@ -1679,6 +1734,11 @@ function displayDefaultTokens() {
  * then re-fetches & re-renders the user's NFTs.
  */
 async function pollForUnpause(contractAddress, interval = 3000) {
+  if (!networkConfigAvailable) {
+    console.error(networkUnavailableMessage);
+    return;
+  }
+
   // entering standby-polling: mark on-chain paused
   updateAppState({ contractPaused: true });
 
@@ -2159,6 +2219,11 @@ async function bootDropsPage() {
   // This should be a no-op in the normal case (single load).
   if (window.__EA_DROPS_BOOTED__) return;
   window.__EA_DROPS_BOOTED__ = true;
+
+  if (!networkConfigAvailable) {
+    renderNetworkUnavailable();
+    return;
+  }
 
   // 0) Drop-schedule early gate (page-level)
   //     - Hides .drops-page-load-spinner-div

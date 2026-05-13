@@ -1,0 +1,5 @@
+﻿ drops/js/events-config.js      | 10 +++---
+ drops/js/events.js             | 71 ++++++++++++++++++++++++++++++++++++++++--
+ exchange/js/exchange-config.js | 10 +++---
+ exchange/js/exchange.js        | 58 ++++++++++++++++++++++++++++++++--
+ 4 files changed, 133 insertions(+), 16 deletions(-)

@@ -10,14 +10,25 @@ import {
   pollForNFTUpdate as pollForSharedNFTUpdate
 } from '../../shared/public-trade-ops.js';
 import { createPublicLogger } from '../../shared/public-logger.js';
-const { network, rpc, tzkt, contracts } = cfg;
+const { network, rpc, tzkt, contracts, validation, isConfigured, unavailableMessage } = cfg;
 // pick the right network’s contract set
-const current = contracts[network];
+const current = contracts[network] || {
+  collections: {},
+  escrow: '',
+  redeemMaster: ''
+};
+const networkConfigAvailable = isConfigured !== false;
+const networkUnavailableMessage = unavailableMessage || 'This network is not configured yet.';
 
 const DEBUG = true;
 const logger = createPublicLogger({ enabled: DEBUG, scope: 'exchange' });
 
 logger.log('Script running on network:', network);
+if (!networkConfigAvailable) {
+  console.error(
+    `Exchange network config missing required values for ${network}: ${validation?.missing?.join(', ') || 'unknown'}`
+  );
+}
 
 /**
  * RPC & TzKT endpoints based on network
@@ -134,7 +145,7 @@ window.receiveNFTs = function (nfts) {
 
 // When the active account is set (e.g. after connecting the wallet),
 // automatically fetch NFTs and update the UI.
-if (window.dAppClient && typeof window.dAppClient.subscribeToEvent === 'function') {
+if (networkConfigAvailable && window.dAppClient && typeof window.dAppClient.subscribeToEvent === 'function') {
   window.dAppClient.subscribeToEvent('ACTIVE_ACCOUNT_SET', (account) => {
     if (account) {
       logger.log("ACTIVE_ACCOUNT_SET event triggered:", account.address);
@@ -364,6 +375,11 @@ async function prepareUpdateOperators(userWalletAddress, burnCart) {
  * @returns {Promise<Array>} Promise resolving to an array of NFT objects.
  */
 async function fetchNFTs(walletAddress) {
+  if (!networkConfigAvailable) {
+    console.error(networkUnavailableMessage);
+    return [];
+  }
+
   logger.log("Fetching NFTs for wallet address:", walletAddress);
 
   // Use dynamic base URL
@@ -608,6 +624,11 @@ function handleRemoveRow(index, dropdown) {
  * Updates the visibility of cart-related buttons based on wallet connection and cart state.
  */
 function updateCartButtons() {
+  if (!networkConfigAvailable) {
+    renderNetworkUnavailable();
+    return;
+  }
+
   // Select button elements.
   const connectButton = document.querySelector('.button-primary.w-button');
   const exchangeConnectButton = document.querySelector('.exchange-button-connect.w-button');
@@ -793,6 +814,13 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
 // -----------------------------------------------------
 
 async function handleExchange() {
+  if (!networkConfigAvailable) {
+    console.error(networkUnavailableMessage);
+    showModal('ERROR', networkUnavailableMessage);
+    setTimeout(hideModal, 3000);
+    return;
+  }
+
   if (exchangeInFlight) return;
   exchangeInFlight = true;
 
@@ -1024,6 +1052,25 @@ function resetExchangeUI() {
   resetTotalDisplay();
 }
 
+function renderNetworkUnavailable() {
+  const header = document.querySelector('.available-burn-tokens-exchange-text');
+  if (header) header.textContent = networkUnavailableMessage;
+
+  [
+    '.button-primary.w-button',
+    '.exchange-button-connect.w-button',
+    '.exchange-button-empty.w-button',
+    '.exchange-button.w-button'
+  ].forEach((selector) => {
+    const button = document.querySelector(selector);
+    if (!button) return;
+
+    button.style.display = selector === '.exchange-button-empty.w-button' ? 'block' : 'none';
+    button.setAttribute('aria-disabled', 'true');
+    if ('disabled' in button) button.disabled = true;
+  });
+}
+
 // =============================================================================
 // UI INITIALIZATION & EVENT BINDING
 // =============================================================================
@@ -1032,6 +1079,11 @@ function bootExchangePage() {
   // Guard against double-binding if this module is ever evaluated twice
   if (window.__EA_EXCHANGE_BOOTED__) return;
   window.__EA_EXCHANGE_BOOTED__ = true;
+
+  if (!networkConfigAvailable) {
+    renderNetworkUnavailable();
+    return;
+  }
 
   logger.log('DOM fully loaded. Initializing UI...');
 

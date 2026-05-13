@@ -33,14 +33,14 @@ const contracts = Object.fromEntries(
 );
 
 const activeValidation = validatePublicDropsConfig(network);
-if (!activeValidation.ok) {
-  throw new Error(
-    `Drops network config missing required values for ${network}: ${activeValidation.missing.join(', ')}`
-  );
-}
 
 export default {
   network,
+  validation: activeValidation,
+  isConfigured: activeValidation.ok,
+  unavailableMessage: network === 'mainnet'
+    ? 'Mainnet is not configured yet.'
+    : 'This network is not configured yet.',
 
   rpc: {
     testnet: networkConfig.rpc.testnet,
