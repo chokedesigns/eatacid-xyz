@@ -1,0 +1,3 @@
+﻿ drops/js/events-config.js | 86 +++++++++++++++++++----------------------------
+ shared/chain-registry.js  |  7 ++++
+ 2 files changed, 41 insertions(+), 52 deletions(-)

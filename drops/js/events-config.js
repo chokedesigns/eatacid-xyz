@@ -3,8 +3,41 @@
 // =============================================================================
 
 import networkConfig from '../../shared/network.js';
+import { chainRegistry, validatePublicDropsConfig } from '../../shared/chain-registry.js';
 
 const network = networkConfig.network;
+
+function buildDropsContracts(config) {
+  const collections = config?.collections || {};
+
+  return {
+    escrow: config?.escrow || '',
+
+    collections: {
+      HEN: collections.HEN,
+      CANAAN: collections.CANAAN,
+      INTRODUCTIONS: collections.INTRODUCTIONS
+    },
+
+    tokenMapping: {
+      ...(config?.mirrors || {})
+    }
+  };
+}
+
+const contracts = Object.fromEntries(
+  Object.entries(chainRegistry).map(([networkKey, config]) => [
+    networkKey,
+    buildDropsContracts(config)
+  ])
+);
+
+const activeValidation = validatePublicDropsConfig(network);
+if (!activeValidation.ok) {
+  throw new Error(
+    `Drops network config missing required values for ${network}: ${activeValidation.missing.join(', ')}`
+  );
+}
 
 export default {
   network,
@@ -19,56 +52,5 @@ export default {
     mainnet: networkConfig.tzkt.mainnet
   },
 
-  contracts: {
-    testnet: {
-      escrow: "KT1XTgLfSM91seY8o61mcTemZec947agaXdG",
-
-      collections: {
-        HEN: "KT1MzZz5T5MqYrBoeqdKPfG6qx1AmyjxE8Gp",
-        CANAAN: "KT1EUVvXwN4GcBUgQGomwCxRjj96F99cF69u",
-        INTRODUCTIONS: "KT1DmDSBFJXX76Q2SFfyTBe9XSsw11FYyEHP"
-      },
-
-      tokenMapping: {
-        HEN: {
-          "94684":  "0",
-          "103062": "1",
-          "104492": "2",
-          "114368": "3",
-          "125115": "4",
-          "135460": "5",
-          "141634": "6",
-          "147893": "7",
-          "175592": "8",
-          "200717": "9",
-          "209650": "10",
-          "279300": "11",
-          "369693": "12",
-          "397098": "13",
-          "422822": "14",
-          "455835": "15",
-          "526531": "16"
-        },
-        INTRODUCTIONS: {
-          "0": "0",
-          "1": "1",
-          "2": "2",
-          "3": "3",
-          "4": "4"
-        }
-      }
-    },
-
-    mainnet: {
-      escrow: "KT1…your-escrow-mainnet-address…",
-
-      collections: {
-        HEN: "KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton",
-        CANAAN: "KT1UqqSTPPFQk6btXKgv2adjj83YD2V5YBt1",
-        INTRODUCTIONS: "KT1FmqojETK4Ux44oeudyDbQ6zQDYrD5DaP5"
-      },
-
-      tokenMapping: {}
-    }
-  }
+  contracts
 };
