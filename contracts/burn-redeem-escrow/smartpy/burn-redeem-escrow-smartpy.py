@@ -385,17 +385,20 @@ class BurnRedeemEscrow(sp.Contract):
         # Validate that the contract is active.
         sp.verify(~self.data.paused, ERROR_CONTRACT_PAUSED)
     
-        # Initialize lists for batched transfers.
-        burn_transfers = sp.local("burn_transfers", sp.list())
-        redeem_transfers = sp.local("redeem_transfers", sp.list())
+        # Ensure at least one trade exists.
+        sp.verify(sp.len(params.trades) > 0, "EMPTY_TRADE_LIST")
     
-        # Extract the first trade to reference contract addresses.
-        first_trade = sp.local("first_trade", sp.none)
+        # Initialize transfer batches grouped by FA2 contract.
+        burn_transfer_batches = sp.local(
+            "burn_transfer_batches",
+            sp.map(tkey=sp.TAddress, tvalue=FA2_TRANSFER_TYPE)
+        )
+        redeem_transfer_batches = sp.local(
+            "redeem_transfer_batches",
+            sp.map(tkey=sp.TAddress, tvalue=FA2_TRANSFER_TYPE)
+        )
     
         sp.for trade in params.trades:
-            with sp.if_(first_trade.value.is_some() == False):
-                first_trade.value = sp.some(trade)
-    
             # Verify that the token pair exists.
             sp.verify(self.data.token_mapping.contains(trade.token_pair_id), ERROR_TOKEN_PAIR_NOT_FOUND)
             token_pair = self.data.token_mapping[trade.token_pair_id]
@@ -413,8 +416,7 @@ class BurnRedeemEscrow(sp.Contract):
             # Ensure that the sender matches the user's wallet.
             sp.verify(sp.sender == trade.user_wallet, ERROR_SENDER_MISMATCH)
     
-            # Append the burn transfer for batched execution.
-            burn_transfers.value.push(sp.record(
+            burn_transfer = sp.local("burn_transfer", sp.record(
                 from_=trade.user_wallet,
                 txs=sp.list([
                     sp.record(
@@ -423,9 +425,17 @@ class BurnRedeemEscrow(sp.Contract):
                     )
                 ])
             ))
+            with sp.if_(burn_transfer_batches.value.contains(token_pair.burn_contract_address)):
+                existing_burn_transfers = sp.local(
+                    "existing_burn_transfers",
+                    burn_transfer_batches.value[token_pair.burn_contract_address]
+                )
+                existing_burn_transfers.value.push(burn_transfer.value)
+                burn_transfer_batches.value[token_pair.burn_contract_address] = existing_burn_transfers.value
+            with sp.else_():
+                burn_transfer_batches.value[token_pair.burn_contract_address] = sp.list([burn_transfer.value])
     
-            # Append the redeem transfer for batched execution.
-            redeem_transfers.value.push(sp.record(
+            redeem_transfer = sp.local("redeem_transfer", sp.record(
                 from_=sp.self_address,
                 txs=sp.list([
                     sp.record(
@@ -434,6 +444,15 @@ class BurnRedeemEscrow(sp.Contract):
                     )
                 ])
             ))
+            with sp.if_(redeem_transfer_batches.value.contains(token_pair.redeem_contract_address)):
+                existing_redeem_transfers = sp.local(
+                    "existing_redeem_transfers",
+                    redeem_transfer_batches.value[token_pair.redeem_contract_address]
+                )
+                existing_redeem_transfers.value.push(redeem_transfer.value)
+                redeem_transfer_batches.value[token_pair.redeem_contract_address] = existing_redeem_transfers.value
+            with sp.else_():
+                redeem_transfer_batches.value[token_pair.redeem_contract_address] = sp.list([redeem_transfer.value])
     
             # Emit an event for the trade initiation.
             sp.emit(
@@ -446,32 +465,26 @@ class BurnRedeemEscrow(sp.Contract):
                 tag=EVENT_TYPE_TRADE_INITIATED
             )
     
-        # Ensure at least one trade exists.
-        sp.verify(first_trade.value.is_some(), "EMPTY_TRADE_LIST")
-    
-        burn_has_transfers = sp.len(burn_transfers.value) > 0
-        redeem_has_transfers = sp.len(redeem_transfers.value) > 0
-    
-        # Execute batched burn transfers.
-        with sp.if_(burn_has_transfers):
+        # Execute burn transfers grouped by burn FA2 contract.
+        sp.for burn_contract_address in burn_transfer_batches.value.keys():
             sp.transfer(
-                burn_transfers.value,
+                burn_transfer_batches.value[burn_contract_address],
                 sp.mutez(0),
                 sp.contract(
                     FA2_TRANSFER_TYPE,
-                    first_trade.value.open_some().burn_contract_address,
+                    burn_contract_address,
                     entry_point="transfer"
                 ).open_some(ERROR_INVALID_FA2_INTERFACE)
             )
     
-        # Execute batched redeem transfers.
-        with sp.if_(redeem_has_transfers):
+        # Execute redeem transfers grouped by redeem FA2 contract.
+        sp.for redeem_contract_address in redeem_transfer_batches.value.keys():
             sp.transfer(
-                redeem_transfers.value,
+                redeem_transfer_batches.value[redeem_contract_address],
                 sp.mutez(0),
                 sp.contract(
                     FA2_TRANSFER_TYPE,
-                    first_trade.value.open_some().redeem_contract_address,
+                    redeem_contract_address,
                     entry_point="transfer"
                 ).open_some(ERROR_INVALID_FA2_INTERFACE)
             )
@@ -2354,6 +2367,159 @@ def test():
     
     # =============================================================================
     # ======== END MULTI-TOKEN PAIR TRADE TEST =====================================
+    # =============================================================================
+    
+    # =============================================================================
+    # ======== MIXED FA2 BATCH TRADE TESTS =========================================
+    # =============================================================================
+    
+    scenario.h1(">>> Mixed FA2 Batch Trade Tests <<<")
+    
+    mixed_burn_fa2_a = MockFA2()
+    mixed_burn_fa2_b = MockFA2()
+    mixed_redeem_fa2_shared = MockFA2()
+    mixed_redeem_fa2_alt = MockFA2()
+    
+    scenario += mixed_burn_fa2_a
+    scenario += mixed_burn_fa2_b
+    scenario += mixed_redeem_fa2_shared
+    scenario += mixed_redeem_fa2_alt
+    
+    mixed_burn_user = sp.test_account("MixedBurnFA2User")
+    mixed_redeem_user = sp.test_account("MixedRedeemFA2User")
+    
+    # ------------------- Mixed Burn FA2 Contracts with Shared Redeem FA2 ------------
+    scenario.h2(">>> Mixed Burn FA2 Contracts with Shared Redeem FA2 <<<")
+    scenario += contract.set_token_pairs(
+        token_pairs=[
+            sp.record(
+                token_pair_id=201,
+                burn_contract_address=mixed_burn_fa2_a.address,
+                burn_token_id=0,
+                burn_amount=4,
+                redeem_contract_address=mixed_redeem_fa2_shared.address,
+                redeem_token_id=0,
+                redeem_amount=7
+            ),
+            sp.record(
+                token_pair_id=202,
+                burn_contract_address=mixed_burn_fa2_b.address,
+                burn_token_id=0,
+                burn_amount=6,
+                redeem_contract_address=mixed_redeem_fa2_shared.address,
+                redeem_token_id=0,
+                redeem_amount=9
+            )
+        ]
+    ).run(sender=admin)
+    
+    scenario += mixed_burn_fa2_a.mint(
+        address=mixed_burn_user.address, token_id=0, amount=10
+    ).run(sender=mixed_burn_fa2_a.address)
+    scenario += mixed_burn_fa2_b.mint(
+        address=mixed_burn_user.address, token_id=0, amount=10
+    ).run(sender=mixed_burn_fa2_b.address)
+    scenario += mixed_redeem_fa2_shared.mint(
+        address=contract.address, token_id=0, amount=50
+    ).run(sender=mixed_redeem_fa2_shared.address)
+    
+    scenario += contract.initiate_trade(
+        trades=[
+            sp.record(
+                token_pair_id=201,
+                user_wallet=mixed_burn_user.address,
+                burn_contract_address=mixed_burn_fa2_a.address,
+                burn_token_id=0,
+                burn_amount=4,
+                redeem_contract_address=mixed_redeem_fa2_shared.address,
+                redeem_token_id=0
+            ),
+            sp.record(
+                token_pair_id=202,
+                user_wallet=mixed_burn_user.address,
+                burn_contract_address=mixed_burn_fa2_b.address,
+                burn_token_id=0,
+                burn_amount=6,
+                redeem_contract_address=mixed_redeem_fa2_shared.address,
+                redeem_token_id=0
+            )
+        ]
+    ).run(sender=mixed_burn_user)
+    
+    scenario.verify(mixed_burn_fa2_a.data.ledger[mixed_burn_user.address][0] == 6)
+    scenario.verify(mixed_burn_fa2_b.data.ledger[mixed_burn_user.address][0] == 4)
+    scenario.verify(mixed_burn_fa2_a.data.ledger[burn_address.address][0] == 4)
+    scenario.verify(mixed_burn_fa2_b.data.ledger[burn_address.address][0] == 6)
+    scenario.verify(mixed_redeem_fa2_shared.data.ledger[mixed_burn_user.address][0] == 16)
+    scenario.verify(mixed_redeem_fa2_shared.data.ledger[contract.address][0] == 34)
+    
+    # ------------------- Mixed Redeem FA2 Contracts in One Batch -------------------
+    scenario.h2(">>> Mixed Redeem FA2 Contracts in One Batch <<<")
+    scenario += contract.set_token_pairs(
+        token_pairs=[
+            sp.record(
+                token_pair_id=203,
+                burn_contract_address=mixed_burn_fa2_a.address,
+                burn_token_id=1,
+                burn_amount=2,
+                redeem_contract_address=mixed_redeem_fa2_shared.address,
+                redeem_token_id=1,
+                redeem_amount=3
+            ),
+            sp.record(
+                token_pair_id=204,
+                burn_contract_address=mixed_burn_fa2_a.address,
+                burn_token_id=1,
+                burn_amount=5,
+                redeem_contract_address=mixed_redeem_fa2_alt.address,
+                redeem_token_id=0,
+                redeem_amount=11
+            )
+        ]
+    ).run(sender=admin)
+    
+    scenario += mixed_burn_fa2_a.mint(
+        address=mixed_redeem_user.address, token_id=1, amount=10
+    ).run(sender=mixed_burn_fa2_a.address)
+    scenario += mixed_redeem_fa2_shared.mint(
+        address=contract.address, token_id=1, amount=20
+    ).run(sender=mixed_redeem_fa2_shared.address)
+    scenario += mixed_redeem_fa2_alt.mint(
+        address=contract.address, token_id=0, amount=30
+    ).run(sender=mixed_redeem_fa2_alt.address)
+    
+    scenario += contract.initiate_trade(
+        trades=[
+            sp.record(
+                token_pair_id=203,
+                user_wallet=mixed_redeem_user.address,
+                burn_contract_address=mixed_burn_fa2_a.address,
+                burn_token_id=1,
+                burn_amount=2,
+                redeem_contract_address=mixed_redeem_fa2_shared.address,
+                redeem_token_id=1
+            ),
+            sp.record(
+                token_pair_id=204,
+                user_wallet=mixed_redeem_user.address,
+                burn_contract_address=mixed_burn_fa2_a.address,
+                burn_token_id=1,
+                burn_amount=5,
+                redeem_contract_address=mixed_redeem_fa2_alt.address,
+                redeem_token_id=0
+            )
+        ]
+    ).run(sender=mixed_redeem_user)
+    
+    scenario.verify(mixed_burn_fa2_a.data.ledger[mixed_redeem_user.address][1] == 3)
+    scenario.verify(mixed_burn_fa2_a.data.ledger[burn_address.address][1] == 7)
+    scenario.verify(mixed_redeem_fa2_shared.data.ledger[mixed_redeem_user.address][1] == 3)
+    scenario.verify(mixed_redeem_fa2_shared.data.ledger[contract.address][1] == 17)
+    scenario.verify(mixed_redeem_fa2_alt.data.ledger[mixed_redeem_user.address][0] == 11)
+    scenario.verify(mixed_redeem_fa2_alt.data.ledger[contract.address][0] == 19)
+    
+    # =============================================================================
+    # ======== END MIXED FA2 BATCH TRADE TESTS =====================================
     # =============================================================================
     
     # =============================================================================
