@@ -268,7 +268,7 @@ class BurnRedeemEscrow(sp.Contract):
 
         # Emit event with the updated paused state.
         sp.emit(
-            sp.record(paused=paused_state),
+            sp.record(paused=self.data.paused),
             tag=EVENT_TYPE_PAUSE_STATE_TOGGLED
         )
 
