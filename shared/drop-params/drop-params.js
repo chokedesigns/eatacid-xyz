@@ -56,7 +56,7 @@ export default {
   // ============================================================
   redeemToken: {
     collection:   "CANAAN",
-    tokenId:      "29",
+    tokenId:      "28",
     redeemAmount: 1,
     totalSupply:  10
   }

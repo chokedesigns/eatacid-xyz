@@ -4,21 +4,21 @@
 
 export const chainRegistry = {
   testnet: {
-    label: 'Ghostnet',
-    beaconNetwork: 'ghostnet',
-    rpc: 'https://ghostnet.smartpy.io',
-    tzkt: 'https://api.ghostnet.tzkt.io',
-    escrow: 'KT1XTgLfSM91seY8o61mcTemZec947agaXdG',
+    label: 'Shadownet',
+    beaconNetwork: 'shadownet',
+    rpc: 'https://rpc.tzkt.io/shadownet',
+    tzkt: 'https://api.shadownet.tzkt.io',
+    escrow: 'KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5',
     pairsMapPath: 'token_mapping',
     collections: {
-      CANAAN: 'KT1EUVvXwN4GcBUgQGomwCxRjj96F99cF69u',
-      'THE 419 SCRIPT': 'KT194J5ips31A3ZDKn11cL8GZZ7wxRTBifPN',
-      HEN: 'KT1MzZz5T5MqYrBoeqdKPfG6qx1AmyjxE8Gp',
-      INTRODUCTIONS: 'KT1DmDSBFJXX76Q2SFfyTBe9XSsw11FYyEHP',
-      'ACID COIN': 'KT1JCjaj6HYj8MwhaWTBFQLyAGu6YGtUoxNd'
+      CANAAN: 'KT1GCvVdxELA4mPUn4DiBpPAd8ARRtyoEpke',
+      'THE 419 SCRIPT': 'KT1WczRb1giprHqCp3ADRn8JrkGBT6aENJmV',
+      HEN: 'KT1GnVnQvvb7R6h4EhveBmN17ysaTuGRDoWW',
+      INTRODUCTIONS: 'KT1B53naqjqZiNBHDv2PPHMroL7geiXzxcT1',
+      'ACID COIN': 'KT1WdWDKYmxHGNVWqnSPNnm7ZB6NeKNG6zPB'
     },
     exchange: {
-      redeemMaster: 'KT1JCjaj6HYj8MwhaWTBFQLyAGu6YGtUoxNd'
+      redeemMaster: 'KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5'
     },
     pairIdRanges: {
       drops: { start: 1000, end: null }
@@ -60,7 +60,13 @@ export const chainRegistry = {
     tzkt: 'https://api.tzkt.io',
     escrow: '',
     pairsMapPath: 'token_mapping',
-    collections: {},
+    collections: {
+      CANAAN: 'KT1UqqSTPPFQk6btXKgv2adjj83YD2V5YBt1',
+      'THE 419 SCRIPT': 'KT1EzmMokbtPS9nYJW1n5Darfgwf7HVtcsyq',
+      HEN: 'KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton',
+      INTRODUCTIONS: 'KT1FmqojETK4Ux44oeudyDbQ6zQDYrD5DaP5',
+      'ACID COIN': ''
+    },
     exchange: {
       redeemMaster: ''
     },

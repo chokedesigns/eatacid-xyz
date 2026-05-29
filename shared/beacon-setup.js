@@ -2,29 +2,123 @@
 // SHARED: Beacon SDK Setup
 // =============================================================================
 
-import { DAppClient, NetworkType, BeaconEvent } from '@airgap/beacon-sdk';
+import { DAppClient, NetworkType, BeaconEvent, Regions } from '@airgap/beacon-sdk';
 import cfg from './network.js';
 import { createPublicLogger } from './public-logger.js';
+
 const { network, tzkt, getCurrentPublicNetworkConfig } = cfg;
 const DEBUG = true;
 const logger = createPublicLogger({ enabled: DEBUG, scope: 'wallet' });
-const beaconNetwork = getCurrentPublicNetworkConfig()?.beaconNetwork ||
+
+const BEACON_NODE_URLS = [
+  'beacon-node-1.diamond.papers.tech'
+];
+
+const BEACON_MATRIX_NODES = Object.fromEntries(
+  Object.values(Regions).map((region) => [region, BEACON_NODE_URLS])
+);
+
+const currentNetworkConfig = getCurrentPublicNetworkConfig?.() || null;
+
+const beaconNetwork =
+  currentNetworkConfig?.beaconNetwork ||
   (network === 'mainnet' ? 'mainnet' : 'ghostnet');
-const preferredNetwork =
-  beaconNetwork === 'mainnet' ? NetworkType.MAINNET : NetworkType.GHOSTNET;
+
+function getClientNetwork() {
+  if (beaconNetwork === 'mainnet') {
+    return { type: NetworkType.MAINNET };
+  }
+
+  if (beaconNetwork === 'ghostnet') {
+    return { type: NetworkType.GHOSTNET };
+  }
+
+  return { type: NetworkType.CUSTOM };
+}
+
+function getPermissionNetwork() {
+  if (beaconNetwork === 'mainnet') {
+    return { type: NetworkType.MAINNET };
+  }
+
+  if (beaconNetwork === 'ghostnet') {
+    return { type: NetworkType.GHOSTNET };
+  }
+
+  if (beaconNetwork === 'shadownet') {
+    const rpcUrl = currentNetworkConfig?.rpc;
+
+    if (!rpcUrl) {
+      throw new Error('Missing RPC URL for Shadownet Beacon permission request.');
+    }
+
+    return {
+      type: NetworkType.CUSTOM,
+      name: 'Shadownet',
+      rpcUrl
+    };
+  }
+
+  const rpcUrl = currentNetworkConfig?.rpc;
+
+  if (rpcUrl) {
+    return {
+      type: NetworkType.CUSTOM,
+      name: currentNetworkConfig?.label || beaconNetwork || 'Custom',
+      rpcUrl
+    };
+  }
+
+  return { type: NetworkType.GHOSTNET };
+}
+
+function logBeaconError(error) {
+  console.error('Error connecting to wallet:', error);
+  console.error('Beacon error name:', error?.name);
+  console.error('Beacon error title:', error?.title);
+  console.error('Beacon error message:', error?.message);
+  console.error('Beacon error description:', error?.description);
+  console.error('Beacon error data:', error?.data);
+  console.error('Beacon error stack:', error?.stack);
+
+  try {
+    console.error(
+      'Beacon error full JSON:',
+      JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+    );
+  } catch (jsonError) {
+    console.error('Beacon error could not be JSON-stringified:', jsonError);
+  }
+
+  if (error?.errorType) {
+    console.error('Beacon error type:', error.errorType);
+  }
+
+  if (error?.cause) {
+    console.error('Beacon error cause:', error.cause);
+  }
+}
+
+const clientNetwork = getClientNetwork();
 
 // ----------------------------------------------------------------------------
 // Initialize or reuse the Beacon client
 // ----------------------------------------------------------------------------
+logger.log('Beacon matrix nodes override:', JSON.stringify(BEACON_MATRIX_NODES));
+
 if (!window.dAppClient) {
   logger.log('Initializing Beacon DAppClient on network:', network);
+  logger.log('Beacon network:', beaconNetwork);
+  logger.log('Beacon client network:', JSON.stringify(clientNetwork));
+
   window.dAppClient = new DAppClient({
     name: 'eatacid.xyz',
-    preferredNetwork
+    matrixNodes: BEACON_MATRIX_NODES
   });
 } else {
   logger.log('Reusing existing Beacon DAppClient on network:', network);
 }
+
 const dAppClient = window.dAppClient;
 
 // ----------------------------------------------------------------------------
@@ -52,11 +146,28 @@ function getWalletButtons() {
 // ----------------------------------------------------------------------------
 async function fetchNFTs(address) {
   logger.log('Fetching NFTs for wallet address:', address);
-  const apiUrl = `${tzkt[network]}/v1/tokens/balances?account=${address}&token.standard=fa2`;
+
+  const baseUrl = tzkt[network];
+
+  if (!baseUrl) {
+    console.error(`Missing TzKT base URL for network: ${network}`);
+    return [];
+  }
+
+  const apiUrl = `${baseUrl}/v1/tokens/balances?account=${address}&token.standard=fa2`;
+
   try {
     const response = await fetch(apiUrl);
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(`TzKT request failed ${response.status}: ${apiUrl}${body ? `\n${body}` : ''}`);
+    }
+
     const nfts = await response.json();
+
     logger.log(`NFTs fetched from ${network}:`, nfts);
+
     return nfts.map(nft => ({
       tokenId: nft.token.tokenId,
       contractAddress: nft.token.contract.address,
@@ -67,6 +178,7 @@ async function fetchNFTs(address) {
     return [];
   }
 }
+
 window.fetchNFTs = fetchNFTs;
 
 // ----------------------------------------------------------------------------
@@ -76,33 +188,50 @@ function updateButtonState(status, address = null) {
   if (lastButtonState.status === status && lastButtonState.address === address) {
     return;
   }
+
   lastButtonState = { status, address };
 
   const { connectButton, connectedButton, disconnectButton } = getWalletButtons();
-  [connectButton, connectedButton, disconnectButton].forEach(btn => btn && (btn.style.display = 'none'));
+
+  [connectButton, connectedButton, disconnectButton].forEach(btn => {
+    if (btn) btn.style.display = 'none';
+  });
 
   if (status === 'connected' && address) {
     setTimeout(() => {
       if (connectedButton) {
         connectedButton.style.display = 'inline-block';
-        connectedButton.textContent = `${address.slice(0,3)}...${address.slice(-4)}`;
+        connectedButton.textContent = `${address.slice(0, 3)}...${address.slice(-4)}`;
         connectedButton.onmouseover = () => {
           connectedButton.style.display = 'none';
           if (disconnectButton) disconnectButton.style.display = 'inline-block';
         };
       }
+
       if (disconnectButton) {
         disconnectButton.onmouseout = () => {
           disconnectButton.style.display = 'none';
           if (connectedButton) connectedButton.style.display = 'inline-block';
         };
       }
-      window.appState && (window.appState.isConnected = true);
+
+      if (window.appState) {
+        window.appState.isConnected = true;
+      }
     }, 100);
   } else {
-    connectButton && (connectButton.style.display = 'inline-block');
-    [connectedButton, disconnectButton].forEach(btn => btn && (btn.onmouseover = btn.onmouseout = null));
-    window.appState && (window.appState.isConnected = false);
+    if (connectButton) connectButton.style.display = 'inline-block';
+
+    [connectedButton, disconnectButton].forEach(btn => {
+      if (btn) {
+        btn.onmouseover = null;
+        btn.onmouseout = null;
+      }
+    });
+
+    if (window.appState) {
+      window.appState.isConnected = false;
+    }
   }
 }
 
@@ -111,19 +240,32 @@ function updateButtonState(status, address = null) {
 // ----------------------------------------------------------------------------
 async function connectWallet() {
   try {
-    await dAppClient.requestPermissions();
-    // UI update and fetching NFTs are handled in the subscription callback
+    const permissionNetwork = getPermissionNetwork();
+
+    logger.log('Requesting wallet permissions with network:', JSON.stringify(permissionNetwork));
+
+    await dAppClient.requestPermissions({
+      network: permissionNetwork
+    });
+
+    // UI update and fetching NFTs are handled in the subscription callback.
   } catch (error) {
-    console.error('Error connecting to wallet:', error);
+    logBeaconError(error);
   }
 }
 
 async function disconnectWallet() {
   try {
     logger.log('Disconnecting wallet...');
+
     await dAppClient.clearActiveAccount();
+
     logger.log('Wallet disconnected.');
-    typeof resetUI === 'function' && resetUI();
+
+    if (typeof resetUI === 'function') {
+      resetUI();
+    }
+
     updateButtonState('unconnected');
     document.dispatchEvent(new Event('walletDisconnected'));
   } catch (error) {
@@ -137,6 +279,7 @@ async function disconnectWallet() {
 dAppClient.subscribeToEvent(BeaconEvent.ACTIVE_ACCOUNT_SET, async account => {
   if (account) {
     logger.log(`${BeaconEvent.ACTIVE_ACCOUNT_SET} triggered:`, account.address);
+
     await fetchNFTs(account.address);
     updateButtonState('connected', account.address);
   } else {
@@ -149,23 +292,25 @@ dAppClient.subscribeToEvent(BeaconEvent.ACTIVE_ACCOUNT_SET, async account => {
 // Initialize (safe for loader + dynamic import timing)
 // ----------------------------------------------------------------------------
 async function bootWalletButtons() {
-  // Guard against double-binding if this module is ever evaluated twice
+  // Guard against double-binding if this module is ever evaluated twice.
   if (window.__EA_WALLET_BUTTONS_BOOTED__) return;
   window.__EA_WALLET_BUTTONS_BOOTED__ = true;
 
   logger.log('bootWalletButtons → initializing wallet buttons');
+
   const { connectButton, connectedButton, disconnectButton } = getWalletButtons();
 
   updateButtonState('unconnected');
 
   const activeAccount = await dAppClient.getActiveAccount();
+
   if (activeAccount) {
     logger.log('Active account on load:', activeAccount.address);
 
-    // Flip UI immediately (don’t wait for NFT fetch)
+    // Flip UI immediately. Do not wait for NFT fetch.
     updateButtonState('connected', activeAccount.address);
 
-    // Fetch NFTs in the background
+    // Fetch NFTs in the background.
     fetchNFTs(activeAccount.address).catch((err) => {
       console.error('Error fetching NFTs after connect:', err);
     });
@@ -177,7 +322,9 @@ async function bootWalletButtons() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { void bootWalletButtons(); });
+  document.addEventListener('DOMContentLoaded', () => {
+    void bootWalletButtons();
+  });
 } else {
   void bootWalletButtons();
 }
