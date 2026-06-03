@@ -14,7 +14,17 @@ const DEFAULT_NETWORK = 'testnet';
 const ENV_NETWORK =
   (typeof process !== 'undefined' && process?.env?.NETWORK) ? process.env.NETWORK : null;
 
-const network = ENV_NETWORK || DEFAULT_NETWORK;
+const selectedNetwork = ENV_NETWORK || DEFAULT_NETWORK;
+const supportedNetworkSlots = Object.keys(chainRegistry);
+
+if (!Object.prototype.hasOwnProperty.call(chainRegistry, selectedNetwork)) {
+  throw new Error(
+    `Unsupported public network slot: ${selectedNetwork}. ` +
+    `Supported slots: ${supportedNetworkSlots.join(', ')}`
+  );
+}
+
+const network = selectedNetwork;
 
 const rpc = Object.fromEntries(
   Object.entries(chainRegistry).map(([key, config]) => [key, config.rpc])

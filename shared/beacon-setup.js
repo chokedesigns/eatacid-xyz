@@ -20,9 +20,7 @@ Object.values(Regions).map((region) => [region, BEACON_NODE_URLS])
 
 const currentNetworkConfig = getCurrentPublicNetworkConfig?.() || null;
 
-const beaconNetwork =
-currentNetworkConfig?.beaconNetwork ||
-(network === 'mainnet' ? 'mainnet' : 'ghostnet');
+const beaconNetwork = currentNetworkConfig?.beaconNetwork || null;
 
 // ----------------------------------------------------------------------------
 // Resolve Beacon network type
@@ -39,11 +37,7 @@ if (beaconNetwork === 'shadownet') {
 return { type: NetworkType.SHADOWNET };
 }
 
-if (beaconNetwork === 'ghostnet') {
-return { type: NetworkType.GHOSTNET };
-}
-
-throw new Error(`Unsupported Beacon network: ${beaconNetwork}`);
+throw new Error(`Unsupported Beacon network for ${network}: ${beaconNetwork}`);
 }
 
 function logBeaconError(error) {

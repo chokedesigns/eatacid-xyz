@@ -1,0 +1,51 @@
+﻿diff --git a/shared/beacon-setup.js b/shared/beacon-setup.js
+index 0bb1f2e..0490c15 100644
+--- a/shared/beacon-setup.js
++++ b/shared/beacon-setup.js
+@@ -20,9 +20,7 @@ Object.values(Regions).map((region) => [region, BEACON_NODE_URLS])
+ 
+ const currentNetworkConfig = getCurrentPublicNetworkConfig?.() || null;
+ 
+-const beaconNetwork =
+-currentNetworkConfig?.beaconNetwork ||
+-(network === 'mainnet' ? 'mainnet' : 'ghostnet');
++const beaconNetwork = currentNetworkConfig?.beaconNetwork || null;
+ 
+ // ----------------------------------------------------------------------------
+ // Resolve Beacon network type
+@@ -39,11 +37,7 @@ if (beaconNetwork === 'shadownet') {
+ return { type: NetworkType.SHADOWNET };
+ }
+ 
+-if (beaconNetwork === 'ghostnet') {
+-return { type: NetworkType.GHOSTNET };
+-}
+-
+-throw new Error(`Unsupported Beacon network: ${beaconNetwork}`);
++throw new Error(`Unsupported Beacon network for ${network}: ${beaconNetwork}`);
+ }
+ 
+ function logBeaconError(error) {
+diff --git a/shared/network.js b/shared/network.js
+index 8c30f3d..78c25fa 100644
+--- a/shared/network.js
++++ b/shared/network.js
+@@ -14,7 +14,17 @@ const DEFAULT_NETWORK = 'testnet';
+ const ENV_NETWORK =
+   (typeof process !== 'undefined' && process?.env?.NETWORK) ? process.env.NETWORK : null;
+ 
+-const network = ENV_NETWORK || DEFAULT_NETWORK;
++const selectedNetwork = ENV_NETWORK || DEFAULT_NETWORK;
++const supportedNetworkSlots = Object.keys(chainRegistry);
++
++if (!Object.prototype.hasOwnProperty.call(chainRegistry, selectedNetwork)) {
++  throw new Error(
++    `Unsupported public network slot: ${selectedNetwork}. ` +
++    `Supported slots: ${supportedNetworkSlots.join(', ')}`
++  );
++}
++
++const network = selectedNetwork;
+ 
+ const rpc = Object.fromEntries(
+   Object.entries(chainRegistry).map(([key, config]) => [key, config.rpc])
