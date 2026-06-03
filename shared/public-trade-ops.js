@@ -22,6 +22,7 @@ export async function fetchTokenPairId({
       `/bigmaps/token_mapping/keys?active=true&limit=10000`;
 
     const response = await fetch(url);
+    await assertTzktResponseOk(response, 'fetch token_pair_id mapping');
     const raw = await response.json();
     console.log("\u{1F4DC} Retrieved raw token_mapping data:", raw);
 
@@ -82,6 +83,7 @@ export async function buildApprovalOps({
     try {
       const url = `${tzktBase}/v1/contracts/${contractAddress}/bigmaps/operators/keys?active=true`;
       const response = await fetch(url);
+      await assertTzktResponseOk(response, `fetch operators for ${contractAddress}`);
       const operators = await response.json();
 
       groups[contractAddress].forEach(token => {
@@ -139,9 +141,20 @@ export async function pollForConfirmation({
   logPrefix
 }) {
   const startTime = Date.now();
+  let lastTzktPollingError = null;
 
   while (Date.now() - startTime < timeout) {
     const response = await fetch(`${tzktBase}/v1/operations/${opHash}`);
+    try {
+      await assertTzktResponseOk(response, `poll operation confirmation for ${opHash}`);
+    } catch (error) {
+      lastTzktPollingError = error;
+      logIfEnabled(logPrefix, "Polling confirmation request failed:", error);
+      logIfEnabled(logPrefix, "Waiting for transaction confirmation...");
+      await delay(interval);
+      continue;
+    }
+
     const ops = await response.json();
     logIfEnabled(logPrefix, "Polling confirmation from", tzktBase, "ops:", ops);
 
@@ -152,6 +165,10 @@ export async function pollForConfirmation({
 
     logIfEnabled(logPrefix, "Waiting for transaction confirmation...");
     await delay(interval);
+  }
+
+  if (lastTzktPollingError) {
+    throw new Error(`Transaction confirmation timed out. Last TzKT polling error: ${lastTzktPollingError.message}`);
   }
 
   throw new Error("Transaction confirmation timed out.");
@@ -272,6 +289,26 @@ function logIfEnabled(logPrefix, ...args) {
   if (logPrefix !== undefined) {
     console.log(`${logPrefix}${args[0]}`, ...args.slice(1));
   }
+}
+
+async function assertTzktResponseOk(response, context) {
+  if (response.ok) {
+    return;
+  }
+
+  const statusText = response.statusText ? ` ${response.statusText}` : '';
+  let bodyExcerpt = '';
+
+  try {
+    const body = await response.text();
+    if (body) {
+      bodyExcerpt = ` Body: ${body.slice(0, 300)}`;
+    }
+  } catch (error) {
+    bodyExcerpt = ` Body unavailable: ${error?.message || 'failed to read response body'}`;
+  }
+
+  throw new Error(`TzKT ${context} failed with HTTP ${response.status}${statusText}.${bodyExcerpt}`);
 }
 
 function delay(ms) {
