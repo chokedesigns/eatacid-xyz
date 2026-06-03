@@ -1,9 +1,9 @@
 {
   "dropScheduled": true,
-  "dropName": "GHOSTNET",
+  "dropName": "SPLINTERED",
   "mirrorNetwork": "testnet",
   "dropDate": {
-    "month": "February",
+    "month": "May",
     "day": "28",
     "year": "2026"
   },
@@ -32,7 +32,7 @@
   ],
   "redeemToken": {
     "collection": "CANAAN",
-    "tokenId": "28",
+    "tokenId": "29",
     "redeemAmount": 1,
     "totalSupply": 10
   }

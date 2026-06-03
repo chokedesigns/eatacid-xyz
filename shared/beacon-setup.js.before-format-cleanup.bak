@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // SHARED: Beacon SDK Setup
 // =============================================================================
 
@@ -150,6 +150,7 @@ const apiUrl =
 try {
 const response = await fetch(apiUrl);
 
+```
 if (!response.ok) {
   const body = await response.text().catch(() => '');
 
@@ -168,6 +169,7 @@ return nfts.map(nft => ({
   contractAddress: nft.token.contract.address,
   balance: nft.balance
 }));
+```
 
 } catch (error) {
 console.error('Error fetching NFTs:', error);
@@ -210,6 +212,7 @@ connectedButton.style.display = 'inline-block';
 connectedButton.textContent =
 `${address.slice(0, 3)}...${address.slice(-4)}`;
 
+```
     connectedButton.onmouseover = () => {
       connectedButton.style.display = 'none';
 
@@ -235,6 +238,7 @@ connectedButton.textContent =
 }, 100);
 
 return;
+```
 
 }
 
@@ -264,9 +268,11 @@ logger.log(
 JSON.stringify(clientNetwork)
 );
 
+```
 await dAppClient.requestPermissions();
 
 // UI update and fetching NFTs are handled in the subscription callback.
+```
 
 } catch (error) {
 logBeaconError(error);
@@ -277,6 +283,7 @@ async function disconnectWallet() {
 try {
 logger.log('Disconnecting wallet...');
 
+```
 await dAppClient.clearActiveAccount();
 
 logger.log('Wallet disconnected.');
@@ -290,6 +297,7 @@ updateButtonState('unconnected');
 document.dispatchEvent(
   new Event('walletDisconnected')
 );
+```
 
 } catch (error) {
 console.error('Error disconnecting wallet:', error);
@@ -308,6 +316,7 @@ logger.log(
 account.address
 );
 
+```
   await fetchNFTs(account.address);
 
   updateButtonState('connected', account.address);
@@ -317,6 +326,7 @@ account.address
 logger.log('No active account detected via subscription.');
 
 updateButtonState('unconnected');
+```
 
 }
 );
@@ -326,13 +336,13 @@ updateButtonState('unconnected');
 // ----------------------------------------------------------------------------
 async function bootWalletButtons() {
 // Guard against double-binding if this module is ever evaluated twice.
-if (window.__EA_WALLET_BUTTONS_BOOTED__) {
+if (window.**EA_WALLET_BUTTONS_BOOTED**) {
 return;
 }
 
-window.__EA_WALLET_BUTTONS_BOOTED__ = true;
+window.**EA_WALLET_BUTTONS_BOOTED** = true;
 
-logger.log('bootWalletButtons â†’ initializing wallet buttons');
+logger.log('bootWalletButtons → initializing wallet buttons');
 
 const {
 connectButton,
@@ -347,6 +357,7 @@ const activeAccount = await dAppClient.getActiveAccount();
 if (activeAccount) {
 logger.log('Active account on load:', activeAccount.address);
 
+```
 // Flip UI immediately. Do not wait for NFT fetch.
 updateButtonState('connected', activeAccount.address);
 
@@ -354,6 +365,7 @@ updateButtonState('connected', activeAccount.address);
 fetchNFTs(activeAccount.address).catch(err => {
   console.error('Error fetching NFTs after connect:', err);
 });
+```
 
 }
 
@@ -369,4 +381,3 @@ void bootWalletButtons();
 } else {
 void bootWalletButtons();
 }
-

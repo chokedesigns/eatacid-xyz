@@ -12,14 +12,14 @@ export default {
   // ============================================================
   // DROP NAME
   // ============================================================
-  dropName: "GHOSTNET",
+  dropName: "SPLINTERED",
   mirrorNetwork: "testnet",
 
   // ============================================================
   // DROP DATE
   // ============================================================
   dropDate: {
-    month: "February",    // "January"–"December", "Jan"–"Dec", or "1"–"12"
+    month: "May",    // "January"–"December", "Jan"–"Dec", or "1"–"12"
     day:   "28",          // "1"–"31"
     year:  "2026"         // four-digit year, "XXXX"
   },
@@ -56,7 +56,7 @@ export default {
   // ============================================================
   redeemToken: {
     collection:   "CANAAN",
-    tokenId:      "28",
+    tokenId:      "29",
     redeemAmount: 1,
     totalSupply:  10
   }
