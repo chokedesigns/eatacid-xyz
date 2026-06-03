@@ -12,6 +12,10 @@ import dropParams from 'ea-drop-params';
 import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
 import { createPublicLogger } from '../../shared/public-logger.js';
 import {
+  getVerifiedPublicActiveAccount,
+  verifyPublicActiveAccount
+} from '../../shared/beacon-setup.js';
+import {
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
   pollForConfirmation as pollForSharedConfirmation,
@@ -100,7 +104,7 @@ if (!networkConfigAvailable) {
  * Single source of truth for all mutable UI state.
  */
 const AppState = {
-  activeAccount: window.activeAccount || null,           // currently connected wallet
+  activeAccount: null,                                   // currently connected wallet
   cartItems: [],                                         // will hold items added to the cart
   contractPaused: false,                                 // reflects on-chain pause status
   countdownTimerId: null,                                // will be set in countdown logic
@@ -770,7 +774,7 @@ async function handleEventExchange() {
     showModal('PROCESSING...', '[WAITING FOR WALLET CONFIRMATION...]');
 
     // Ensure wallet is connected
-    const activeAccount = await window.dAppClient.getActiveAccount();
+    const activeAccount = await getVerifiedPublicActiveAccount();
     if (!activeAccount) {
       console.error('❌ No wallet connected.');
       showModal('ERROR', '[NO WALLET CONNECTED.]');
@@ -2332,9 +2336,9 @@ async function bootDropsPage() {
   window.addEventListener('orientationchange', updateFlames);
 
   // 10) Fetch NFTs if already connected
-  if (window.dAppClient?.getActiveAccount) {
+  if (window.dAppClient) {
     try {
-      const account = await window.dAppClient.getActiveAccount();
+      const account = await getVerifiedPublicActiveAccount();
       if (account) {
         handleWalletConnected(account);
         setTimeout(async () => {
@@ -2359,10 +2363,11 @@ async function bootDropsPage() {
   // 11) Listen for wallet connect/disconnect events
   if (window.dAppClient?.subscribeToEvent) {
     window.dAppClient.subscribeToEvent("ACTIVE_ACCOUNT_SET", async account => {
-      if (account) {
-        handleWalletConnected(account);
+      const verifiedAccount = await verifyPublicActiveAccount(account);
+      if (verifiedAccount) {
+        handleWalletConnected(verifiedAccount);
         setTimeout(async () => {
-          const nfts = await fetchNFTs(account.address);
+          const nfts = await fetchNFTs(verifiedAccount.address);
           updateTokensWithWalletData(nfts);
           updateEventCartBurnToken();
           updateOwnedTokenCounts(nfts);

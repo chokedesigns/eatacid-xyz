@@ -94,6 +94,7 @@ const dAppClient = window.dAppClient;
 // State guard to prevent duplicate UI updates
 // ----------------------------------------------------------------------------
 let lastButtonState = { status: null, address: null };
+let clearingMismatchedActiveAccount = false;
 
 // ----------------------------------------------------------------------------
 // Helper: Get wallet button elements
@@ -248,6 +249,69 @@ window.appState.isConnected = false;
 }
 }
 
+function isActiveAccountForClientNetwork(account) {
+return account?.network?.type === clientNetwork.type;
+}
+
+function syncDisconnectedWalletState() {
+if (typeof resetUI === 'function') {
+  resetUI();
+}
+
+updateButtonState('unconnected');
+
+document.dispatchEvent(
+  new Event('walletDisconnected')
+);
+}
+
+async function clearMismatchedActiveAccount(account) {
+if (clearingMismatchedActiveAccount) {
+return;
+}
+
+clearingMismatchedActiveAccount = true;
+
+try {
+logger.log('Clearing mismatched Beacon account:', {
+  address: account?.address || null,
+  accountNetwork: account?.network?.type || null,
+  expectedNetwork: clientNetwork.type
+});
+
+await dAppClient.clearActiveAccount();
+} catch (error) {
+console.error('Error clearing mismatched Beacon account:', error);
+} finally {
+clearingMismatchedActiveAccount = false;
+}
+
+syncDisconnectedWalletState();
+}
+
+export async function verifyPublicActiveAccount(account) {
+if (!account) {
+return null;
+}
+
+if (isActiveAccountForClientNetwork(account)) {
+return account;
+}
+
+await clearMismatchedActiveAccount(account);
+return null;
+}
+
+export async function getVerifiedPublicActiveAccount() {
+try {
+const activeAccount = await dAppClient.getActiveAccount();
+return verifyPublicActiveAccount(activeAccount);
+} catch (error) {
+console.error('Error reading Beacon active account:', error);
+return null;
+}
+}
+
 // ----------------------------------------------------------------------------
 // Connect / Disconnect Flows
 // ----------------------------------------------------------------------------
@@ -275,15 +339,7 @@ await dAppClient.clearActiveAccount();
 
 logger.log('Wallet disconnected.');
 
-if (typeof resetUI === 'function') {
-  resetUI();
-}
-
-updateButtonState('unconnected');
-
-document.dispatchEvent(
-  new Event('walletDisconnected')
-);
+syncDisconnectedWalletState();
 
 } catch (error) {
 console.error('Error disconnecting wallet:', error);
@@ -302,9 +358,14 @@ logger.log(
 account.address
 );
 
-  await fetchNFTs(account.address);
+  const verifiedAccount = await verifyPublicActiveAccount(account);
+  if (!verifiedAccount) {
+    return;
+  }
 
-  updateButtonState('connected', account.address);
+  await fetchNFTs(verifiedAccount.address);
+
+  updateButtonState('connected', verifiedAccount.address);
   return;
 }
 
@@ -336,7 +397,7 @@ disconnectButton
 
 updateButtonState('unconnected');
 
-const activeAccount = await dAppClient.getActiveAccount();
+const activeAccount = await getVerifiedPublicActiveAccount();
 
 if (activeAccount) {
 logger.log('Active account on load:', activeAccount.address);

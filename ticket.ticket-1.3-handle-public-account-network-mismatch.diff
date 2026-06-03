@@ -1,0 +1,243 @@
+﻿diff --git a/drops/js/events.js b/drops/js/events.js
+index aa01d1c..ebce5f4 100644
+--- a/drops/js/events.js
++++ b/drops/js/events.js
+@@ -11,6 +11,10 @@ import eventsNetworkConfig from './events-config.js';
+ import dropParams from 'ea-drop-params';
+ import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
+ import { createPublicLogger } from '../../shared/public-logger.js';
++import {
++  getVerifiedPublicActiveAccount,
++  verifyPublicActiveAccount
++} from '../../shared/beacon-setup.js';
+ import {
+   buildApprovalOps as buildSharedApprovalOps,
+   fetchTokenPairId as fetchSharedTokenPairId,
+@@ -100,7 +104,7 @@ if (!networkConfigAvailable) {
+  * Single source of truth for all mutable UI state.
+  */
+ const AppState = {
+-  activeAccount: window.activeAccount || null,           // currently connected wallet
++  activeAccount: null,                                   // currently connected wallet
+   cartItems: [],                                         // will hold items added to the cart
+   contractPaused: false,                                 // reflects on-chain pause status
+   countdownTimerId: null,                                // will be set in countdown logic
+@@ -770,7 +774,7 @@ async function handleEventExchange() {
+     showModal('PROCESSING...', '[WAITING FOR WALLET CONFIRMATION...]');
+ 
+     // Ensure wallet is connected
+-    const activeAccount = await window.dAppClient.getActiveAccount();
++    const activeAccount = await getVerifiedPublicActiveAccount();
+     if (!activeAccount) {
+       console.error('❌ No wallet connected.');
+       showModal('ERROR', '[NO WALLET CONNECTED.]');
+@@ -2332,9 +2336,9 @@ async function bootDropsPage() {
+   window.addEventListener('orientationchange', updateFlames);
+ 
+   // 10) Fetch NFTs if already connected
+-  if (window.dAppClient?.getActiveAccount) {
++  if (window.dAppClient) {
+     try {
+-      const account = await window.dAppClient.getActiveAccount();
++      const account = await getVerifiedPublicActiveAccount();
+       if (account) {
+         handleWalletConnected(account);
+         setTimeout(async () => {
+@@ -2359,10 +2363,11 @@ async function bootDropsPage() {
+   // 11) Listen for wallet connect/disconnect events
+   if (window.dAppClient?.subscribeToEvent) {
+     window.dAppClient.subscribeToEvent("ACTIVE_ACCOUNT_SET", async account => {
+-      if (account) {
+-        handleWalletConnected(account);
++      const verifiedAccount = await verifyPublicActiveAccount(account);
++      if (verifiedAccount) {
++        handleWalletConnected(verifiedAccount);
+         setTimeout(async () => {
+-          const nfts = await fetchNFTs(account.address);
++          const nfts = await fetchNFTs(verifiedAccount.address);
+           updateTokensWithWalletData(nfts);
+           updateEventCartBurnToken();
+           updateOwnedTokenCounts(nfts);
+diff --git a/exchange/js/exchange.js b/exchange/js/exchange.js
+index 7323447..73ed8e7 100644
+--- a/exchange/js/exchange.js
++++ b/exchange/js/exchange.js
+@@ -10,6 +10,10 @@ import {
+   pollForNFTUpdate as pollForSharedNFTUpdate
+ } from '../../shared/public-trade-ops.js';
+ import { createPublicLogger } from '../../shared/public-logger.js';
++import {
++  getVerifiedPublicActiveAccount,
++  verifyPublicActiveAccount
++} from '../../shared/beacon-setup.js';
+ const { network, rpc, tzkt, contracts, validation, isConfigured, unavailableMessage } = cfg;
+ // pick the right network’s contract set
+ const current = contracts[network] || {
+@@ -146,10 +150,11 @@ window.receiveNFTs = function (nfts) {
+ // When the active account is set (e.g. after connecting the wallet),
+ // automatically fetch NFTs and update the UI.
+ if (networkConfigAvailable && window.dAppClient && typeof window.dAppClient.subscribeToEvent === 'function') {
+-  window.dAppClient.subscribeToEvent('ACTIVE_ACCOUNT_SET', (account) => {
+-    if (account) {
+-      logger.log("ACTIVE_ACCOUNT_SET event triggered:", account.address);
+-      fetchNFTs(account.address).then((nfts) => {
++  window.dAppClient.subscribeToEvent('ACTIVE_ACCOUNT_SET', async (account) => {
++    const verifiedAccount = await verifyPublicActiveAccount(account);
++    if (verifiedAccount) {
++      logger.log("ACTIVE_ACCOUNT_SET event triggered:", verifiedAccount.address);
++      fetchNFTs(verifiedAccount.address).then((nfts) => {
+         if (typeof window.receiveNFTs === 'function') {
+           window.receiveNFTs(nfts);
+         } else {
+@@ -635,7 +640,7 @@ function updateCartButtons() {
+   const emptyCartButton = document.querySelector('.exchange-button-empty.w-button');
+   const exchangeButton = document.querySelector('.exchange-button.w-button');
+ 
+-  window.dAppClient.getActiveAccount().then((account) => {
++  getVerifiedPublicActiveAccount().then((account) => {
+     if (!account) {
+       // Not connected: show connect and exchange connect, hide cart buttons.
+       if (connectButton) connectButton.style.display = 'inline-block';
+@@ -831,7 +836,7 @@ async function handleExchange() {
+     showModal('PROCESSING...', '[WAITING FOR WALLET CONFIRMATION...]');
+ 
+     // Ensure wallet is connected.
+-    const activeAccount = await window.dAppClient.getActiveAccount();
++    const activeAccount = await getVerifiedPublicActiveAccount();
+     if (!activeAccount) {
+       console.error('❌ No wallet connected.');
+       showModal('ERROR', '[NO WALLET CONNECTED.]');
+@@ -1152,7 +1157,7 @@ function bootExchangePage() {
+     }
+ 
+     // Fetch NFTs on page load if wallet is connected and update UI.
+-    window.dAppClient.getActiveAccount().then((account) => {
++    getVerifiedPublicActiveAccount().then((account) => {
+       if (account) {
+         logger.log("Active account detected on page load:", account.address);
+         fetchNFTs(account.address).then((nfts) => {
+diff --git a/shared/beacon-setup.js b/shared/beacon-setup.js
+index 0490c15..14fb263 100644
+--- a/shared/beacon-setup.js
++++ b/shared/beacon-setup.js
+@@ -94,6 +94,7 @@ const dAppClient = window.dAppClient;
+ // State guard to prevent duplicate UI updates
+ // ----------------------------------------------------------------------------
+ let lastButtonState = { status: null, address: null };
++let clearingMismatchedActiveAccount = false;
+ 
+ // ----------------------------------------------------------------------------
+ // Helper: Get wallet button elements
+@@ -248,6 +249,69 @@ window.appState.isConnected = false;
+ }
+ }
+ 
++function isActiveAccountForClientNetwork(account) {
++return account?.network?.type === clientNetwork.type;
++}
++
++function syncDisconnectedWalletState() {
++if (typeof resetUI === 'function') {
++  resetUI();
++}
++
++updateButtonState('unconnected');
++
++document.dispatchEvent(
++  new Event('walletDisconnected')
++);
++}
++
++async function clearMismatchedActiveAccount(account) {
++if (clearingMismatchedActiveAccount) {
++return;
++}
++
++clearingMismatchedActiveAccount = true;
++
++try {
++logger.log('Clearing mismatched Beacon account:', {
++  address: account?.address || null,
++  accountNetwork: account?.network?.type || null,
++  expectedNetwork: clientNetwork.type
++});
++
++await dAppClient.clearActiveAccount();
++} catch (error) {
++console.error('Error clearing mismatched Beacon account:', error);
++} finally {
++clearingMismatchedActiveAccount = false;
++}
++
++syncDisconnectedWalletState();
++}
++
++export async function verifyPublicActiveAccount(account) {
++if (!account) {
++return null;
++}
++
++if (isActiveAccountForClientNetwork(account)) {
++return account;
++}
++
++await clearMismatchedActiveAccount(account);
++return null;
++}
++
++export async function getVerifiedPublicActiveAccount() {
++try {
++const activeAccount = await dAppClient.getActiveAccount();
++return verifyPublicActiveAccount(activeAccount);
++} catch (error) {
++console.error('Error reading Beacon active account:', error);
++return null;
++}
++}
++
+ // ----------------------------------------------------------------------------
+ // Connect / Disconnect Flows
+ // ----------------------------------------------------------------------------
+@@ -275,15 +339,7 @@ await dAppClient.clearActiveAccount();
+ 
+ logger.log('Wallet disconnected.');
+ 
+-if (typeof resetUI === 'function') {
+-  resetUI();
+-}
+-
+-updateButtonState('unconnected');
+-
+-document.dispatchEvent(
+-  new Event('walletDisconnected')
+-);
++syncDisconnectedWalletState();
+ 
+ } catch (error) {
+ console.error('Error disconnecting wallet:', error);
+@@ -302,9 +358,14 @@ logger.log(
+ account.address
+ );
+ 
+-  await fetchNFTs(account.address);
++  const verifiedAccount = await verifyPublicActiveAccount(account);
++  if (!verifiedAccount) {
++    return;
++  }
++
++  await fetchNFTs(verifiedAccount.address);
+ 
+-  updateButtonState('connected', account.address);
++  updateButtonState('connected', verifiedAccount.address);
+   return;
+ }
+ 
+@@ -336,7 +397,7 @@ disconnectButton
+ 
+ updateButtonState('unconnected');
+ 
+-const activeAccount = await dAppClient.getActiveAccount();
++const activeAccount = await getVerifiedPublicActiveAccount();
+ 
+ if (activeAccount) {
+ logger.log('Active account on load:', activeAccount.address);

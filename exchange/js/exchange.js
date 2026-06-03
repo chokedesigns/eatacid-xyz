@@ -10,6 +10,10 @@ import {
   pollForNFTUpdate as pollForSharedNFTUpdate
 } from '../../shared/public-trade-ops.js';
 import { createPublicLogger } from '../../shared/public-logger.js';
+import {
+  getVerifiedPublicActiveAccount,
+  verifyPublicActiveAccount
+} from '../../shared/beacon-setup.js';
 const { network, rpc, tzkt, contracts, validation, isConfigured, unavailableMessage } = cfg;
 // pick the right network’s contract set
 const current = contracts[network] || {
@@ -146,10 +150,11 @@ window.receiveNFTs = function (nfts) {
 // When the active account is set (e.g. after connecting the wallet),
 // automatically fetch NFTs and update the UI.
 if (networkConfigAvailable && window.dAppClient && typeof window.dAppClient.subscribeToEvent === 'function') {
-  window.dAppClient.subscribeToEvent('ACTIVE_ACCOUNT_SET', (account) => {
-    if (account) {
-      logger.log("ACTIVE_ACCOUNT_SET event triggered:", account.address);
-      fetchNFTs(account.address).then((nfts) => {
+  window.dAppClient.subscribeToEvent('ACTIVE_ACCOUNT_SET', async (account) => {
+    const verifiedAccount = await verifyPublicActiveAccount(account);
+    if (verifiedAccount) {
+      logger.log("ACTIVE_ACCOUNT_SET event triggered:", verifiedAccount.address);
+      fetchNFTs(verifiedAccount.address).then((nfts) => {
         if (typeof window.receiveNFTs === 'function') {
           window.receiveNFTs(nfts);
         } else {
@@ -635,7 +640,7 @@ function updateCartButtons() {
   const emptyCartButton = document.querySelector('.exchange-button-empty.w-button');
   const exchangeButton = document.querySelector('.exchange-button.w-button');
 
-  window.dAppClient.getActiveAccount().then((account) => {
+  getVerifiedPublicActiveAccount().then((account) => {
     if (!account) {
       // Not connected: show connect and exchange connect, hide cart buttons.
       if (connectButton) connectButton.style.display = 'inline-block';
@@ -831,7 +836,7 @@ async function handleExchange() {
     showModal('PROCESSING...', '[WAITING FOR WALLET CONFIRMATION...]');
 
     // Ensure wallet is connected.
-    const activeAccount = await window.dAppClient.getActiveAccount();
+    const activeAccount = await getVerifiedPublicActiveAccount();
     if (!activeAccount) {
       console.error('❌ No wallet connected.');
       showModal('ERROR', '[NO WALLET CONNECTED.]');
@@ -1152,7 +1157,7 @@ function bootExchangePage() {
     }
 
     // Fetch NFTs on page load if wallet is connected and update UI.
-    window.dAppClient.getActiveAccount().then((account) => {
+    getVerifiedPublicActiveAccount().then((account) => {
       if (account) {
         logger.log("Active account detected on page load:", account.address);
         fetchNFTs(account.address).then((nfts) => {
