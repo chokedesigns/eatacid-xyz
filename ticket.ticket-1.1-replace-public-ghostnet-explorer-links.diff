@@ -1,0 +1,26 @@
+﻿diff --git a/drops/js/events.js b/drops/js/events.js
+index 7c77ab2..aa01d1c 100644
+--- a/drops/js/events.js
++++ b/drops/js/events.js
+@@ -762,7 +762,7 @@ async function handleEventExchange() {
+   // Base URL for block-explorer links
+   const EXPLORER_BASE = network === 'mainnet'
+     ? 'https://tzkt.io'
+-    : 'https://ghostnet.tzkt.io';
++    : 'https://shadownet.tzkt.io';
+   try {
+     logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
+ 
+diff --git a/exchange/js/exchange.js b/exchange/js/exchange.js
+index 528499f..7323447 100644
+--- a/exchange/js/exchange.js
++++ b/exchange/js/exchange.js
+@@ -41,7 +41,7 @@ const TZKT_BASE    = tzkt[network];
+  */
+ const EXPLORER_BASE = network === 'mainnet'
+   ? 'https://tzkt.io'
+-  : 'https://ghostnet.tzkt.io';
++  : 'https://shadownet.tzkt.io';
+ 
+ /**
+  * Contract addresses for NFT collections.

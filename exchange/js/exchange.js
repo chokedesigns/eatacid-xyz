@@ -41,7 +41,7 @@ const TZKT_BASE    = tzkt[network];
  */
 const EXPLORER_BASE = network === 'mainnet'
   ? 'https://tzkt.io'
-  : 'https://ghostnet.tzkt.io';
+  : 'https://shadownet.tzkt.io';
 
 /**
  * Contract addresses for NFT collections.

@@ -762,7 +762,7 @@ async function handleEventExchange() {
   // Base URL for block-explorer links
   const EXPLORER_BASE = network === 'mainnet'
     ? 'https://tzkt.io'
-    : 'https://ghostnet.tzkt.io';
+    : 'https://shadownet.tzkt.io';
   try {
     logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
 
