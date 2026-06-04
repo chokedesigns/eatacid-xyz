@@ -1,0 +1,13 @@
+﻿diff --git a/package.json b/package.json
+index 53f79f4..77b98ba 100644
+--- a/package.json
++++ b/package.json
+@@ -37,8 +37,5 @@
+     "stream-browserify": "^3.0.0",
+     "util": "^0.12.5",
+     "vm-browserify": "^1.1.2"
+-  },
+-  "@parcel/resolver-default": {
+-    "packageExports": true
+   }
+ }
