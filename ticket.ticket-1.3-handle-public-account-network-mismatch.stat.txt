@@ -1,4 +1,0 @@
-﻿ drops/js/events.js      | 19 +++++++----
- exchange/js/exchange.js | 19 +++++++----
- shared/beacon-setup.js  | 85 ++++++++++++++++++++++++++++++++++++++++++-------
- 3 files changed, 97 insertions(+), 26 deletions(-)
