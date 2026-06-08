@@ -7,7 +7,7 @@ import cfg from './network.js';
 import { createPublicLogger } from './public-logger.js';
 
 const { network, tzkt, getCurrentPublicNetworkConfig } = cfg;
-const DEBUG = true;
+const DEBUG = false;
 const logger = createPublicLogger({ enabled: DEBUG, scope: 'wallet' });
 
 const BEACON_NODE_URLS = [

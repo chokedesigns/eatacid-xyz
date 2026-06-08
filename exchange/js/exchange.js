@@ -24,7 +24,7 @@ const current = contracts[network] || {
 const networkConfigAvailable = isConfigured !== false;
 const networkUnavailableMessage = unavailableMessage || 'This network is not configured yet.';
 
-const DEBUG = true;
+const DEBUG = false;
 const logger = createPublicLogger({ enabled: DEBUG, scope: 'exchange' });
 
 logger.log('Script running on network:', network);
@@ -787,7 +787,7 @@ async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval
     tradedTokens,
     timeout,
     interval,
-    logPrefix: '',
+    logPrefix: DEBUG ? '[exchange] ' : undefined,
     fetchBeforePolling: true
   });
 }
@@ -810,7 +810,7 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
     opHash,
     timeout,
     interval,
-    logPrefix: ''
+    logPrefix: DEBUG ? '[exchange] ' : undefined
   });
 }
 

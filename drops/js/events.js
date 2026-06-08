@@ -1,7 +1,8 @@
 // =============================================================================
 // DEBUG CONFIG
 // =============================================================================
-const DEBUG = true; // ← flip to true when you want logs
+const DEBUG_LOGGING = false; // flip to true when you want logs
+const ENABLE_DESKTOP_ELLIPSIS_TEST = true;
 
 // =============================================================================
 // IMPORTS & CONFIGURATION
@@ -22,7 +23,7 @@ import {
   pollForNFTUpdate as pollForSharedNFTUpdate
 } from '../../shared/public-trade-ops.js';
 
-const logger = createPublicLogger({ enabled: DEBUG, scope: 'drops' });
+const logger = createPublicLogger({ enabled: DEBUG_LOGGING, scope: 'drops' });
 
 /**
  * Convert a collection key to its CSS slug.
@@ -284,7 +285,7 @@ function enableTapToRevealEllipsis(selectors) {
 
   document.addEventListener('click', (e) => {
     // Only run on touch devices (or let desktop click work for testing)
-    if (!isTouch && !DEBUG) return;
+    if (!isTouch && !ENABLE_DESKTOP_ELLIPSIS_TEST) return;
 
     const sel = selectors.join(',');
     const target = e.target.closest(sel);

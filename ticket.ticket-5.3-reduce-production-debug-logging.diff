@@ -1,0 +1,121 @@
+﻿diff --git a/drops/js/events.js b/drops/js/events.js
+index ebce5f4..5113b26 100644
+--- a/drops/js/events.js
++++ b/drops/js/events.js
+@@ -1,7 +1,8 @@
+ // =============================================================================
+ // DEBUG CONFIG
+ // =============================================================================
+-const DEBUG = true; // ← flip to true when you want logs
++const DEBUG_LOGGING = false; // flip to true when you want logs
++const ENABLE_DESKTOP_ELLIPSIS_TEST = true;
+ 
+ // =============================================================================
+ // IMPORTS & CONFIGURATION
+@@ -22,7 +23,7 @@ import {
+   pollForNFTUpdate as pollForSharedNFTUpdate
+ } from '../../shared/public-trade-ops.js';
+ 
+-const logger = createPublicLogger({ enabled: DEBUG, scope: 'drops' });
++const logger = createPublicLogger({ enabled: DEBUG_LOGGING, scope: 'drops' });
+ 
+ /**
+  * Convert a collection key to its CSS slug.
+@@ -284,7 +285,7 @@ function enableTapToRevealEllipsis(selectors) {
+ 
+   document.addEventListener('click', (e) => {
+     // Only run on touch devices (or let desktop click work for testing)
+-    if (!isTouch && !DEBUG) return;
++    if (!isTouch && !ENABLE_DESKTOP_ELLIPSIS_TEST) return;
+ 
+     const sel = selectors.join(',');
+     const target = e.target.closest(sel);
+diff --git a/exchange/js/exchange.js b/exchange/js/exchange.js
+index 73ed8e7..512abae 100644
+--- a/exchange/js/exchange.js
++++ b/exchange/js/exchange.js
+@@ -24,7 +24,7 @@ const current = contracts[network] || {
+ const networkConfigAvailable = isConfigured !== false;
+ const networkUnavailableMessage = unavailableMessage || 'This network is not configured yet.';
+ 
+-const DEBUG = true;
++const DEBUG = false;
+ const logger = createPublicLogger({ enabled: DEBUG, scope: 'exchange' });
+ 
+ logger.log('Script running on network:', network);
+@@ -787,7 +787,7 @@ async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval
+     tradedTokens,
+     timeout,
+     interval,
+-    logPrefix: '',
++    logPrefix: DEBUG ? '[exchange] ' : undefined,
+     fetchBeforePolling: true
+   });
+ }
+@@ -810,7 +810,7 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
+     opHash,
+     timeout,
+     interval,
+-    logPrefix: ''
++    logPrefix: DEBUG ? '[exchange] ' : undefined
+   });
+ }
+ 
+diff --git a/shared/beacon-setup.js b/shared/beacon-setup.js
+index 14fb263..cd8aeac 100644
+--- a/shared/beacon-setup.js
++++ b/shared/beacon-setup.js
+@@ -7,7 +7,7 @@ import cfg from './network.js';
+ import { createPublicLogger } from './public-logger.js';
+ 
+ const { network, tzkt, getCurrentPublicNetworkConfig } = cfg;
+-const DEBUG = true;
++const DEBUG = false;
+ const logger = createPublicLogger({ enabled: DEBUG, scope: 'wallet' });
+ 
+ const BEACON_NODE_URLS = [
+diff --git a/shared/public-trade-ops.js b/shared/public-trade-ops.js
+index 3495285..e192324 100644
+--- a/shared/public-trade-ops.js
++++ b/shared/public-trade-ops.js
+@@ -1,3 +1,6 @@
++const DEBUG = false;
++const dlog = (...args) => { if (DEBUG) console.log(...args); };
++
+ /**
+  * Looks up the on-chain token_pair_id for a given burn contract and token.
+  *
+@@ -15,7 +18,7 @@ export async function fetchTokenPairId({
+   burnTokenId
+ }) {
+   try {
+-    console.log(`\u{1F50D} Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
++    dlog(`\u{1F50D} Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
+ 
+     const url =
+       `${tzktBase}/v1/contracts/${escrowAddress}` +
+@@ -24,13 +27,13 @@ export async function fetchTokenPairId({
+     const response = await fetch(url);
+     await assertTzktResponseOk(response, 'fetch token_pair_id mapping');
+     const raw = await response.json();
+-    console.log("\u{1F4DC} Retrieved raw token_mapping data:", raw);
++    dlog("\u{1F4DC} Retrieved raw token_mapping data:", raw);
+ 
+     const tokenMappings = (raw || []).filter(
+       (entry) => entry && entry.active !== false && entry.value != null
+     );
+ 
+-    console.log("\u{1F4DC} Filtered active token_mapping data:", tokenMappings);
++    dlog("\u{1F4DC} Filtered active token_mapping data:", tokenMappings);
+ 
+     const burnContract = String(burnContractAddress).toLowerCase();
+     const tokenId = String(burnTokenId);
+@@ -41,7 +44,7 @@ export async function fetchTokenPairId({
+     );
+ 
+     if (matching) {
+-      console.log(`\u2705 Found token_pair_id: ${matching.key}`);
++      dlog(`\u2705 Found token_pair_id: ${matching.key}`);
+       return Number(matching.key);
+     }
+ 

@@ -1,3 +1,6 @@
+const DEBUG = false;
+const dlog = (...args) => { if (DEBUG) console.log(...args); };
+
 /**
  * Looks up the on-chain token_pair_id for a given burn contract and token.
  *
@@ -15,7 +18,7 @@ export async function fetchTokenPairId({
   burnTokenId
 }) {
   try {
-    console.log(`\u{1F50D} Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
+    dlog(`\u{1F50D} Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
 
     const url =
       `${tzktBase}/v1/contracts/${escrowAddress}` +
@@ -24,13 +27,13 @@ export async function fetchTokenPairId({
     const response = await fetch(url);
     await assertTzktResponseOk(response, 'fetch token_pair_id mapping');
     const raw = await response.json();
-    console.log("\u{1F4DC} Retrieved raw token_mapping data:", raw);
+    dlog("\u{1F4DC} Retrieved raw token_mapping data:", raw);
 
     const tokenMappings = (raw || []).filter(
       (entry) => entry && entry.active !== false && entry.value != null
     );
 
-    console.log("\u{1F4DC} Filtered active token_mapping data:", tokenMappings);
+    dlog("\u{1F4DC} Filtered active token_mapping data:", tokenMappings);
 
     const burnContract = String(burnContractAddress).toLowerCase();
     const tokenId = String(burnTokenId);
@@ -41,7 +44,7 @@ export async function fetchTokenPairId({
     );
 
     if (matching) {
-      console.log(`\u2705 Found token_pair_id: ${matching.key}`);
+      dlog(`\u2705 Found token_pair_id: ${matching.key}`);
       return Number(matching.key);
     }
 

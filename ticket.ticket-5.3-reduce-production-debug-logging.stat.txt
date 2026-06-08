@@ -1,0 +1,5 @@
+﻿ drops/js/events.js         |  7 ++++---
+ exchange/js/exchange.js    |  6 +++---
+ shared/beacon-setup.js     |  2 +-
+ shared/public-trade-ops.js | 11 +++++++----
+ 4 files changed, 15 insertions(+), 11 deletions(-)
