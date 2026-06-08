@@ -41,7 +41,7 @@
 
 ## Network rules
 - Do not enable mainnet or change address blocks unless explicitly requested.
-- Remember: your app’s `testnet` corresponds to Beacon `ghostnet`.
+- Remember: the app's `testnet` slot currently targets Shadownet.
 
 ## Error handling + logging
 - No silent failures in logic paths.

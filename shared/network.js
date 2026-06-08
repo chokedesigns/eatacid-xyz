@@ -6,7 +6,7 @@ import { chainRegistry, getChainConfig } from './chain-registry.js';
 
 // Single source of truth:
 // - Change this to 'mainnet' when you're ready to flip that branch to mainnet.
-// - Keep it 'testnet' on staging if you want staging to stay ghostnet.
+// - Keep it 'testnet' on staging if you want staging to stay Shadownet.
 const DEFAULT_NETWORK = 'testnet';
 
 // Allow NODE/CI override only if you *explicitly* set it.
