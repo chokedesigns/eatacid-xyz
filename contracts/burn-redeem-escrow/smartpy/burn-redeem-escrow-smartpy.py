@@ -496,10 +496,12 @@ class BurnRedeemEscrow(sp.Contract):
     @sp.entry_point
     def set_token_pairs(self, params):
         """
-        Adds or updates token pairs in the mapping.
+        Adds new token pairs to the mapping.
+        Duplicate token-pair IDs are rejected.
+        Use update_token_pair to modify an existing mapping.
     
         Parameters:
-            params.token_pairs (List[TokenPair]): List of token pairs to add or update.
+            params.token_pairs (List[TokenPair]): List of new token pairs to add.
         """
         sp.set_type(params, sp.TRecord(
             token_pairs=sp.TList(sp.TRecord(
