@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // SHARED: Beacon SDK Setup
 // =============================================================================
 
@@ -387,7 +387,7 @@ return;
 
 window.__EA_WALLET_BUTTONS_BOOTED__ = true;
 
-logger.log('bootWalletButtons â†’ initializing wallet buttons');
+logger.log('bootWalletButtons → initializing wallet buttons');
 
 const {
 connectButton,
