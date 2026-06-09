@@ -1,2 +1,0 @@
-﻿ contracts/burn-redeem-escrow/smartpy/burn-redeem-escrow-smartpy.py | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
