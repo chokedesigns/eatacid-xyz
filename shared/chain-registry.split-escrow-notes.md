@@ -1,0 +1,125 @@
+# Split Escrow Registry Notes
+
+Non-runtime design contract for a future split between public Drops escrow,
+public Exchange escrow, and admin escrow behavior. Do not treat this note as an
+implemented schema until a later ticket updates the runtime resolvers and
+consumers.
+
+## Transitional Registry Shape
+
+Keep the current root `escrow` during migration:
+
+```js
+{
+  escrow: 'KT1...',              // legacy/shared fallback only
+  pairsMapPath: 'token_mapping', // legacy/shared fallback only
+  escrows: {
+    drops: {
+      address: 'KT1...',
+      pairsMapPath: 'token_mapping'
+    },
+    exchange: {
+      address: 'KT1...',
+      pairsMapPath: 'token_mapping'
+    }
+  }
+}
+```
+
+Meanings:
+
+- `escrow`: legacy shared escrow fallback used by existing public and admin
+  consumers until split-aware resolvers replace direct reads.
+- `escrows.drops`: future authoritative Drops escrow config. If omitted during
+  migration, Drops may fall back to root `escrow`.
+- `escrows.exchange`: future authoritative Exchange escrow config. Exchange may
+  initially fall back to root `escrow`, but should become strict after the second
+  Exchange escrow contract is configured.
+- `dropsEscrow` and `exchangeEscrow`: resolver output names only, not additional
+  registry keys. They should mean the effective address chosen for that surface.
+- `admin/default escrow`: unresolved until admin behavior is split. Admin must
+  not silently choose Drops or Exchange once multi-contract admin behavior begins.
+  A later admin ticket should define an explicit default, explicit surface
+  selector, or explicit multi-contract readiness gate.
+
+## Resolver Contract
+
+Future resolver behavior should be explicit about both configured and effective
+values:
+
+- Drops resolver: `escrows.drops.address || escrow`.
+- Exchange resolver, transition phase: `escrows.exchange.address || escrow`.
+- Exchange resolver, strict phase: require `escrows.exchange.address`; do not
+  allow root `escrow` fallback.
+- Admin/global resolver: while legacy admin is single-contract, root `escrow` is
+  the effective admin escrow. Once admin split behavior starts, fail closed unless
+  the caller supplies an explicit surface or a later registry field defines the
+  admin default.
+
+Recommended resolver result shape:
+
+```js
+{
+  surface: 'drops' | 'exchange' | 'admin',
+  configuredAddress: 'KT1...' | '',
+  fallbackAddress: 'KT1...' | '',
+  effectiveAddress: 'KT1...' | '',
+  pairsMapPath: 'token_mapping',
+  source: 'surface' | 'legacy-fallback' | 'none',
+  strict: true | false
+}
+```
+
+## Validation Semantics
+
+Validation should distinguish these states rather than reporting only
+`escrow` missing:
+
+- Legacy fallback configured: root `escrow` is a non-placeholder address.
+- Drops configured: `escrows.drops.address` is a non-placeholder address.
+- Drops effective: Drops configured, or root `escrow` is configured during the
+  migration fallback window.
+- Exchange configured: `escrows.exchange.address` is a non-placeholder address.
+- Exchange effective, transition phase: Exchange configured, or root `escrow` is
+  configured during the fallback window.
+- Strict Exchange configured: Exchange configured without relying on root
+  `escrow` fallback.
+- Admin configured: legacy admin may use root `escrow`; future split admin must
+  require explicit admin/default behavior and must not infer it from Drops or
+  Exchange.
+- Admin multi-contract ready: all admin surfaces needed by the UI are explicitly
+  configured, and admin write/read actions know which escrow they target.
+
+Missing paths should name the intended future field when strict, for example
+`escrows.exchange.address`, and name fallback use separately when fallback is
+allowed.
+
+## Pair Map Authority
+
+Each resolved escrow owns its own pair-map authority:
+
+- Resolver output should include `pairsMapPath` for the effective escrow.
+- Surface-specific `pairsMapPath` should override root `pairsMapPath`.
+- Root `pairsMapPath` remains the legacy fallback and current default.
+- The current default path remains `token_mapping`.
+- Drops pair IDs remain governed by `pairIdRanges.drops`, currently `>= 1000`.
+- Exchange pair range and ownership are not currently authoritative. A later
+  ticket must decide whether `pairIdRanges.exchange` is needed and how Exchange
+  pair IDs are owned, reserved, validated, or ignored.
+
+## Current Consumer Seams
+
+Known implementation seams for later tickets:
+
+- Public Drops and Exchange configs currently read `config.escrow` directly.
+- Shared public trade ops currently fetch `bigmaps/token_mapping` directly and
+  do not accept a resolved `pairsMapPath`.
+- Admin `network.js` exports one `addresses[network].escrow` and one
+  `pairsMapPath`; `getLiveCfg()` mirrors that single-contract shape.
+- Pause emits `escrow:paused:state` on `document` with
+  `{ paused, network, escrow, ...extra }`; Drops listeners compare the event
+  escrow to the live config escrow before accepting state.
+- Pairs, Drops, and Treasury admin flows use the single live escrow for storage
+  reads, write destinations, stale-preview checks, balance reads, and polling.
+- Drops status and autoload guard only `pairIdRanges.drops`; Exchange has no
+  authoritative range yet.
