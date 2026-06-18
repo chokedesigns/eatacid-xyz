@@ -3,15 +3,22 @@
 // =============================================================================
 
 import networkConfig from '../../shared/network.js';
-import { chainRegistry, validatePublicDropsConfig } from '../../shared/chain-registry.js';
+import {
+  chainRegistry,
+  resolveDropsEscrow,
+  validatePublicDropsConfig
+} from '../../shared/chain-registry.js';
 
 const network = networkConfig.network;
 
 function buildDropsContracts(config) {
   const collections = config?.collections || {};
+  const dropsEscrow = resolveDropsEscrow(config);
 
   return {
     escrow: config?.escrow || '',
+    dropsEscrow,
+    surfaceEscrow: dropsEscrow,
 
     collections: {
       HEN: collections.HEN,

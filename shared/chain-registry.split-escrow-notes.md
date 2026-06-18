@@ -9,6 +9,10 @@ A.3 update: the registry now includes transitional `escrows.drops` and
 Exchange escrow addresses. Public and admin consumers still read the legacy
 root `escrow` directly until later migration tickets update them.
 
+A.4 update: public Drops and Exchange config modules expose resolver output and
+keep their legacy `escrow` fields pinned to the root registry `escrow`. Runtime
+callers still read the legacy config fields during this transition.
+
 ## Transitional Registry Shape
 
 Keep the current root `escrow` during migration:
@@ -115,7 +119,8 @@ Each resolved escrow owns its own pair-map authority:
 
 Known implementation seams for later tickets:
 
-- Public Drops and Exchange configs currently read `config.escrow` directly.
+- Public Drops and Exchange runtime callers still read legacy `current.escrow`
+  fields rather than the new resolver metadata.
 - Shared public trade ops currently fetch `bigmaps/token_mapping` directly and
   do not accept a resolved `pairsMapPath`.
 - Admin `network.js` exports one `addresses[network].escrow` and one

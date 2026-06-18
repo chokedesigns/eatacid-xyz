@@ -3,12 +3,17 @@
 // =============================================================================
 
 import networkConfig from '../../shared/network.js';
-import { chainRegistry, validatePublicExchangeConfig } from '../../shared/chain-registry.js';
+import {
+  chainRegistry,
+  resolveExchangeEscrow,
+  validatePublicExchangeConfig
+} from '../../shared/chain-registry.js';
 
 const network = networkConfig.network;
 
 function buildExchangeContracts(config) {
   const collections = config?.collections || {};
+  const exchangeEscrow = resolveExchangeEscrow(config);
 
   return {
     collections: {
@@ -16,6 +21,8 @@ function buildExchangeContracts(config) {
       pane1: collections.CANAAN
     },
     escrow: config?.escrow || '',
+    exchangeEscrow,
+    surfaceEscrow: exchangeEscrow,
     redeemMaster: config?.exchange?.redeemMaster || ''
   };
 }
