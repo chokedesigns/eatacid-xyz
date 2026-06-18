@@ -16,7 +16,7 @@ export const chainRegistry = {
         pairsMapPath: ''
       },
       exchange: {
-        address: '',
+        address: 'KT1UikSTZgFj68HaShoWWAJoRki6Y9S1s2Y8',
         pairsMapPath: ''
       }
     },
