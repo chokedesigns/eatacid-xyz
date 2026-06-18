@@ -20,7 +20,7 @@ function buildExchangeContracts(config) {
       pane0: collections['THE 419 SCRIPT'],
       pane1: collections.CANAAN
     },
-    escrow: config?.escrow || '',
+    escrow: exchangeEscrow.exchangeEscrow || '',
     exchangeEscrow,
     surfaceEscrow: exchangeEscrow,
     redeemMaster: config?.exchange?.redeemMaster || ''

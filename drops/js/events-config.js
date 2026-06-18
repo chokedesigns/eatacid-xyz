@@ -16,7 +16,7 @@ function buildDropsContracts(config) {
   const dropsEscrow = resolveDropsEscrow(config);
 
   return {
-    escrow: config?.escrow || '',
+    escrow: dropsEscrow.dropsEscrow || '',
     dropsEscrow,
     surfaceEscrow: dropsEscrow,
 
