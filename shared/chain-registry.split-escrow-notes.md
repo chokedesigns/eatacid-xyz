@@ -24,6 +24,10 @@ config-only during the transition. Public Exchange still discovers pair IDs by
 burn contract/token lookup against the effective escrow `token_mapping`; it does
 not require or enforce an Exchange range at runtime.
 
+B.2 update: public Exchange config and validation now resolve the Exchange
+surface escrow in strict mode. Exchange requires `escrows.exchange.address` and
+does not fall back to root `escrow`; public Drops remains fallback-compatible.
+
 ## Transitional Registry Shape
 
 Keep the current root `escrow` during migration:

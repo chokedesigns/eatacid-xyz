@@ -150,10 +150,15 @@ function addMissingCollections(missing, config, keys) {
   });
 }
 
-function addMissingEffectiveSurfaceEscrow(missing, config, surface) {
-  const resolved = resolveSurfaceEscrow(config, surface);
+function addMissingEffectiveSurfaceEscrow(missing, config, surface, options = {}) {
+  const resolved = resolveSurfaceEscrow(config, surface, options);
 
   if (!isPlaceholderAddress(resolved.effectiveAddress)) return;
+
+  if (options?.strict === true) {
+    missing.push(`escrows.${surface}.address`);
+    return;
+  }
 
   missing.push(
     resolved.configuredAddress
@@ -215,8 +220,8 @@ export function resolveDropsEscrow(configOrNetwork) {
   };
 }
 
-export function resolveExchangeEscrow(configOrNetwork) {
-  const resolved = resolveSurfaceEscrow(configOrNetwork, 'exchange');
+export function resolveExchangeEscrow(configOrNetwork, options = {}) {
+  const resolved = resolveSurfaceEscrow(configOrNetwork, 'exchange', options);
   return {
     ...resolved,
     exchangeEscrow: resolved.effectiveAddress
@@ -255,7 +260,7 @@ export function validatePublicExchangeConfig(configOrNetwork) {
 
   if (!config) return validationResult(missing);
 
-  addMissingEffectiveSurfaceEscrow(missing, config, 'exchange');
+  addMissingEffectiveSurfaceEscrow(missing, config, 'exchange', { strict: true });
   addMissingAddress(missing, config, 'exchange.redeemMaster');
   addMissingCollections(missing, config, exchangeCollectionKeys);
 

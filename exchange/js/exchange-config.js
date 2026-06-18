@@ -13,7 +13,7 @@ const network = networkConfig.network;
 
 function buildExchangeContracts(config) {
   const collections = config?.collections || {};
-  const exchangeEscrow = resolveExchangeEscrow(config);
+  const exchangeEscrow = resolveExchangeEscrow(config, { strict: true });
 
   return {
     collections: {
