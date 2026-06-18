@@ -1,9 +1,13 @@
 # Split Escrow Registry Notes
 
-Non-runtime design contract for a future split between public Drops escrow,
-public Exchange escrow, and admin escrow behavior. Do not treat this note as an
-implemented schema until a later ticket updates the runtime resolvers and
-consumers.
+Design contract for a future split between public Drops escrow, public Exchange
+escrow, and admin escrow behavior. Treat consumer migration guidance below as
+pending until later tickets update public and admin callers.
+
+A.3 update: the registry now includes transitional `escrows.drops` and
+`escrows.exchange` objects, plus runtime resolvers for effective Drops and
+Exchange escrow addresses. Public and admin consumers still read the legacy
+root `escrow` directly until later migration tickets update them.
 
 ## Transitional Registry Shape
 

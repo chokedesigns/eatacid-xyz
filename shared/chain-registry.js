@@ -10,6 +10,16 @@ export const chainRegistry = {
     tzkt: 'https://api.shadownet.tzkt.io',
     escrow: 'KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5',
     pairsMapPath: 'token_mapping',
+    escrows: {
+      drops: {
+        address: '',
+        pairsMapPath: ''
+      },
+      exchange: {
+        address: '',
+        pairsMapPath: ''
+      }
+    },
     collections: {
       CANAAN: 'KT1GCvVdxELA4mPUn4DiBpPAd8ARRtyoEpke',
       'THE 419 SCRIPT': 'KT1WczRb1giprHqCp3ADRn8JrkGBT6aENJmV',
@@ -60,6 +70,16 @@ export const chainRegistry = {
     tzkt: 'https://api.tzkt.io',
     escrow: '',
     pairsMapPath: 'token_mapping',
+    escrows: {
+      drops: {
+        address: '',
+        pairsMapPath: ''
+      },
+      exchange: {
+        address: '',
+        pairsMapPath: ''
+      }
+    },
     collections: {
       CANAAN: 'KT1UqqSTPPFQk6btXKgv2adjj83YD2V5YBt1',
       'THE 419 SCRIPT': 'KT1EzmMokbtPS9nYJW1n5Darfgwf7HVtcsyq',
@@ -108,6 +128,10 @@ function validationResult(missing) {
   return { ok: missing.length === 0, missing };
 }
 
+function stringValue(value) {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 function addMissingText(missing, config, path) {
   const value = path.split('.').reduce((target, key) => target?.[key], config);
   if (typeof value !== 'string' || value.trim() === '') missing.push(path);
@@ -122,6 +146,18 @@ function addMissingCollections(missing, config, keys) {
   keys.forEach((key) => {
     addMissingAddress(missing, config, `collections.${key}`);
   });
+}
+
+function addMissingEffectiveSurfaceEscrow(missing, config, surface) {
+  const resolved = resolveSurfaceEscrow(config, surface);
+
+  if (!isPlaceholderAddress(resolved.effectiveAddress)) return;
+
+  missing.push(
+    resolved.configuredAddress
+      ? `escrows.${surface}.address`
+      : 'escrow'
+  );
 }
 
 export function isPlaceholderAddress(value) {
@@ -139,6 +175,50 @@ export function isPlaceholderAddress(value) {
 
   const body = trimmed.slice(3);
   return /^[.\-_]+$/.test(body) || /^(.)\1+$/.test(body);
+}
+
+export function resolveSurfaceEscrow(configOrNetwork, surface, options = {}) {
+  const config = resolveChainConfig(configOrNetwork);
+  const strict = options?.strict === true;
+  const surfaceConfig = config?.escrows?.[surface] || {};
+  const configuredAddress = stringValue(surfaceConfig.address);
+  const fallbackAddress = stringValue(config?.escrow);
+  const configuredPairsMapPath = stringValue(surfaceConfig.pairsMapPath);
+  const fallbackPairsMapPath = stringValue(config?.pairsMapPath);
+  const hasConfiguredAddress = !isPlaceholderAddress(configuredAddress);
+  const hasFallbackAddress = !isPlaceholderAddress(fallbackAddress);
+  const effectiveAddress = hasConfiguredAddress
+    ? configuredAddress
+    : (!strict && hasFallbackAddress ? fallbackAddress : '');
+  const source = hasConfiguredAddress
+    ? 'surface'
+    : (effectiveAddress ? 'legacy-fallback' : 'none');
+
+  return {
+    surface,
+    configuredAddress,
+    fallbackAddress,
+    effectiveAddress,
+    pairsMapPath: configuredPairsMapPath || fallbackPairsMapPath,
+    source,
+    strict
+  };
+}
+
+export function resolveDropsEscrow(configOrNetwork) {
+  const resolved = resolveSurfaceEscrow(configOrNetwork, 'drops');
+  return {
+    ...resolved,
+    dropsEscrow: resolved.effectiveAddress
+  };
+}
+
+export function resolveExchangeEscrow(configOrNetwork) {
+  const resolved = resolveSurfaceEscrow(configOrNetwork, 'exchange');
+  return {
+    ...resolved,
+    exchangeEscrow: resolved.effectiveAddress
+  };
 }
 
 export function validateNetworkBase(configOrNetwork) {
@@ -160,7 +240,7 @@ export function validatePublicDropsConfig(configOrNetwork) {
 
   if (!config) return validationResult(missing);
 
-  addMissingAddress(missing, config, 'escrow');
+  addMissingEffectiveSurfaceEscrow(missing, config, 'drops');
   addMissingText(missing, config, 'pairsMapPath');
   addMissingCollections(missing, config, dropCollectionKeys);
 
@@ -173,7 +253,7 @@ export function validatePublicExchangeConfig(configOrNetwork) {
 
   if (!config) return validationResult(missing);
 
-  addMissingAddress(missing, config, 'escrow');
+  addMissingEffectiveSurfaceEscrow(missing, config, 'exchange');
   addMissingAddress(missing, config, 'exchange.redeemMaster');
   addMissingCollections(missing, config, exchangeCollectionKeys);
 
