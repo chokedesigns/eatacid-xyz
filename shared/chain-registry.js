@@ -31,6 +31,7 @@ export const chainRegistry = {
       redeemMaster: 'KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5'
     },
     pairIdRanges: {
+      exchange: { start: 0, end: 999 },
       drops: { start: 1000, end: null }
     },
     mirrors: {
@@ -91,6 +92,7 @@ export const chainRegistry = {
       redeemMaster: ''
     },
     pairIdRanges: {
+      exchange: { start: 0, end: 999 },
       drops: { start: 1000, end: null }
     },
     mirrors: {}

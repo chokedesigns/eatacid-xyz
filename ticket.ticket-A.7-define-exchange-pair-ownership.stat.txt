@@ -1,0 +1,3 @@
+﻿ shared/chain-registry.js                    |  2 ++
+ shared/chain-registry.split-escrow-notes.md | 37 +++++++++++++++++++++++++----
+ 2 files changed, 34 insertions(+), 5 deletions(-)

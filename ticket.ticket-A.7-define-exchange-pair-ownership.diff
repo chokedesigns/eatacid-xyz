@@ -1,0 +1,94 @@
+﻿diff --git a/shared/chain-registry.js b/shared/chain-registry.js
+index 401b330..ab85118 100644
+--- a/shared/chain-registry.js
++++ b/shared/chain-registry.js
+@@ -31,6 +31,7 @@ export const chainRegistry = {
+       redeemMaster: 'KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5'
+     },
+     pairIdRanges: {
++      exchange: { start: 0, end: 999 },
+       drops: { start: 1000, end: null }
+     },
+     mirrors: {
+@@ -91,6 +92,7 @@ export const chainRegistry = {
+       redeemMaster: ''
+     },
+     pairIdRanges: {
++      exchange: { start: 0, end: 999 },
+       drops: { start: 1000, end: null }
+     },
+     mirrors: {}
+diff --git a/shared/chain-registry.split-escrow-notes.md b/shared/chain-registry.split-escrow-notes.md
+index a95e675..4f46c58 100644
+--- a/shared/chain-registry.split-escrow-notes.md
++++ b/shared/chain-registry.split-escrow-notes.md
+@@ -18,6 +18,12 @@ compatibility `escrow` fields from the resolved surface escrow effective address
+ Both surfaces still fall back to root `escrow` while the surface addresses are
+ empty, and Exchange remains non-strict until the later activation ticket.
+ 
++A.7 update: `pairIdRanges.exchange` is now declared as `{ start: 0, end: 999 }`
++for legacy shared-escrow compatibility and admin/UI classification. This is
++config-only during the transition. Public Exchange still discovers pair IDs by
++burn contract/token lookup against the effective escrow `token_mapping`; it does
++not require or enforce an Exchange range at runtime.
++
+ ## Transitional Registry Shape
+ 
+ Keep the current root `escrow` during migration:
+@@ -35,6 +41,10 @@ Keep the current root `escrow` during migration:
+       address: 'KT1...',
+       pairsMapPath: 'token_mapping'
+     }
++  },
++  pairIdRanges: {
++    exchange: { start: 0, end: 999 },
++    drops: { start: 1000, end: null }
+   }
+ }
+ ```
+@@ -54,6 +64,11 @@ Meanings:
+   not silently choose Drops or Exchange once multi-contract admin behavior begins.
+   A later admin ticket should define an explicit default, explicit surface
+   selector, or explicit multi-contract readiness gate.
++- `pairIdRanges.exchange`: legacy shared-escrow Exchange classification range.
++  It reserves the lower IDs, currently `0..999`, when Exchange and Drops share
++  one escrow/token map. It does not configure an Exchange escrow address and does
++  not make range lookup mandatory for public Exchange.
++- `pairIdRanges.drops`: Drops classification range. Drops remains `>= 1000`.
+ 
+ ## Resolver Contract
+ 
+@@ -115,10 +130,16 @@ Each resolved escrow owns its own pair-map authority:
+ - Surface-specific `pairsMapPath` should override root `pairsMapPath`.
+ - Root `pairsMapPath` remains the legacy fallback and current default.
+ - The current default path remains `token_mapping`.
++- Under the legacy shared escrow, Exchange pair IDs are globally reserved in the
++  lower range declared by `pairIdRanges.exchange`, currently `0..999`.
+ - Drops pair IDs remain governed by `pairIdRanges.drops`, currently `>= 1000`.
+-- Exchange pair range and ownership are not currently authoritative. A later
+-  ticket must decide whether `pairIdRanges.exchange` is needed and how Exchange
+-  pair IDs are owned, reserved, validated, or ignored.
++- Under the future separate Exchange escrow, Exchange pair IDs are physically
++  scoped by that contract's own `token_mapping`; the numeric range remains useful
++  for admin/UI classification, migration clarity, and legacy shared-escrow
++  compatibility, but is not a public Exchange runtime lookup requirement.
++- During transition, both are true: the declared Exchange range documents the
++  legacy shared-escrow reservation, while the future Exchange escrow will own its
++  own per-contract mapping once configured.
+ 
+ ## Current Consumer Seams
+ 
+@@ -136,5 +157,11 @@ Known implementation seams for later tickets:
+   escrow to the live config escrow before accepting state.
+ - Pairs, Drops, and Treasury admin flows use the single live escrow for storage
+   reads, write destinations, stale-preview checks, balance reads, and polling.
+-- Drops status and autoload guard only `pairIdRanges.drops`; Exchange has no
+-  authoritative range yet.
++- Drops status and autoload guard only `pairIdRanges.drops`.
++- Public Exchange still fetches all active `token_mapping` keys and finds the
++  pair by burn contract/token. It does not scan or validate
++  `pairIdRanges.exchange`.
++- Admin Pairs currently presents Exchange/Drops sections using the legacy
++  `< 1000` versus `>= 1000` convention on the single live escrow. A future admin
++  split ticket must decide whether to consume `pairIdRanges.exchange` directly
++  and how to target a separate Exchange escrow.
