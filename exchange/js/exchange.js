@@ -18,8 +18,7 @@ const { network, rpc, tzkt, contracts, validation, isConfigured, unavailableMess
 // pick the right network’s contract set
 const current = contracts[network] || {
   collections: {},
-  escrow: '',
-  redeemMaster: ''
+  escrow: ''
 };
 const networkConfigAvailable = isConfigured !== false;
 const networkUnavailableMessage = unavailableMessage || 'This network is not configured yet.';
@@ -62,7 +61,6 @@ logger.log("📌 Contract Addresses Loaded:", tabContractAddresses);
  * Escrow & Redeem contract addresses
  */
 const BURN_REDEEM_CONTRACT = current.escrow;
-const REDEEM_CONTRACT      = current.redeemMaster;
 
 /**
  * Delay (in milliseconds) to ensure DOM elements are ready after load.
@@ -906,7 +904,7 @@ async function handleExchange() {
               {
                 prim: 'Pair',
                 args: [
-                  { string: REDEEM_CONTRACT },
+                  { string: BURN_REDEEM_CONTRACT },
                   { int: String(item.redeemTokenId || 0) }
                 ]
               },

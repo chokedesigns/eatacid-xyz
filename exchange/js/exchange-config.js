@@ -22,8 +22,7 @@ function buildExchangeContracts(config) {
     },
     escrow: exchangeEscrow.exchangeEscrow || '',
     exchangeEscrow,
-    surfaceEscrow: exchangeEscrow,
-    redeemMaster: config?.exchange?.redeemMaster || ''
+    surfaceEscrow: exchangeEscrow
   };
 }
 

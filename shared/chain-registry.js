@@ -27,9 +27,6 @@ export const chainRegistry = {
       INTRODUCTIONS: 'KT1B53naqjqZiNBHDv2PPHMroL7geiXzxcT1',
       'ACID COIN': 'KT1WdWDKYmxHGNVWqnSPNnm7ZB6NeKNG6zPB'
     },
-    exchange: {
-      redeemMaster: 'KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5'
-    },
     pairIdRanges: {
       exchange: { start: 0, end: 999 },
       drops: { start: 1000, end: null }
@@ -87,9 +84,6 @@ export const chainRegistry = {
       HEN: 'KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton',
       INTRODUCTIONS: 'KT1FmqojETK4Ux44oeudyDbQ6zQDYrD5DaP5',
       'ACID COIN': ''
-    },
-    exchange: {
-      redeemMaster: ''
     },
     pairIdRanges: {
       exchange: { start: 0, end: 999 },
@@ -261,7 +255,6 @@ export function validatePublicExchangeConfig(configOrNetwork) {
   if (!config) return validationResult(missing);
 
   addMissingEffectiveSurfaceEscrow(missing, config, 'exchange', { strict: true });
-  addMissingAddress(missing, config, 'exchange.redeemMaster');
   addMissingCollections(missing, config, exchangeCollectionKeys);
 
   return validationResult(missing);

@@ -28,6 +28,10 @@ B.2 update: public Exchange config and validation now resolve the Exchange
 surface escrow in strict mode. Exchange requires `escrows.exchange.address` and
 does not fall back to root `escrow`; public Drops remains fallback-compatible.
 
+B.4 update: public Exchange no longer reads a separate `exchange.redeemMaster`
+registry field. Its strict `escrows.exchange.address` is used for approval,
+`token_mapping` lookup, `initiate_trade`, and the trade payload redeem contract.
+
 ## Transitional Registry Shape
 
 Keep the current root `escrow` during migration:
