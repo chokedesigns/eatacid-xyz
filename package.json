@@ -10,7 +10,8 @@
   "scripts": {
     "dropparams:json": "node shared/drop-params/gen-drop-params-json.mjs",
     "dev:watch:params": "node shared/drop-params/watch-drop-params-json.mjs",
-    "start": "concurrently \"npm run dev:watch:params\" \"parcel serve index.html drops/index.html exchange/index.html --open --port 4000\"",
+    "dev:check-port": "node scripts/check-dev-port.mjs",
+    "start": "npm run dev:check-port && concurrently \"npm run dev:watch:params\" \"parcel serve index.html drops/index.html exchange/index.html --open --port 4000\"",
     "clean:cache": "rimraf .parcel-cache",
     "clean:prod": "rimraf dist/prod",
     "clean:staging": "rimraf dist/staging",
