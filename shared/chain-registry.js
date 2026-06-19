@@ -104,7 +104,8 @@ export function getRequiredChainConfig(network) {
 }
 
 const dropCollectionKeys = ['HEN', 'INTRODUCTIONS', 'CANAAN'];
-const exchangeCollectionKeys = ['THE 419 SCRIPT', 'CANAAN', 'ACID COIN'];
+const exchangeRedeemTokenCollectionKey = 'ACID COIN';
+const exchangeCollectionKeys = ['THE 419 SCRIPT', 'CANAAN', exchangeRedeemTokenCollectionKey];
 const adminCollectionKeys = [
   'HEN',
   'INTRODUCTIONS',
@@ -142,6 +143,12 @@ function addMissingCollections(missing, config, keys) {
   keys.forEach((key) => {
     addMissingAddress(missing, config, `collections.${key}`);
   });
+}
+
+function addMissingExchangeRedeemTokenContract(missing, config) {
+  if (isPlaceholderAddress(resolveExchangeRedeemTokenContract(config))) {
+    missing.push(`collections.${exchangeRedeemTokenCollectionKey}`);
+  }
 }
 
 function addMissingEffectiveSurfaceEscrow(missing, config, surface, options = {}) {
@@ -222,6 +229,11 @@ export function resolveExchangeEscrow(configOrNetwork, options = {}) {
   };
 }
 
+export function resolveExchangeRedeemTokenContract(configOrNetwork) {
+  const config = resolveChainConfig(configOrNetwork);
+  return stringValue(config?.collections?.[exchangeRedeemTokenCollectionKey]);
+}
+
 export function validateNetworkBase(configOrNetwork) {
   const config = resolveChainConfig(configOrNetwork);
   const missing = [];
@@ -255,7 +267,10 @@ export function validatePublicExchangeConfig(configOrNetwork) {
   if (!config) return validationResult(missing);
 
   addMissingEffectiveSurfaceEscrow(missing, config, 'exchange', { strict: true });
-  addMissingCollections(missing, config, exchangeCollectionKeys);
+  addMissingCollections(missing, config, exchangeCollectionKeys.filter(
+    (key) => key !== exchangeRedeemTokenCollectionKey
+  ));
+  addMissingExchangeRedeemTokenContract(missing, config);
 
   return validationResult(missing);
 }

@@ -6,6 +6,7 @@ import networkConfig from '../../shared/network.js';
 import {
   chainRegistry,
   resolveExchangeEscrow,
+  resolveExchangeRedeemTokenContract,
   validatePublicExchangeConfig
 } from '../../shared/chain-registry.js';
 
@@ -20,6 +21,7 @@ function buildExchangeContracts(config) {
       pane0: collections['THE 419 SCRIPT'],
       pane1: collections.CANAAN
     },
+    redeemTokenContract: resolveExchangeRedeemTokenContract(config),
     escrow: exchangeEscrow.exchangeEscrow || '',
     exchangeEscrow,
     surfaceEscrow: exchangeEscrow

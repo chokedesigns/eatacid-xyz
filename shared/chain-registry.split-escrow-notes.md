@@ -30,7 +30,9 @@ does not fall back to root `escrow`; public Drops remains fallback-compatible.
 
 B.4 update: public Exchange no longer reads a separate `exchange.redeemMaster`
 registry field. Its strict `escrows.exchange.address` is used for approval,
-`token_mapping` lookup, `initiate_trade`, and the trade payload redeem contract.
+`token_mapping` lookup, and the `initiate_trade` destination. The trade payload
+redeem contract is the configured Exchange redeem token contract, currently
+ACID COIN from `collections['ACID COIN']`.
 
 ## Transitional Registry Shape
 

@@ -58,9 +58,10 @@ const tabContractAddresses = {
 logger.log("📌 Contract Addresses Loaded:", tabContractAddresses);
 
 /**
- * Escrow & Redeem contract addresses
+ * Escrow and redeem token contract addresses
  */
 const BURN_REDEEM_CONTRACT = current.escrow;
+const REDEEM_TOKEN_CONTRACT = current.redeemTokenContract;
 
 /**
  * Delay (in milliseconds) to ensure DOM elements are ready after load.
@@ -904,7 +905,7 @@ async function handleExchange() {
               {
                 prim: 'Pair',
                 args: [
-                  { string: BURN_REDEEM_CONTRACT },
+                  { string: REDEEM_TOKEN_CONTRACT },
                   { int: String(item.redeemTokenId || 0) }
                 ]
               },
