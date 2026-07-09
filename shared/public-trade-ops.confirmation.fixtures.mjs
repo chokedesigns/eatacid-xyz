@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildApprovalOps,
+  __areTradedTokensRefreshedForFixture,
   __getOperationConfirmationForFixture
 } from './public-trade-ops.js';
 
@@ -114,6 +115,66 @@ await run('no matcher preserves legacy any applied operation behavior', () => {
     applied: true,
     failed: false
   });
+});
+
+await run('partial burn refresh completes when balance decreases by expected quantity', () => {
+  assert.equal(
+    __areTradedTokensRefreshedForFixture(
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '2' }],
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
+    ),
+    true
+  );
+});
+
+await run('partial burn refresh waits when balance has not decreased', () => {
+  assert.equal(
+    __areTradedTokensRefreshedForFixture(
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '3' }],
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
+    ),
+    false
+  );
+});
+
+await run('absent traded token refreshes as complete', () => {
+  assert.equal(
+    __areTradedTokensRefreshedForFixture(
+      [],
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
+    ),
+    true
+  );
+});
+
+await run('zero traded token balance refreshes as complete', () => {
+  assert.equal(
+    __areTradedTokensRefreshedForFixture(
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '0' }],
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
+    ),
+    true
+  );
+});
+
+await run('legacy traded token identifier preserves depletion-only wait behavior', () => {
+  assert.equal(
+    __areTradedTokensRefreshedForFixture(
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '2' }],
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7' }]
+    ),
+    false
+  );
+});
+
+await run('legacy traded token identifier preserves depletion-only success behavior', () => {
+  assert.equal(
+    __areTradedTokensRefreshedForFixture(
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '0' }],
+      [{ contractAddress: BURN_CONTRACT, tokenId: '7' }]
+    ),
+    true
+  );
 });
 
 await run('exact active operator approval omits approval op', async () => {

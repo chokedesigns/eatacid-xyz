@@ -216,12 +216,12 @@ export async function pollForConfirmation({
 }
 
 /**
- * Polls wallet NFTs until each traded token is gone or has zero balance.
+ * Polls wallet NFTs until each traded token is absent, zeroed, or decreased by its expected burn quantity.
  *
  * @param {Object} args
  * @param {Function} args.fetchNFTs
  * @param {string} args.address
- * @param {Array<{contractAddress:string,tokenId:string|number}>} args.tradedTokens
+ * @param {Array<{contractAddress:string,tokenId:string|number,quantity?:number|string,startingBalance?:number|string}>} args.tradedTokens
  * @param {number} [args.timeout=30000]
  * @param {number} [args.interval=3000]
  * @param {string} [args.logPrefix]
@@ -247,8 +247,8 @@ export async function pollForNFTUpdate({
   while (Date.now() - startTime < timeout) {
     nfts = await fetchNFTs(address);
 
-    if (areTradedTokensDepleted(nfts, tradedTokens)) {
-      logIfEnabled(logPrefix, "All traded tokens are depleted or no longer present.");
+    if (areTradedTokensRefreshed(nfts, tradedTokens)) {
+      logIfEnabled(logPrefix, "All traded tokens are refreshed.");
       return nfts;
     }
 
@@ -412,7 +412,11 @@ function normalizeAddress(address) {
   return String(address || '').trim().toLowerCase();
 }
 
-function areTradedTokensDepleted(nfts, tradedTokens) {
+export function __areTradedTokensRefreshedForFixture(nfts, tradedTokens) {
+  return areTradedTokensRefreshed(nfts, tradedTokens);
+}
+
+function areTradedTokensRefreshed(nfts, tradedTokens) {
   return tradedTokens.every(token => {
     const tradedContractAddress = String(token.contractAddress).toLowerCase();
     const match = nfts.find(nft =>
@@ -420,7 +424,22 @@ function areTradedTokensDepleted(nfts, tradedTokens) {
       String(nft.tokenId) === String(token.tokenId)
     );
 
-    return !match || Number(match.balance) === 0;
+    if (!match) {
+      return true;
+    }
+
+    const currentBalance = Number(match.balance);
+    if (currentBalance === 0) {
+      return true;
+    }
+
+    const startingBalance = Number(token.startingBalance);
+    const quantity = Number(token.quantity);
+    if (Number.isFinite(startingBalance) && Number.isFinite(quantity)) {
+      return currentBalance <= startingBalance - quantity;
+    }
+
+    return false;
   });
 }
 

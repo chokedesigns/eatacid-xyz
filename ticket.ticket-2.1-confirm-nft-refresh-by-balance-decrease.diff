@@ -1,0 +1,207 @@
+﻿diff --git a/drops/js/events.js b/drops/js/events.js
+index 6d49f17..ab2be97 100644
+--- a/drops/js/events.js
++++ b/drops/js/events.js
+@@ -789,7 +789,7 @@ async function handleEventExchange() {
+ 
+     // Gather burn-cart items
+     const { contractAddress, tokenId, oldBalance } = getSelectedEventTokenWithBalance();
+-    const burnCart = [{ contractAddress, tokenId, quantity: 1 }];
++    const burnCart = [{ contractAddress, tokenId, quantity: 1, startingBalance: oldBalance }];
+     logger.log('📜 Burn cart:', burnCart);
+ 
+     // Build or skip operator-approval ops
+@@ -926,6 +926,8 @@ async function handleEventExchange() {
+     const tradedTokens = burnCart.map(item => ({
+       contractAddress: item.contractAddress,
+       tokenId: item.tokenId,
++      quantity: item.quantity,
++      startingBalance: item.startingBalance
+     }));
+     const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokens);
+     refreshConnectedState(refreshedNFTs);
+diff --git a/exchange/js/exchange.js b/exchange/js/exchange.js
+index d214317..d3873b3 100644
+--- a/exchange/js/exchange.js
++++ b/exchange/js/exchange.js
+@@ -341,9 +341,10 @@ function getBurnCart() {
+       const row = dropdown.closest('.collection-item-01-div');
+       const tokenId = row.getAttribute('data-token-id');
+       const contractAddress = row.getAttribute('data-contract-address');
++      const startingBalance = getDropdownMaxQuantity(dropdown);
+ 
+       if (tokenId && contractAddress) {
+-        burnCart.push({ tokenId, quantity, contractAddress });
++        burnCart.push({ tokenId, quantity, contractAddress, startingBalance });
+       }
+     }
+   });
+@@ -352,6 +353,13 @@ function getBurnCart() {
+   return burnCart;
+ }
+ 
++function getDropdownMaxQuantity(dropdown) {
++  return Array.from(dropdown.options || []).reduce((max, option) => {
++    const value = parseInt(option.value, 10);
++    return Number.isFinite(value) ? Math.max(max, value) : max;
++  }, 0);
++}
++
+ /**
+  * Legacy helper retained for any local callers.
+  *
+@@ -990,6 +998,8 @@ async function handleExchange() {
+     const tradedTokens = burnCart.map(item => ({
+       contractAddress: item.contractAddress,
+       tokenId: item.tokenId,
++      quantity: item.quantity,
++      startingBalance: item.startingBalance
+     }));
+     const refreshedNFTs = await pollForNFTUpdate(userWalletAddress, tradedTokens);
+     refreshConnectedState(refreshedNFTs);
+diff --git a/shared/public-trade-ops.confirmation.fixtures.mjs b/shared/public-trade-ops.confirmation.fixtures.mjs
+index 8e54296..ad7b711 100644
+--- a/shared/public-trade-ops.confirmation.fixtures.mjs
++++ b/shared/public-trade-ops.confirmation.fixtures.mjs
+@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
+ 
+ import {
+   buildApprovalOps,
++  __areTradedTokensRefreshedForFixture,
+   __getOperationConfirmationForFixture
+ } from './public-trade-ops.js';
+ 
+@@ -116,6 +117,66 @@ await run('no matcher preserves legacy any applied operation behavior', () => {
+   });
+ });
+ 
++await run('partial burn refresh completes when balance decreases by expected quantity', () => {
++  assert.equal(
++    __areTradedTokensRefreshedForFixture(
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '2' }],
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
++    ),
++    true
++  );
++});
++
++await run('partial burn refresh waits when balance has not decreased', () => {
++  assert.equal(
++    __areTradedTokensRefreshedForFixture(
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '3' }],
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
++    ),
++    false
++  );
++});
++
++await run('absent traded token refreshes as complete', () => {
++  assert.equal(
++    __areTradedTokensRefreshedForFixture(
++      [],
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
++    ),
++    true
++  );
++});
++
++await run('zero traded token balance refreshes as complete', () => {
++  assert.equal(
++    __areTradedTokensRefreshedForFixture(
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '0' }],
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 3, quantity: 1 }]
++    ),
++    true
++  );
++});
++
++await run('legacy traded token identifier preserves depletion-only wait behavior', () => {
++  assert.equal(
++    __areTradedTokensRefreshedForFixture(
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '2' }],
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7' }]
++    ),
++    false
++  );
++});
++
++await run('legacy traded token identifier preserves depletion-only success behavior', () => {
++  assert.equal(
++    __areTradedTokensRefreshedForFixture(
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: '0' }],
++      [{ contractAddress: BURN_CONTRACT, tokenId: '7' }]
++    ),
++    true
++  );
++});
++
+ await run('exact active operator approval omits approval op', async () => {
+   const calls = [];
+   const originalFetch = globalThis.fetch;
+diff --git a/shared/public-trade-ops.js b/shared/public-trade-ops.js
+index 57ca82d..b9ea1eb 100644
+--- a/shared/public-trade-ops.js
++++ b/shared/public-trade-ops.js
+@@ -216,12 +216,12 @@ export async function pollForConfirmation({
+ }
+ 
+ /**
+- * Polls wallet NFTs until each traded token is gone or has zero balance.
++ * Polls wallet NFTs until each traded token is absent, zeroed, or decreased by its expected burn quantity.
+  *
+  * @param {Object} args
+  * @param {Function} args.fetchNFTs
+  * @param {string} args.address
+- * @param {Array<{contractAddress:string,tokenId:string|number}>} args.tradedTokens
++ * @param {Array<{contractAddress:string,tokenId:string|number,quantity?:number|string,startingBalance?:number|string}>} args.tradedTokens
+  * @param {number} [args.timeout=30000]
+  * @param {number} [args.interval=3000]
+  * @param {string} [args.logPrefix]
+@@ -247,8 +247,8 @@ export async function pollForNFTUpdate({
+   while (Date.now() - startTime < timeout) {
+     nfts = await fetchNFTs(address);
+ 
+-    if (areTradedTokensDepleted(nfts, tradedTokens)) {
+-      logIfEnabled(logPrefix, "All traded tokens are depleted or no longer present.");
++    if (areTradedTokensRefreshed(nfts, tradedTokens)) {
++      logIfEnabled(logPrefix, "All traded tokens are refreshed.");
+       return nfts;
+     }
+ 
+@@ -412,7 +412,11 @@ function normalizeAddress(address) {
+   return String(address || '').trim().toLowerCase();
+ }
+ 
+-function areTradedTokensDepleted(nfts, tradedTokens) {
++export function __areTradedTokensRefreshedForFixture(nfts, tradedTokens) {
++  return areTradedTokensRefreshed(nfts, tradedTokens);
++}
++
++function areTradedTokensRefreshed(nfts, tradedTokens) {
+   return tradedTokens.every(token => {
+     const tradedContractAddress = String(token.contractAddress).toLowerCase();
+     const match = nfts.find(nft =>
+@@ -420,7 +424,22 @@ function areTradedTokensDepleted(nfts, tradedTokens) {
+       String(nft.tokenId) === String(token.tokenId)
+     );
+ 
+-    return !match || Number(match.balance) === 0;
++    if (!match) {
++      return true;
++    }
++
++    const currentBalance = Number(match.balance);
++    if (currentBalance === 0) {
++      return true;
++    }
++
++    const startingBalance = Number(token.startingBalance);
++    const quantity = Number(token.quantity);
++    if (Number.isFinite(startingBalance) && Number.isFinite(quantity)) {
++      return currentBalance <= startingBalance - quantity;
++    }
++
++    return false;
+   });
+ }
+ 

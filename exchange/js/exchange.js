@@ -341,15 +341,23 @@ function getBurnCart() {
       const row = dropdown.closest('.collection-item-01-div');
       const tokenId = row.getAttribute('data-token-id');
       const contractAddress = row.getAttribute('data-contract-address');
+      const startingBalance = getDropdownMaxQuantity(dropdown);
 
       if (tokenId && contractAddress) {
-        burnCart.push({ tokenId, quantity, contractAddress });
+        burnCart.push({ tokenId, quantity, contractAddress, startingBalance });
       }
     }
   });
 
   logger.log('Tokens in burn cart:', burnCart);
   return burnCart;
+}
+
+function getDropdownMaxQuantity(dropdown) {
+  return Array.from(dropdown.options || []).reduce((max, option) => {
+    const value = parseInt(option.value, 10);
+    return Number.isFinite(value) ? Math.max(max, value) : max;
+  }, 0);
 }
 
 /**
@@ -990,6 +998,8 @@ async function handleExchange() {
     const tradedTokens = burnCart.map(item => ({
       contractAddress: item.contractAddress,
       tokenId: item.tokenId,
+      quantity: item.quantity,
+      startingBalance: item.startingBalance
     }));
     const refreshedNFTs = await pollForNFTUpdate(userWalletAddress, tradedTokens);
     refreshConnectedState(refreshedNFTs);

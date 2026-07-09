@@ -789,7 +789,7 @@ async function handleEventExchange() {
 
     // Gather burn-cart items
     const { contractAddress, tokenId, oldBalance } = getSelectedEventTokenWithBalance();
-    const burnCart = [{ contractAddress, tokenId, quantity: 1 }];
+    const burnCart = [{ contractAddress, tokenId, quantity: 1, startingBalance: oldBalance }];
     logger.log('📜 Burn cart:', burnCart);
 
     // Build or skip operator-approval ops
@@ -926,6 +926,8 @@ async function handleEventExchange() {
     const tradedTokens = burnCart.map(item => ({
       contractAddress: item.contractAddress,
       tokenId: item.tokenId,
+      quantity: item.quantity,
+      startingBalance: item.startingBalance
     }));
     const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokens);
     refreshConnectedState(refreshedNFTs);

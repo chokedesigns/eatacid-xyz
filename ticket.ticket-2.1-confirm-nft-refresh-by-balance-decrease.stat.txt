@@ -1,0 +1,5 @@
+﻿ drops/js/events.js                                |  4 +-
+ exchange/js/exchange.js                           | 12 ++++-
+ shared/public-trade-ops.confirmation.fixtures.mjs | 61 +++++++++++++++++++++++
+ shared/public-trade-ops.js                        | 31 +++++++++---
+ 4 files changed, 100 insertions(+), 8 deletions(-)
