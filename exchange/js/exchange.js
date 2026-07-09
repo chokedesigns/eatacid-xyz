@@ -795,7 +795,8 @@ async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval
     timeout,
     interval,
     logPrefix: DEBUG ? '[exchange] ' : undefined,
-    fetchBeforePolling: true
+    fetchBeforePolling: true,
+    refetchOnTimeout: true
   });
 }
 
