@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 
 import {
   buildApprovalOps,
+  pollForConfirmation,
   __areTradedTokensRefreshedForFixture,
   __getOperationConfirmationForFixture
 } from './public-trade-ops.js';
@@ -115,6 +116,72 @@ await run('no matcher preserves legacy any applied operation behavior', () => {
     applied: true,
     failed: false
   });
+});
+
+await run('confirmation polling retries fetch rejection before matching success', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+
+  try {
+    globalThis.fetch = async () => {
+      calls += 1;
+
+      if (calls === 1) {
+        throw new Error('network down');
+      }
+
+      return jsonResponse([
+        operation({
+          destination: ESCROW_ADDRESS,
+          entrypoint: 'initiate_trade',
+          status: 'applied'
+        })
+      ]);
+    };
+
+    const ops = await pollForConfirmation({
+      tzktBase: TZKT_BASE,
+      opHash: 'ooConfirmationFetchRetrySuccess',
+      timeout: 50,
+      interval: 0,
+      ...initiateTradeMatcher
+    });
+
+    assert.equal(calls, 2);
+    assert.equal(ops[0].status, 'applied');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+await run('confirmation polling retries repeated fetch rejections until timeout', async () => {
+  const originalFetch = globalThis.fetch;
+  let calls = 0;
+
+  try {
+    globalThis.fetch = async () => {
+      calls += 1;
+      throw new Error(`network down ${calls}`);
+    };
+
+    await assert.rejects(
+      pollForConfirmation({
+        tzktBase: TZKT_BASE,
+        opHash: 'ooConfirmationFetchRetryTimeout',
+        timeout: 20,
+        interval: 1,
+        ...initiateTradeMatcher
+      }),
+      (error) => {
+        assert.match(error.message, /^Transaction confirmation timed out\. Last TzKT polling error: network down \d+$/);
+        return true;
+      }
+    );
+
+    assert.ok(calls > 1);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 await run('partial burn refresh completes when balance decreases by expected quantity', () => {

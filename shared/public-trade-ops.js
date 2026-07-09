@@ -176,8 +176,9 @@ export async function pollForConfirmation({
   let lastTzktPollingError = null;
 
   while (Date.now() - startTime < timeout) {
-    const response = await fetch(`${tzktBase}/v1/operations/${opHash}`);
+    let response;
     try {
+      response = await fetch(`${tzktBase}/v1/operations/${opHash}`);
       await assertTzktResponseOk(response, `poll operation confirmation for ${opHash}`);
     } catch (error) {
       lastTzktPollingError = error;
