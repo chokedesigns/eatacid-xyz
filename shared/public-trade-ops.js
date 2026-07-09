@@ -282,6 +282,10 @@ function isAppliedOperationResponse(ops) {
   return isAppliedOperation(ops);
 }
 
+export function __getOperationConfirmationForFixture(ops, expected = {}) {
+  return getOperationConfirmation(ops, expected);
+}
+
 function getOperationConfirmation(ops, {
   expectedDestination,
   expectedEntrypoint
