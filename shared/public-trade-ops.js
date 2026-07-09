@@ -83,18 +83,15 @@ export async function buildApprovalOps({
   const approvalOps = [];
 
   for (const contractAddress of Object.keys(groups)) {
-    try {
-      const url = `${tzktBase}/v1/contracts/${contractAddress}/bigmaps/operators/keys?active=true`;
-      const response = await fetch(url);
-      await assertTzktResponseOk(response, `fetch operators for ${contractAddress}`);
-      const operators = await response.json();
-
-      groups[contractAddress].forEach(token => {
-        const isApproved = operators.some(op =>
-          op.key.owner === userWalletAddress &&
-          op.key.operator === escrowAddress &&
-          parseInt(op.key.token_id, 10) === parseInt(token.tokenId, 10)
-        );
+    for (const token of groups[contractAddress]) {
+      try {
+        const isApproved = await isTokenApprovedForEscrow({
+          tzktBase,
+          contractAddress,
+          escrowAddress,
+          userWalletAddress,
+          tokenId: token.tokenId
+        });
 
         if (onApprovalCheck) {
           onApprovalCheck({ token, contractAddress, isApproved });
@@ -108,21 +105,49 @@ export async function buildApprovalOps({
             tokenId: token.tokenId
           }));
         }
-      });
-    } catch (error) {
-      console.error(`${operatorErrorPrefix}Error checking operators for ${contractAddress}:`, error);
-      groups[contractAddress].forEach(token => {
+      } catch (error) {
+        console.error(`${operatorErrorPrefix}Error checking operators for ${contractAddress}:`, error);
         approvalOps.push(createApprovalOp({
           contractAddress,
           escrowAddress,
           userWalletAddress,
           tokenId: token.tokenId
         }));
-      });
+      }
     }
   }
 
   return approvalOps;
+}
+
+async function isTokenApprovedForEscrow({
+  tzktBase,
+  contractAddress,
+  escrowAddress,
+  userWalletAddress,
+  tokenId
+}) {
+  const params = new URLSearchParams({
+    active: 'true',
+    'key.owner': userWalletAddress,
+    'key.operator': escrowAddress,
+    'key.token_id': tokenId.toString(),
+    limit: '1'
+  });
+  const url = `${tzktBase}/v1/contracts/${contractAddress}/bigmaps/operators/keys?${params.toString()}`;
+  const response = await fetch(url);
+  await assertTzktResponseOk(response, `fetch operator for ${contractAddress} token ${tokenId}`);
+  const operators = await response.json();
+
+  if (!Array.isArray(operators)) {
+    throw new Error(`Unexpected operators response for ${contractAddress} token ${tokenId}`);
+  }
+
+  return operators.some(op =>
+    normalizeAddress(op?.key?.owner) === normalizeAddress(userWalletAddress) &&
+    normalizeAddress(op?.key?.operator) === normalizeAddress(escrowAddress) &&
+    String(op?.key?.token_id) === String(tokenId)
+  );
 }
 
 /**
