@@ -601,7 +601,9 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
     tzktBase: TZKT_BASE,
     opHash,
     timeout,
-    interval
+    interval,
+    expectedDestination: BURN_REDEEM_CONTRACT_ADDRESS,
+    expectedEntrypoint: 'initiate_trade'
   });
 }
 

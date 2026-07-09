@@ -134,6 +134,8 @@ export async function buildApprovalOps({
  * @param {number} [args.timeout=120000]
  * @param {number} [args.interval=5000]
  * @param {string} [args.logPrefix]
+ * @param {string} [args.expectedDestination]
+ * @param {string} [args.expectedEntrypoint]
  * @returns {Promise<Object|Array>}
  */
 export async function pollForConfirmation({
@@ -141,7 +143,9 @@ export async function pollForConfirmation({
   opHash,
   timeout = 120000,
   interval = 5000,
-  logPrefix
+  logPrefix,
+  expectedDestination,
+  expectedEntrypoint
 }) {
   const startTime = Date.now();
   let lastTzktPollingError = null;
@@ -161,7 +165,16 @@ export async function pollForConfirmation({
     const ops = await response.json();
     logIfEnabled(logPrefix, "Polling confirmation from", tzktBase, "ops:", ops);
 
-    if (isAppliedOperationResponse(ops)) {
+    const confirmation = getOperationConfirmation(ops, {
+      expectedDestination,
+      expectedEntrypoint
+    });
+
+    if (confirmation.failed) {
+      throw new Error(confirmation.message);
+    }
+
+    if (confirmation.applied) {
       logIfEnabled(logPrefix, "Transaction confirmed on-chain.");
       return ops;
     }
@@ -269,11 +282,105 @@ function isAppliedOperationResponse(ops) {
   return isAppliedOperation(ops);
 }
 
-function isAppliedOperation(op) {
-  return (
-    op?.status === "applied" ||
-    op?.metadata?.operation_result?.status === "applied"
+function getOperationConfirmation(ops, {
+  expectedDestination,
+  expectedEntrypoint
+}) {
+  if (!expectedDestination && !expectedEntrypoint) {
+    return { applied: isAppliedOperationResponse(ops), failed: false };
+  }
+
+  const matchingOps = toOperationList(ops).filter(op =>
+    matchesExpectedOperation(op, {
+      expectedDestination,
+      expectedEntrypoint
+    })
   );
+
+  const failedOp = matchingOps.find(isTerminalFailedOperation);
+  if (failedOp) {
+    const status = getOperationStatus(failedOp) || 'unknown';
+    return {
+      applied: false,
+      failed: true,
+      message: `Transaction confirmation failed: expected ${expectedEntrypoint || 'transaction'} operation ended with status ${status}.`
+    };
+  }
+
+  return {
+    applied: matchingOps.some(isAppliedOperation),
+    failed: false
+  };
+}
+
+function toOperationList(ops) {
+  return Array.isArray(ops) ? ops : [ops].filter(Boolean);
+}
+
+function matchesExpectedOperation(op, {
+  expectedDestination,
+  expectedEntrypoint
+}) {
+  if (op?.type && op.type !== 'transaction') {
+    return false;
+  }
+
+  if (expectedDestination) {
+    const destination = getOperationDestination(op);
+    if (normalizeAddress(destination) !== normalizeAddress(expectedDestination)) {
+      return false;
+    }
+  }
+
+  if (expectedEntrypoint) {
+    const entrypoint = getOperationEntrypoint(op);
+    if (entrypoint !== expectedEntrypoint) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function getOperationDestination(op) {
+  return (
+    op?.target?.address ||
+    op?.destination?.address ||
+    op?.target ||
+    op?.destination ||
+    op?.contractAddress ||
+    op?.contract?.address ||
+    ''
+  );
+}
+
+function getOperationEntrypoint(op) {
+  return (
+    op?.parameter?.entrypoint ||
+    op?.parameters?.entrypoint ||
+    op?.metadata?.operation_result?.parameters?.entrypoint ||
+    ''
+  );
+}
+
+function isAppliedOperation(op) {
+  return getOperationStatus(op) === "applied";
+}
+
+function isTerminalFailedOperation(op) {
+  return ["failed", "backtracked", "skipped"].includes(getOperationStatus(op));
+}
+
+function getOperationStatus(op) {
+  return (
+    op?.status ||
+    op?.metadata?.operation_result?.status ||
+    ''
+  );
+}
+
+function normalizeAddress(address) {
+  return String(address || '').trim().toLowerCase();
 }
 
 function areTradedTokensDepleted(nfts, tradedTokens) {

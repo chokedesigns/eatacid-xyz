@@ -809,7 +809,9 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
     opHash,
     timeout,
     interval,
-    logPrefix: DEBUG ? '[exchange] ' : undefined
+    logPrefix: DEBUG ? '[exchange] ' : undefined,
+    expectedDestination: BURN_REDEEM_CONTRACT,
+    expectedEntrypoint: 'initiate_trade'
   });
 }
 
