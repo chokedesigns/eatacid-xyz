@@ -28,8 +28,8 @@ export const chainRegistry = {
       'ACID COIN': 'KT1WdWDKYmxHGNVWqnSPNnm7ZB6NeKNG6zPB'
     },
     pairIdRanges: {
-      exchange: { start: 0, end: 999 },
-      drops: { start: 1000, end: null }
+      exchange: { start: 0, end: null },
+      drops: { start: 0, end: null }
     },
     mirrors: {
       HEN: {
@@ -86,8 +86,8 @@ export const chainRegistry = {
       'ACID COIN': ''
     },
     pairIdRanges: {
-      exchange: { start: 0, end: 999 },
-      drops: { start: 1000, end: null }
+      exchange: { start: 0, end: null },
+      drops: { start: 0, end: null }
     },
     mirrors: {}
   }
