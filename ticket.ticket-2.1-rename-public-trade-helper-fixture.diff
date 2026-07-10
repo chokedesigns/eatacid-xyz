@@ -1,0 +1,17 @@
+﻿diff --git a/package.json b/package.json
+index 38f87cd..066b6b5 100644
+--- a/package.json
++++ b/package.json
+@@ -15,7 +15,7 @@
+     "clean:cache": "rimraf .parcel-cache",
+     "clean:prod": "rimraf dist/prod",
+     "clean:staging": "rimraf dist/staging",
+-    "test:public-trade-ops": "node shared/public-trade-ops.confirmation.fixtures.mjs",
++    "test:public-trade-ops": "node shared/public-trade-ops.fixtures.mjs",
+     "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
+     "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
+     "pages:sanity": "npm run build:pages:staging && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs",
+diff --git a/shared/public-trade-ops.confirmation.fixtures.mjs b/shared/public-trade-ops.fixtures.mjs
+similarity index 100%
+rename from shared/public-trade-ops.confirmation.fixtures.mjs
+rename to shared/public-trade-ops.fixtures.mjs
