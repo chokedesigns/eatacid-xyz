@@ -25,7 +25,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@airgap/beacon-sdk": "4.6.4",
+    "@airgap/beacon-sdk": "4.8.1",
     "buffer": "6.0.3",
     "ea-drop-params": "1.0.0"
   },
