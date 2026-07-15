@@ -10,6 +10,75 @@ const { network, tzkt, getCurrentPublicNetworkConfig } = cfg;
 const DEBUG = false;
 const logger = createPublicLogger({ enabled: DEBUG, scope: 'wallet' });
 
+const BEACON_SDK_VERSION_KEY = 'beacon:sdk_version';
+// Beacon SDK 4.8.1 currently persists its beacon-core version, 4.8.0.
+const CURRENT_BEACON_STORAGE_VERSION = [4, 8, 0];
+const LEGACY_MATRIX_TRANSPORT_KEYS = [
+'beacon:matrix-selected-node',
+'beacon:sdk-matrix-preserved-state',
+'beacon:matrix-peer-rooms'
+];
+
+function parseBeaconStorageVersion(value) {
+if (typeof value !== 'string') {
+return null;
+}
+
+const match = /^(\d+)\.(\d+)\.(\d+)$/.exec(value);
+if (!match) {
+return null;
+}
+
+const version = match.slice(1).map(Number);
+
+return version.every(Number.isSafeInteger) ? version : null;
+}
+
+function isLegacyBeaconStorageVersion(version) {
+for (let index = 0; index < CURRENT_BEACON_STORAGE_VERSION.length; index += 1) {
+if (version[index] < CURRENT_BEACON_STORAGE_VERSION[index]) {
+return true;
+}
+
+if (version[index] > CURRENT_BEACON_STORAGE_VERSION[index]) {
+return false;
+}
+}
+
+return false;
+}
+
+function migrateLegacyBeaconMatrixTransportState() {
+try {
+const storage = window.localStorage;
+const storedVersion = parseBeaconStorageVersion(
+storage.getItem(BEACON_SDK_VERSION_KEY)
+);
+
+// Missing or malformed metadata is ambiguous, so leave transport state intact.
+if (!storedVersion || !isLegacyBeaconStorageVersion(storedVersion)) {
+return false;
+}
+
+const keysToRemove = LEGACY_MATRIX_TRANSPORT_KEYS.filter(
+key => storage.getItem(key) !== null
+);
+
+if (keysToRemove.length === 0) {
+return false;
+}
+
+keysToRemove.forEach(key => storage.removeItem(key));
+return true;
+} catch (error) {
+logger.log(
+'Beacon Matrix transport migration skipped because localStorage is unavailable:',
+error
+);
+return false;
+}
+}
+
 
 const currentNetworkConfig = getCurrentPublicNetworkConfig?.() || null;
 
@@ -61,10 +130,16 @@ console.error('Beacon error cause:', error.cause);
 }
 
 const clientNetwork = getClientNetwork();
+const migratedLegacyMatrixTransport =
+migrateLegacyBeaconMatrixTransportState();
 
 // ----------------------------------------------------------------------------
 // Initialize or reuse the Beacon client
 // ----------------------------------------------------------------------------
+
+if (migratedLegacyMatrixTransport) {
+window.dAppClient = undefined;
+}
 
 if (!window.dAppClient) {
 logger.log('Initializing Beacon DAppClient on network:', network);
