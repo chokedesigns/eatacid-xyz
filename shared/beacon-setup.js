@@ -156,11 +156,48 @@ logger.log('Reusing existing Beacon DAppClient on network:', network);
 
 const dAppClient = window.dAppClient;
 
+export const PUBLIC_WALLET_STATE_EVENT = 'publicWalletStateChanged';
+
+let publicWalletState = {
+status: 'pending',
+account: null,
+nftsPromise: null
+};
+
+export function getPublicWalletState() {
+return publicWalletState;
+}
+
+function publishPublicWalletState(status, account = null, nftsPromise = null) {
+const nextAddress = account?.address || null;
+const currentAddress = publicWalletState.account?.address || null;
+
+if (
+publicWalletState.status === status &&
+currentAddress === nextAddress
+) {
+return;
+}
+
+publicWalletState = {
+status,
+account,
+nftsPromise
+};
+
+document.dispatchEvent(
+new CustomEvent(PUBLIC_WALLET_STATE_EVENT, {
+detail: publicWalletState
+})
+);
+}
+
 // ----------------------------------------------------------------------------
 // State guard to prevent duplicate UI updates
 // ----------------------------------------------------------------------------
 let lastButtonState = { status: null, address: null };
 let clearingMismatchedActiveAccount = false;
+let walletLifecycleGeneration = 0;
 
 // ----------------------------------------------------------------------------
 // Helper: Get wallet button elements
@@ -331,11 +368,15 @@ return account?.network?.type === clientNetwork.type;
 }
 
 function syncDisconnectedWalletState() {
+walletLifecycleGeneration += 1;
+
 if (typeof resetUI === 'function') {
   resetUI();
 }
 
 updateButtonState('unconnected');
+
+publishPublicWalletState('unconnected');
 
 document.dispatchEvent(
   new Event('walletDisconnected')
@@ -429,6 +470,8 @@ console.error('Error disconnecting wallet:', error);
 dAppClient.subscribeToEvent(
 BeaconEvent.ACTIVE_ACCOUNT_SET,
 async account => {
+const generation = ++walletLifecycleGeneration;
+
 if (account) {
 logger.log(
 `${BeaconEvent.ACTIVE_ACCOUNT_SET} triggered:`,
@@ -440,15 +483,29 @@ account.address
     return;
   }
 
-  await fetchNFTs(verifiedAccount.address);
+  if (
+    publicWalletState.status === 'connected' &&
+    publicWalletState.account?.address === verifiedAccount.address
+  ) {
+    return;
+  }
+
+  const nftsPromise = fetchNFTs(verifiedAccount.address);
+  await nftsPromise;
+
+  if (generation !== walletLifecycleGeneration) {
+    return;
+  }
 
   updateButtonState('connected', verifiedAccount.address);
+  publishPublicWalletState('connected', verifiedAccount, nftsPromise);
   return;
 }
 
 logger.log('No active account detected via subscription.');
 
 updateButtonState('unconnected');
+publishPublicWalletState('unconnected');
 
 }
 );
@@ -474,21 +531,27 @@ disconnectButton
 
 updateButtonState('pending');
 
+const generation = walletLifecycleGeneration;
 const activeAccount = await getVerifiedPublicActiveAccount();
 
-if (activeAccount) {
+if (generation !== walletLifecycleGeneration) {
+logger.log('Shared wallet boot result superseded by an account event.');
+} else if (activeAccount) {
 logger.log('Active account on load:', activeAccount.address);
 
 // Flip UI immediately. Do not wait for NFT fetch.
 updateButtonState('connected', activeAccount.address);
 
 // Fetch NFTs in the background.
-fetchNFTs(activeAccount.address).catch(err => {
+const nftsPromise = fetchNFTs(activeAccount.address);
+publishPublicWalletState('connected', activeAccount, nftsPromise);
+nftsPromise.catch(err => {
   console.error('Error fetching NFTs after connect:', err);
 });
 
 } else {
 updateButtonState('unconnected');
+publishPublicWalletState('unconnected');
 }
 
 connectButton?.addEventListener('click', connectWallet);

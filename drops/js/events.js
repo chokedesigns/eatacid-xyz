@@ -13,8 +13,9 @@ import dropParams from 'ea-drop-params';
 import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
 import { createPublicLogger } from '../../shared/public-logger.js';
 import {
-  getVerifiedPublicActiveAccount,
-  verifyPublicActiveAccount
+  PUBLIC_WALLET_STATE_EVENT,
+  getPublicWalletState,
+  getVerifiedPublicActiveAccount
 } from '../../shared/beacon-setup.js';
 import {
   buildApprovalOps as buildSharedApprovalOps,
@@ -1771,6 +1772,7 @@ async function pollForUnpause(contractAddress, interval = 3000) {
           const account = AppState.activeAccount;
           if (account) {
             const nfts = await fetchNFTs(account.address);
+            if (AppState.activeAccount?.address !== account.address) return;
             updateTokensWithWalletData(nfts);
             updateOwnedTokenCounts(nfts);
           }
@@ -2123,6 +2125,11 @@ function attachExchangeButtonHandlers() {
 // WALLET CONNECT / DISCONNECT
 // =============================================================================
 
+let synchronizedWalletAddress;
+let walletRefreshGeneration = 0;
+let dropsWalletSyncReady = false;
+let pendingPublicWalletState = null;
+
 /**
  * Called when a wallet is connected. Updates AppState,
  * clears any old checkbox selection so we never briefly
@@ -2182,6 +2189,7 @@ function handleWalletDisconnected() {
   if (typeof displayDefaultTokens === 'function') {
     displayDefaultTokens();
   }
+  renderBalances({});
 
   // Hide the “no tokens” message
   const noTokensDiv = document.querySelector('.no-tokens-in-walet-div---events');
@@ -2196,27 +2204,63 @@ function handleWalletDisconnected() {
   if (header) header.textContent = 'ELIGIBLE BURN TOKENS';
 }
 
-// Ensure external disconnect events also clear AppState
-window.addEventListener('walletDisconnected', () => {
-  logger.log("Wallet forcibly disconnected");
+async function refreshDropsWallet(account, generation, nftsPromise) {
+  try {
+    const nfts = await (nftsPromise || fetchNFTs(account.address));
 
-  updateAppState({
-    activeAccount: null,
-    walletConnected: false,
-    selectedTokenId: null
-  });
+    if (
+      generation !== walletRefreshGeneration ||
+      synchronizedWalletAddress !== account.address
+    ) {
+      return;
+    }
 
-  const disconnectBtn = document.querySelector('.disconnect-wallet-button');
-  const connectBtn    = document.querySelector('.connect-wallet-button');
-  disconnectBtn?.style.setProperty('display', 'none');
-  connectBtn?.style.setProperty('display', 'block');
+    await updateTokensWithWalletData(nfts);
+    updateEventCartBurnToken();
+    updateOwnedTokenCounts(nfts);
+  } catch (error) {
+    if (generation === walletRefreshGeneration) {
+      console.error('Error refreshing Drops wallet state:', error);
+      handleWalletDisconnected();
+      synchronizedWalletAddress = null;
+    }
+  }
+}
 
-  // Keep header text consistent with the disconnected default
-  const header = document.querySelector('.available-burn-tokens-exchange-text');
-  if (header) header.textContent = 'ELIGIBLE BURN TOKENS';
+function synchronizeDropsWalletState(walletState) {
+  if (!walletState || walletState.status === 'pending') return;
 
-  clearCartUI();
-  renderDropDetails();
+  const account = walletState.status === 'connected'
+    ? walletState.account
+    : null;
+  const address = account?.address || null;
+
+  if (address === synchronizedWalletAddress) return;
+
+  synchronizedWalletAddress = address;
+  const generation = ++walletRefreshGeneration;
+
+  // Clear the previous account's rows, balances, selection, and action state
+  // before committing either the replacement account or disconnected state.
+  handleWalletDisconnected();
+
+  if (!account) return;
+
+  handleWalletConnected(account);
+  void refreshDropsWallet(account, generation, walletState.nftsPromise);
+}
+
+function receivePublicWalletState(walletState) {
+  if (!dropsWalletSyncReady) {
+    pendingPublicWalletState = walletState;
+    return;
+  }
+
+  synchronizeDropsWalletState(walletState);
+}
+
+document.addEventListener(PUBLIC_WALLET_STATE_EVENT, event => {
+  receivePublicWalletState(event.detail);
 });
 
 // =============================================================================
@@ -2340,54 +2384,13 @@ async function bootDropsPage() {
   window.addEventListener('resize', updateFlames);
   window.addEventListener('orientationchange', updateFlames);
 
-  // 10) Fetch NFTs if already connected
-  if (window.dAppClient) {
-    try {
-      const account = await getVerifiedPublicActiveAccount();
-      if (account) {
-        handleWalletConnected(account);
-        setTimeout(async () => {
-          const nfts = await fetchNFTs(account.address);
-          updateTokensWithWalletData(nfts);
-          updateEventCartBurnToken();
-          updateOwnedTokenCounts(nfts);
-        }, 200);
-      } else {
-        displayDefaultTokens();
-        updateEventCartBurnToken();
-      }
-    } catch {
-      displayDefaultTokens();
-      updateEventCartBurnToken();
-    }
-  } else {
-    displayDefaultTokens();
-    updateEventCartBurnToken();
-  }
+  // 10) Resolve wallet-dependent state from the shared verified lifecycle.
+  dropsWalletSyncReady = true;
+  const initialWalletState = pendingPublicWalletState || getPublicWalletState();
+  pendingPublicWalletState = null;
+  receivePublicWalletState(initialWalletState);
 
-  // 11) Listen for wallet connect/disconnect events
-  if (window.dAppClient?.subscribeToEvent) {
-    window.dAppClient.subscribeToEvent("ACTIVE_ACCOUNT_SET", async account => {
-      const verifiedAccount = await verifyPublicActiveAccount(account);
-      if (verifiedAccount) {
-        handleWalletConnected(verifiedAccount);
-        setTimeout(async () => {
-          const nfts = await fetchNFTs(verifiedAccount.address);
-          updateTokensWithWalletData(nfts);
-          updateEventCartBurnToken();
-          updateOwnedTokenCounts(nfts);
-        }, 200);
-      } else {
-        displayDefaultTokens();
-        updateEventCartBurnToken();
-      }
-    });
-  }
-
-  // 12) Manual disconnect
-  document.addEventListener("walletDisconnected", handleWalletDisconnected);
-
-  // 13) Pause/resume redeem-supply polling on page visibility
+  // 11) Pause/resume redeem-supply polling on page visibility
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       stopRedeemSupplyPolling();

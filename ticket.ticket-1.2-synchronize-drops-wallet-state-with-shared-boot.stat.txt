@@ -1,0 +1,3 @@
+﻿ drops/js/events.js     | 135 +++++++++++++++++++++++++------------------------
+ shared/beacon-setup.js |  69 +++++++++++++++++++++++--
+ 2 files changed, 135 insertions(+), 69 deletions(-)
