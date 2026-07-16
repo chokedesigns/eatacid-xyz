@@ -1,0 +1,96 @@
+﻿diff --git a/shared/beacon-setup.js b/shared/beacon-setup.js
+index b9fe7ce..e5cafa6 100644
+--- a/shared/beacon-setup.js
++++ b/shared/beacon-setup.js
+@@ -166,24 +166,24 @@ let clearingMismatchedActiveAccount = false;
+ // Helper: Get wallet button elements
+ // ----------------------------------------------------------------------------
+ function getWalletButtons() {
+-const allConnect = Array.from(document.querySelectorAll('.button-primary.w-button'));
++const pendingButton = document.querySelector(
++'.button-primary.wallet-pending'
++);
+ 
+-const connectButton =
+-allConnect.find(btn =>
+-btn.textContent.trim().toLowerCase().includes('connect')
+-) ||
+-allConnect[0] ||
+-null;
++const connectButton = document.querySelector(
++'.button-primary.wallet-connect'
++);
+ 
+ const connectedButton = document.querySelector(
+-'.button-primary.connected-state.w-button'
++'.button-primary.connected-state'
+ );
+ 
+ const disconnectButton = document.querySelector(
+-'.button-primary.disconnect-hover.w-button'
++'.button-primary.disconnect-hover'
+ );
+ 
+ return {
++pendingButton,
+ connectButton,
+ connectedButton,
+ disconnectButton
+@@ -255,17 +255,29 @@ address
+ };
+ 
+ const {
++pendingButton,
+ connectButton,
+ connectedButton,
+ disconnectButton
+ } = getWalletButtons();
+ 
+-[connectButton, connectedButton, disconnectButton].forEach(btn => {
++[pendingButton, connectButton, connectedButton, disconnectButton].forEach(btn => {
+ if (btn) btn.style.display = 'none';
+ });
+ 
++if (status === 'pending') {
++if (pendingButton) {
++pendingButton.style.display = 'inline-block';
++}
++
++if (window.appState) {
++window.appState.isConnected = false;
++}
++
++return;
++}
++
+ if (status === 'connected' && address) {
+-setTimeout(() => {
+ if (connectedButton) {
+ connectedButton.style.display = 'inline-block';
+ connectedButton.textContent =
+@@ -293,7 +305,6 @@ connectedButton.textContent =
+   if (window.appState) {
+     window.appState.isConnected = true;
+   }
+-}, 100);
+ 
+ return;
+ 
+@@ -461,7 +472,7 @@ connectedButton,
+ disconnectButton
+ } = getWalletButtons();
+ 
+-updateButtonState('unconnected');
++updateButtonState('pending');
+ 
+ const activeAccount = await getVerifiedPublicActiveAccount();
+ 
+@@ -476,6 +487,8 @@ fetchNFTs(activeAccount.address).catch(err => {
+   console.error('Error fetching NFTs after connect:', err);
+ });
+ 
++} else {
++updateButtonState('unconnected');
+ }
+ 
+ connectButton?.addEventListener('click', connectWallet);

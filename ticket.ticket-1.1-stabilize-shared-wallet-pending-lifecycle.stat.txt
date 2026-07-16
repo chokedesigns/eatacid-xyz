@@ -1,0 +1,2 @@
+﻿ shared/beacon-setup.js | 39 ++++++++++++++++++++++++++-------------
+ 1 file changed, 26 insertions(+), 13 deletions(-)
