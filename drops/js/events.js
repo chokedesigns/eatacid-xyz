@@ -78,7 +78,7 @@ const {
 } = dropParams;
 
 // Derive the redeem contract address for your redeem token:
-const REDEEM_CONTRACT_ADDRESS = collections[redeemToken.collection] || '';
+const REDEEM_CONTRACT_ADDRESS = collections[redeemToken?.collection] || '';
 
 // ── Debug Logging ───────────────────────────────────────────────────────────
 logger.groupCollapsed('🚀 Events.js config');
@@ -328,6 +328,58 @@ function preloadFlameIcons() {
 // HELPERS: DROP-SCHEDULE GATE
 // =============================================================================
 
+let dropParamsPendingReleased = false;
+
+/** Releases the Webflow-owned parameter shell after one coherent initial render. */
+function releaseDropParamsPending() {
+  if (dropParamsPendingReleased) return;
+
+  document.querySelector('.drops-params-pending')
+    ?.classList.remove('drops-params-pending');
+  dropParamsPendingReleased = true;
+}
+
+/** Renders a deliberate terminal fallback if parameter initialization fails. */
+function renderDropParamsUnavailable() {
+  const selectors = [
+    '.drop-details-drop-date-text',
+    '.drop-details-drop-time-text',
+    '.drop-details-drop-date-countdown-text',
+    '.drop-details-drop-date-countdown-text-mobile',
+    '.drop-details-burn-amount-text',
+    '.drop-details-burn-collection-text',
+    '.drop-details-exclusions-text',
+    '.drop-details-exclusions-text-none',
+    '.drop-details-redeem-amount-text',
+    '.drop-details-redeem-token-title-text',
+    '.drop-details-redeem-collection-text'
+  ];
+
+  selectors.forEach(selector => {
+    const el = document.querySelector(selector);
+    if (el) el.textContent = '[UNAVAILABLE]';
+  });
+}
+
+/** Owns the initial parameter render and its one-time pending release. */
+function initializeDropParameterRegion() {
+  try {
+    setEventContractAndTokenAttributes();
+    renderDropDetails();
+
+    Promise.resolve(startCountdown())
+      .catch(error => {
+        console.error('Error initializing Drops parameters:', error);
+        renderDropParamsUnavailable();
+      })
+      .finally(releaseDropParamsPending);
+  } catch (error) {
+    console.error('Error initializing Drops parameters:', error);
+    renderDropParamsUnavailable();
+    releaseDropParamsPending();
+  }
+}
+
 /**
  * Evaluates DROP_PARAMS.dropScheduled and switches the top-level panels.
  * Hides the page-load spinner in both branches.
@@ -374,6 +426,8 @@ function renderNetworkUnavailable() {
     exchangeButton.setAttribute('aria-disabled', 'true');
     if ('disabled' in exchangeButton) exchangeButton.disabled = true;
   }
+
+  releaseDropParamsPending();
 }
 
 // =============================================================================
@@ -1152,16 +1206,20 @@ function updateDropDateTime() {
   const timeEl = document.querySelector('.drop-details-drop-time-text');
 
   // ----- DATE LABEL (strict via validateDropDate) -----
-  if (dateEl && dropDate) {
-    const validation = validateDropDate(dropDate);
-
-    if (!validation.ok) {
-      // Hard error in UI for malformed Y-M-D
-      dateEl.innerHTML = 'CONFIG ERROR: BAD DATE';
+  if (dateEl) {
+    if (!dropDate) {
+      dateEl.innerHTML = 'CONFIG ERROR: MISSING DATE';
     } else {
-      const { date } = validation;
-      const opts = { weekday: "long", month: "long", day: "2-digit" };
-      dateEl.innerHTML = date.toLocaleDateString("en-US", opts).toUpperCase();
+      const validation = validateDropDate(dropDate);
+
+      if (!validation.ok) {
+        // Hard error in UI for malformed Y-M-D
+        dateEl.innerHTML = 'CONFIG ERROR: BAD DATE';
+      } else {
+        const { date } = validation;
+        const opts = { weekday: "long", month: "long", day: "2-digit" };
+        dateEl.innerHTML = date.toLocaleDateString("en-US", opts).toUpperCase();
+      }
     }
   }
 
@@ -1743,7 +1801,7 @@ function displayDefaultTokens() {
  * Polls the escrow contract’s storage until its `paused` flag flips to false,
  * then re-fetches & re-renders the user's NFTs.
  */
-async function pollForUnpause(contractAddress, interval = 3000) {
+async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus) {
   if (!networkConfigAvailable) {
     console.error(networkUnavailableMessage);
     return;
@@ -1764,7 +1822,10 @@ async function pollForUnpause(contractAddress, interval = 3000) {
       const storage = await res.json();
       logger.log(`[pollForUnpause] paused =`, storage.paused);
 
-      if (storage.paused === false) {
+      const paused = typeof storage.paused === 'boolean' ? storage.paused : null;
+      onPauseStatus?.(paused);
+
+      if (paused === false) {
         logger.log("[pollForUnpause] detected unpause!");
         updateAppState({ contractPaused: false });
 
@@ -1781,6 +1842,7 @@ async function pollForUnpause(contractAddress, interval = 3000) {
       }
     } catch (err) {
       console.error(`[pollForUnpause] fetch error:`, err);
+      onPauseStatus?.(null);
     }
     await new Promise(resolve => setTimeout(resolve, interval));
   }
@@ -1806,8 +1868,19 @@ function startCountdown() {
   }
 
   // If neither element exists, bail early
-  if ((!countdownEl && !countdownElMobile) || !dropDate || !dropTime) {
+  if (!countdownEl && !countdownElMobile) {
     console.warn("[startCountdown] Missing elements or config; aborting.");
+    return;
+  }
+
+  if (!dropDate || !dropTime) {
+    const msg = 'CONFIG ERROR: MISSING DATE/TIME';
+    console.warn('[startCountdown] Missing elements or config; aborting.');
+    setCountdownText(msg);
+    updateAppState({
+      countdownPhase:   'config-error',
+      currentCountdown: msg
+    });
     return;
   }
 
@@ -1844,14 +1917,37 @@ function startCountdown() {
     updateAppState({ countdownPhase: 'standby' });
     setCountdownText("STANDBY…");
 
-    pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS)
-      .then(() => {
-        logger.log("[startCountdown] Unpaused → LIVE");
-        updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
-        setCountdownText("LIVE NOW!");
+    return new Promise(resolveInitialStatus => {
+      let initialStatusResolved = false;
+      let receivedPauseStatus = false;
+      const resolveOnce = () => {
+        if (initialStatusResolved) return;
+        initialStatusResolved = true;
+        resolveInitialStatus();
+      };
+
+      pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS, 3000, paused => {
+        if (paused === true) {
+          receivedPauseStatus = true;
+          setCountdownText('STANDBY…');
+          resolveOnce();
+        } else if (paused == null && !receivedPauseStatus) {
+          setCountdownText('STATUS UNAVAILABLE');
+          resolveOnce();
+        }
       })
-      .catch(err => console.error("[startCountdown] pollForUnpause error:", err));
-    return;
+        .then(() => {
+          logger.log('[startCountdown] Unpaused → LIVE');
+          setCountdownText('LIVE NOW!');
+          updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
+          resolveOnce();
+        })
+        .catch(err => {
+          console.error('[startCountdown] pollForUnpause error:', err);
+          setCountdownText('STATUS UNAVAILABLE');
+          resolveOnce();
+        });
+    });
   }
 
   /**
@@ -1872,8 +1968,8 @@ function startCountdown() {
       pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS)
         .then(() => {
           logger.log("[startCountdown] Unpaused → LIVE");
-          updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
           setCountdownText("LIVE NOW!");
+          updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
         })
         .catch(err => console.error("[startCountdown] pollForUnpause error:", err));
       return;
@@ -2282,7 +2378,10 @@ async function bootDropsPage() {
   //     - Hides .drops-page-load-spinner-div
   //     - Shows either .drops-ui-div or .no-drops-scheduled-div
   //     - Returns early if no drop is scheduled
-  if (!applyDropScheduledGate()) return;
+  if (!applyDropScheduledGate()) {
+    releaseDropParamsPending();
+    return;
+  }
 
   // 0a) Preload our flame-animation GIFs so toggles are instant
   preloadFlameIcons();
@@ -2297,11 +2396,8 @@ async function bootDropsPage() {
   const addDiv = document.querySelector('.event-cart-add-token-text-div');
   if (addDiv) defaultAddTokenMarkup = addDiv.innerHTML;
 
-  // 2) Build CMS-row lookup
-  setEventContractAndTokenAttributes();
-
-  // 3) Render drop details
-  renderDropDetails();
+  // 2-3) Build the CMS lookup, render details, and release pending when coherent
+  initializeDropParameterRegion();
 
   // 4) Populate Redeem-Token panel
   updateEventCartRedeemToken();
@@ -2313,10 +2409,7 @@ async function bootDropsPage() {
   // 4b) Start polling the on-chain redeem-token supply
   startRedeemSupplyPolling();
 
-  // 5) Start countdown / standby / live-unpause
-  startCountdown();
-
-  // 6) Wire up checkboxes & exchange-button handlers
+  // 5) Wire up checkboxes & exchange-button handlers
   setupExclusiveCheckboxesWallet();
   attachExchangeButtonHandlers();
 
