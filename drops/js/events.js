@@ -574,6 +574,91 @@ function showRedeemSpinner(imgWrap, spinner) {
   });
 }
 
+let redeemPreviewPendingReleased = false;
+let redeemPreviewCommitted = false;
+let redeemInitialSupplyPublishing = false;
+
+/** Completes the one-time redeem-preview lifecycle after a coherent terminal render. */
+function releaseRedeemPreviewPending(spinner) {
+  if (redeemPreviewPendingReleased) return;
+
+  if (spinner) spinner.style.display = 'none';
+  document.querySelector('.drops-preview-pending')
+    ?.classList.remove('drops-preview-pending');
+  redeemPreviewPendingReleased = true;
+}
+
+/** Returns deliberate metadata values when the configured redeem token is unavailable. */
+function getRedeemMetadataUnavailable() {
+  return {
+    title: '[UNAVAILABLE]',
+    collection: '[UNAVAILABLE]',
+    editions: '--'
+  };
+}
+
+/** Replaces an unresolved redeem image with a stable, truthful fallback. */
+function renderRedeemImageUnavailable(imgWrap) {
+  if (!imgWrap) return;
+
+  imgWrap.querySelector('img.event-cart-redeem-img')?.remove();
+  let fallback = imgWrap.querySelector('.event-cart-redeem-image-unavailable');
+  if (!fallback) {
+    fallback = document.createElement('div');
+    fallback.className = 'event-cart-redeem-image-unavailable';
+    fallback.textContent = '[IMAGE UNAVAILABLE]';
+    Object.assign(fallback.style, {
+      alignItems: 'center',
+      display: 'flex',
+      height: '188px',
+      justifyContent: 'center',
+      textAlign: 'center',
+      width: '150px'
+    });
+    imgWrap.appendChild(fallback);
+  }
+}
+
+/** Commits the complete initial preview, then releases its spinner and pending shell. */
+function commitInitialRedeemPreview(container, imgWrap, spinner, preview) {
+  if (redeemPreviewCommitted || !container) return;
+
+  const titleEl    = container.querySelector('.collection-item-events-title-text');
+  const collEl     = container.querySelector('.collection-item-events-collection-text');
+  const editionsEl = container.querySelector('.collection-item-events-editions-text');
+  const supplyEl   = container.querySelector('.supply-text-number');
+
+  if (titleEl)    titleEl.textContent    = preview.metadata.title;
+  if (collEl)     collEl.textContent     = preview.metadata.collection;
+  if (editionsEl) editionsEl.textContent = preview.metadata.editions;
+
+  if (imgWrap) {
+    imgWrap.querySelector('img.event-cart-redeem-img')?.remove();
+    imgWrap.querySelector('.event-cart-redeem-image-unavailable')?.remove();
+    if (preview.image.status === 'loaded') {
+      imgWrap.appendChild(preview.image.element);
+    } else {
+      renderRedeemImageUnavailable(imgWrap);
+    }
+  }
+
+  if (supplyEl) supplyEl.textContent = preview.supply.text;
+
+  releaseRedeemPreviewPending(spinner);
+  redeemPreviewCommitted = true;
+
+  // Publish the resolved supply, then reconcile against phase state retained during loading.
+  redeemInitialSupplyPublishing = true;
+  try {
+    if (preview.supply.available) {
+      updateAppState({ redeemSupply: preview.supply.value });
+    }
+  } finally {
+    redeemInitialSupplyPublishing = false;
+    reconcileRedeemSupplyPolling({ runImmediately: false });
+  }
+}
+
 
 // =============================================================================
 // HELPERS: CMS ROWS
@@ -755,6 +840,8 @@ async function fetchRedeemSupply() {
  * and pushes it into AppState for downstream consumers.
  */
 async function updateRedeemSupplyDisplay() {
+  if (!redeemPreviewCommitted) return false;
+
   try {
     const supply = await fetchRedeemSupply();
     const el = document.querySelector('.supply-text-number');
@@ -763,23 +850,45 @@ async function updateRedeemSupplyDisplay() {
     }
 
     updateAppState({ redeemSupply: supply });
+    return true;
   } catch (err) {
     console.error('Error polling redeem supply:', err);
+    return false;
+  }
+}
+
+/** Resolves the initial supply without mutating the preview or AppState. */
+async function resolveInitialRedeemSupply() {
+  try {
+    const supply = await fetchRedeemSupply();
+    return {
+      available: true,
+      value: supply,
+      text: 'x' + String(supply).padStart(2, '0')
+    };
+  } catch (error) {
+    console.error('Error resolving initial redeem supply:', error);
+    return {
+      available: false,
+      value: null,
+      text: '[UNAVAILABLE]'
+    };
   }
 }
 
 /**
- * Starts a repeated poll (runs immediately + every intervalMs),
+ * Starts a repeated poll (optionally running immediately, then every intervalMs),
  * but only if not already running.
  *
  * @param {number} [intervalMs=10000] How often, in milliseconds, to refresh.
+ * @param {boolean} [runImmediately=true] Whether to update before the first interval.
  */
-function startRedeemSupplyPolling(intervalMs = 10000) {
-  if (redeemSupplyIntervalId != null) return;
-  // initial fetch
-  updateRedeemSupplyDisplay();
+function startRedeemSupplyPolling(intervalMs = 10000, runImmediately = true) {
+  if (!redeemPreviewCommitted || redeemSupplyIntervalId != null) return null;
+  const initialUpdate = runImmediately ? updateRedeemSupplyDisplay() : null;
   // then every X seconds
   redeemSupplyIntervalId = setInterval(updateRedeemSupplyDisplay, intervalMs);
+  return initialUpdate;
 }
 
 /**
@@ -792,13 +901,26 @@ function stopRedeemSupplyPolling() {
   }
 }
 
-// Automatically start/stop polling based on live phase AND remaining supply
-subscribeToAppState(({ countdownPhase, redeemSupply }) => {
-  if (countdownPhase === 'live' && redeemSupply > 0) {
-    startRedeemSupplyPolling();
+/** Reconciles the single supply interval against retained phase, supply, and visibility state. */
+function reconcileRedeemSupplyPolling({ runImmediately = true } = {}) {
+  if (!redeemPreviewCommitted) return;
+
+  const shouldPoll =
+    !document.hidden &&
+    AppState.countdownPhase === 'live' &&
+    AppState.redeemSupply > 0;
+
+  if (shouldPoll) {
+    startRedeemSupplyPolling(10000, runImmediately);
   } else {
     stopRedeemSupplyPolling();
   }
+}
+
+// Automatically reconcile polling after later phase or supply changes.
+subscribeToAppState(() => {
+  if (redeemInitialSupplyPublishing) return;
+  reconcileRedeemSupplyPolling();
 });
 
 // =============================================================================
@@ -1652,32 +1774,58 @@ function updateEventCartBurnToken() {
 
 /**
  * Updates the “Redeem Token” panel in the event cart.
- * Shows spinner until the CMS image is fully loaded, then swaps it in center-aligned.
+ * Holds the spinner and pending wrapper through one coherent terminal render.
  */
-function updateEventCartRedeemToken() {
+async function updateEventCartRedeemToken() {
   // 1) Configuration & container
   const cfg       = redeemToken;
   const container = document.querySelector('.event-cart-redeem-token-div-main');
+  const spinner = container?.querySelector('.loading-spinner-02-redeem-token')
+               || document.querySelector('.loading-spinner-02-redeem-token');
   if (!container) {
+    releaseRedeemPreviewPending(spinner);
     console.warn("Event cart redeem token container not found.");
     return;
   }
 
   // 2) Spinner setup via helper
   const imgWrap = container.querySelector('.event-cart-burn-token-image-div');
-  const spinner = imgWrap?.querySelector('.loading-spinner-02-redeem-token')
-               || container.querySelector('.loading-spinner-02-redeem-token');
   showRedeemSpinner(imgWrap, spinner);
 
-  // 3) Locate the appropriate CMS row via helper
-  const key = cfg.collection.toUpperCase();
-  const row = findRedeemRow(cfg, key);
+  try {
+    const collection = typeof cfg?.collection === 'string'
+      ? cfg.collection.trim()
+      : '';
+    const tokenId = cfg?.tokenId != null ? String(cfg.tokenId).trim() : '';
+    let metadata = getRedeemMetadataUnavailable();
+    let row = null;
 
-  // 4) Render text fields via helper
-  renderRedeemText(container, row, cfg, key);
+    if (!collection || !tokenId) {
+      console.warn('Redeem token configuration is missing collection or tokenId.');
+    } else {
+      const key = collection.toUpperCase();
+      row = findRedeemRow({ ...cfg, tokenId }, key);
+      metadata = resolveRedeemMetadata(row, cfg, key);
+    }
 
-  // 5) Preload & display image via helper
-  preloadRedeemImage(imgWrap, row, spinner);
+    const [image, supply] = await Promise.all([
+      resolveRedeemImage(row),
+      resolveInitialRedeemSupply()
+    ]);
+
+    commitInitialRedeemPreview(container, imgWrap, spinner, {
+      metadata,
+      image,
+      supply
+    });
+  } catch (error) {
+    console.error('Error initializing redeem preview:', error);
+    commitInitialRedeemPreview(container, imgWrap, spinner, {
+      metadata: getRedeemMetadataUnavailable(),
+      image: { status: 'unavailable', element: null },
+      supply: { available: false, value: null, text: '[UNAVAILABLE]' }
+    });
+  }
 }
 
 /**
@@ -1701,75 +1849,75 @@ function findRedeemRow(cfg, key) {
 }
 
 /**
- * Updates the title, collection, editions, and supply text fields.
+ * Resolves title, collection, and edition-count values without mutating the preview.
  *
- * @param {Element} container
  * @param {Element|null} row  The matched CMS row or null.
  * @param {{redeemAmount:string, totalSupply:number}} cfg
  * @param {string} key  Uppercase collection key.
+ * @returns {{title:string, collection:string, editions:string}}
  */
-function renderRedeemText(container, row, cfg, key) {
-  let title = row?.querySelector('.collection-item-title-text')?.textContent.trim() || "[TOKEN TITLE NOT FOUND]";
-  if (title.length > 12) title = title.slice(0,12) + "...";
+function resolveRedeemMetadata(row, cfg, key) {
+  const editions = row?.querySelector('.collection-item-editions-text-number')?.textContent.trim()
+    || (cfg?.redeemAmount != null ? String(cfg.redeemAmount).trim() : '');
+  let title = row?.querySelector('.collection-item-title-text')?.textContent.trim() || '';
 
-  const titleEl    = container.querySelector('.collection-item-events-title-text');
-  const collEl     = container.querySelector('.collection-item-events-collection-text');
-  const editionsEl = container.querySelector('.collection-item-events-editions-text');
-  const supplyEl   = container.querySelector('.supply-text-number');
+  if (
+    !row ||
+    !title ||
+    !key ||
+    !editions
+  ) {
+    return getRedeemMetadataUnavailable();
+  }
 
-  if (titleEl)    titleEl.textContent    = title;
-  if (collEl)     collEl.textContent     = key;
-  if (editionsEl) editionsEl.textContent = row
-    ? row.querySelector('.collection-item-editions-text-number')?.textContent.trim()
-    : cfg.redeemAmount;
-  if (supplyEl)   supplyEl.textContent   = "x" + cfg.totalSupply;
+  if (title.length > 12) title = title.slice(0,12) + '...';
+  return { title, collection: key, editions };
 }
 
 /**
- * Preloads the redeem image off-DOM and reveals it centered when loaded.
- * Hides the spinner once the image is visible.
+ * Resolves the redeem image off-DOM into a loaded element or unavailable result.
  *
- * @param {Element} imgWrap    The `.event-cart-burn-token-image-div` wrapper.
  * @param {Element|null} row   The matched CMS row or null.
- * @param {Element} spinner    The spinner element to hide on load.
+ * @returns {Promise<{status:string, element:Element|null}>}
  */
-function preloadRedeemImage(imgWrap, row, spinner) {
-  // If no matching row, keep spinner visible and exit
-  if (!row || !imgWrap) {
-    spinner && (spinner.style.display = 'block');
-    console.warn("No matching CMS row for redeem token; spinner remains.");
-    return;
+function resolveRedeemImage(row) {
+  if (!row) {
+    console.warn('No matching CMS row for redeem token.');
+    return Promise.resolve({ status: 'unavailable', element: null });
   }
 
   const cmsImg = row.querySelector('.collection-item-image-div img');
-  if (!cmsImg) {
-    spinner && (spinner.style.display = 'block');
-    return;
+  if (!cmsImg?.src) {
+    console.warn('Redeem token image is unavailable.');
+    return Promise.resolve({ status: 'unavailable', element: null });
   }
 
-  const pre = new Image();
-  pre.src      = cmsImg.src;
-  if (cmsImg.srcset) pre.srcset = cmsImg.srcset;
-  pre.width    = 150;
-  pre.height   = 188;
-  pre.alt      = pre.alt;
-  pre.className = 'event-cart-redeem-img';
-  pre.style.visibility = 'hidden';
+  return new Promise(resolve => {
+    const pre = new Image();
+    pre.width    = 150;
+    pre.height   = 188;
+    pre.alt      = row.querySelector('.collection-item-title-text')?.textContent.trim() || '';
+    pre.className = 'event-cart-redeem-img';
+    pre.style.visibility = 'hidden';
 
-  pre.onload = () => {
-    spinner && (spinner.style.display = 'none');
-    pre.style.visibility = 'visible';
-    logger.log("Event cart redeem token image loaded:", cmsImg.src);
-  };
+    pre.onload = () => {
+      pre.style.visibility = 'visible';
+      logger.log('Event cart redeem token image loaded:', cmsImg.src);
+      resolve({ status: 'loaded', element: pre });
+    };
+    pre.onerror = () => {
+      console.warn('Redeem token image failed to load:', cmsImg.src);
+      resolve({ status: 'unavailable', element: null });
+    };
 
-  // Replace any previous image
-  imgWrap.querySelector('img.event-cart-redeem-img')?.remove();
-  imgWrap.appendChild(pre);
+    if (cmsImg.srcset) pre.srcset = cmsImg.srcset;
+    pre.src = cmsImg.src;
+  });
 }
 
 /**
  * Shows every CMS row in each burn-token list (pre-wallet UI).
- * Hides both spinners once the rows are back in the DOM.
+ * Hides the wallet-token spinner once the rows are back in the DOM.
  */
 function displayDefaultTokens() {
   logger.log("Displaying default tokens.");
@@ -1786,11 +1934,9 @@ function displayDefaultTokens() {
     });
   });
 
-  // hide spinners now that default tokens are rendered
+  // hide the wallet spinner now that default tokens are rendered
   const availSpinner = document.querySelector('.available-token-ui-loading---events');
   if (availSpinner) availSpinner.style.display = 'none';
-  const redeemSpinner = document.querySelector('.loading-spinner-02-redeem-token');
-  if (redeemSpinner) redeemSpinner.style.display = 'none';
 }
 
 // =============================================================================
@@ -2399,15 +2545,12 @@ async function bootDropsPage() {
   // 2-3) Build the CMS lookup, render details, and release pending when coherent
   initializeDropParameterRegion();
 
-  // 4) Populate Redeem-Token panel
-  updateEventCartRedeemToken();
+  // 4) Populate and coherently release the Redeem-Token preview panel
+  void updateEventCartRedeemToken();
 
   // 4a) Ensure redeem-token panel sits above the (empty) burn-token panel
   const redeemPanel = document.querySelector('.event-cart-redeem-token-div-main');
   if (redeemPanel) redeemPanel.style.zIndex = '10';
-
-  // 4b) Start polling the on-chain redeem-token supply
-  startRedeemSupplyPolling();
 
   // 5) Wire up checkboxes & exchange-button handlers
   setupExclusiveCheckboxesWallet();
@@ -2483,13 +2626,9 @@ async function bootDropsPage() {
   pendingPublicWalletState = null;
   receivePublicWalletState(initialWalletState);
 
-  // 11) Pause/resume redeem-supply polling on page visibility
+  // 11) Reconcile redeem-supply polling on page visibility
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopRedeemSupplyPolling();
-    } else if (AppState.countdownPhase === 'live') {
-      startRedeemSupplyPolling();
-    }
+    reconcileRedeemSupplyPolling();
   });
 
   // — no spinner toggles here any more — each spinner hides itself in its success path —
