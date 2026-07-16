@@ -236,14 +236,15 @@ logger.log('Fetching NFTs for wallet address:', address);
 const baseUrl = tzkt[network];
 
 if (!baseUrl) {
-console.error(`Missing TzKT base URL for network: ${network}`);
-return [];
+const error = new Error('Missing TzKT base URL for network: ' + network);
+console.error(error.message);
+throw error;
 }
 
 const apiUrl =
-`${baseUrl}/v1/tokens/balances` +
-`?account=${address}` +
-`&token.standard=fa2`;
+baseUrl + '/v1/tokens/balances' +
+'?account=' + address +
+'&token.standard=fa2';
 
 try {
 const response = await fetch(apiUrl);
@@ -252,14 +253,18 @@ if (!response.ok) {
   const body = await response.text().catch(() => '');
 
   throw new Error(
-    `TzKT request failed ${response.status}: ${apiUrl}` +
-    `${body ? `\n${body}` : ''}`
+    'TzKT request failed ' + response.status + ': ' + apiUrl +
+    (body ? '\n' + body : '')
   );
 }
 
 const nfts = await response.json();
 
-logger.log(`NFTs fetched from ${network}:`, nfts);
+if (!Array.isArray(nfts)) {
+  throw new TypeError('TzKT NFT response was not an array: ' + apiUrl);
+}
+
+logger.log('NFTs fetched from ' + network + ':', nfts);
 
 return nfts.map(nft => ({
   tokenId: nft.token.tokenId,
@@ -269,7 +274,7 @@ return nfts.map(nft => ({
 
 } catch (error) {
 console.error('Error fetching NFTs:', error);
-return [];
+throw error;
 }
 }
 
@@ -483,6 +488,10 @@ account.address
     return;
   }
 
+  if (generation !== walletLifecycleGeneration) {
+    return;
+  }
+
   if (
     publicWalletState.status === 'connected' &&
     publicWalletState.account?.address === verifiedAccount.address
@@ -491,11 +500,9 @@ account.address
   }
 
   const nftsPromise = fetchNFTs(verifiedAccount.address);
-  await nftsPromise;
-
-  if (generation !== walletLifecycleGeneration) {
-    return;
-  }
+  nftsPromise.catch(err => {
+    console.error('Error fetching NFTs after account set:', err);
+  });
 
   updateButtonState('connected', verifiedAccount.address);
   publishPublicWalletState('connected', verifiedAccount, nftsPromise);
