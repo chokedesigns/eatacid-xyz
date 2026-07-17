@@ -12,7 +12,8 @@ import {
 import { createPublicLogger } from '../../shared/public-logger.js';
 import {
   getVerifiedPublicActiveAccount,
-  verifyPublicActiveAccount
+  getPublicWalletState,
+  PUBLIC_WALLET_STATE_EVENT
 } from '../../shared/beacon-setup.js';
 const { network, rpc, tzkt, contracts, validation, isConfigured, unavailableMessage } = cfg;
 // pick the right network’s contract set
@@ -52,7 +53,9 @@ const EXPLORER_BASE = network === 'mainnet'
  */
 const tabContractAddresses = {
   'w-tabs-0-data-w-pane-0': current.collections.pane0,  // The 419 Script
-  'w-tabs-0-data-w-pane-1': current.collections.pane1   // Canaan
+  'w-tabs-0-data-w-pane-1': current.collections.pane1,  // Canaan
+  '419': current.collections.pane0,
+  'CANAAN': current.collections.pane1
 };
 
 logger.log("📌 Contract Addresses Loaded:", tabContractAddresses);
@@ -81,6 +84,26 @@ const exchangeState = {
   hasCartItems: false,
 };
 let exchangeInFlight = false;
+const EXCHANGE_WALLET_PENDING_CLASS = 'exchange-wallet-tokens-pending';
+const EXCHANGE_PANES = [
+  {
+    key: '419',
+    tabName: '419',
+    contractAddress: current.collections.pane0,
+    noTokensSelector: '.no-tokens-in-walet-div---419'
+  },
+  {
+    key: 'canaan',
+    tabName: 'CANAAN',
+    contractAddress: current.collections.pane1,
+    noTokensSelector: '.no-tokens-in-walet-div---canaan'
+  }
+];
+let exchangeWalletSyncReady = false;
+let pendingPublicWalletState = null;
+let synchronizedWalletAddress;
+let walletRefreshGeneration = 0;
+let exchangeWalletTokensPending = true;
 
 // =============================================================================
 // GLOBAL UTILITIES
@@ -105,68 +128,15 @@ window.getEditionCount = function (dropdown) {
 };
 
 /**
- * Updates the burn-tokens header to reflect wallet state.
- *
- * Disconnected: "ELIGIBLE BURN TOKENS"
- * Connected:    "AVAILABLE BURN TOKENS"
- *
- * @param {boolean} isConnected
- */
-function setBurnTokensHeader(isConnected) {
-  const header = document.querySelector('.available-burn-tokens-exchange-text');
-  if (!header) return;
-
-  header.textContent = isConnected
-    ? 'AVAILABLE BURN TOKENS'
-    : 'ELIGIBLE BURN TOKENS';
-}
-
-/**
- * Processes incoming NFTs and updates the UI.
- * Resets the UI, sets attributes, processes wallet NFTs, and updates the burn cart.
+ * Compatibility hook for legacy local callers after a confirmed connected refresh.
+ * Shared wallet startup now enters through synchronizeExchangeWalletState().
  *
  * @param {Array} nfts - Array of NFTs fetched from the wallet.
  */
 window.receiveNFTs = function (nfts) {
-  logger.log('Resetting UI in receiveNFTs...');
-  resetUI();
-
-  logger.log('Processing NFTs:', nfts);
-  setContractAndTokenAttributes();
-  processWalletNFTs(nfts);
-  updateBurnCart();
-
-  // Wallet is connected if we received NFTs for an active account.
-  setBurnTokensHeader(true);
-
-  logger.log('NFT processing complete.');
+  logger.log('Processing NFTs through Exchange wallet-token lifecycle:', nfts);
+  renderConnectedWalletTokenState(nfts);
 };
-
-// =============================================================================
-// WALLET EVENT SUBSCRIPTION FOR UI UPDATE
-// =============================================================================
-
-// When the active account is set (e.g. after connecting the wallet),
-// automatically fetch NFTs and update the UI.
-if (networkConfigAvailable && window.dAppClient && typeof window.dAppClient.subscribeToEvent === 'function') {
-  window.dAppClient.subscribeToEvent('ACTIVE_ACCOUNT_SET', async (account) => {
-    const verifiedAccount = await verifyPublicActiveAccount(account);
-    if (verifiedAccount) {
-      logger.log("ACTIVE_ACCOUNT_SET event triggered:", verifiedAccount.address);
-      fetchNFTs(verifiedAccount.address).then((nfts) => {
-        if (typeof window.receiveNFTs === 'function') {
-          window.receiveNFTs(nfts);
-        } else {
-          console.error('receiveNFTs function not found.');
-        }
-      });
-    } else {
-      // If the wallet client signals "no active account", restore disconnected defaults.
-      setBurnTokensHeader(false);
-      updateCartButtons();
-    }
-  });
-}
 
 // =============================================================================
 // MODAL & UI RESET FUNCTIONS
@@ -295,6 +265,226 @@ function normalizeString(str) {
   return str ? str.trim().toLowerCase() : '';
 }
 
+function getPaneElements(config) {
+  const pane = document.querySelector(`.w-tab-pane[data-w-tab="${config.tabName}"]`);
+  const wrapper = pane?.querySelector('.exchange-ui-div') || null;
+
+  return {
+    ...config,
+    pane,
+    wrapper,
+    spinner: wrapper?.querySelector('.loading-spinner-01-exchange-ui') || null,
+    noTokens: wrapper?.querySelector(config.noTokensSelector) || null,
+    rows: Array.from(wrapper?.querySelectorAll('.collection-item-01-div') || [])
+  };
+}
+
+function getExchangePaneElements() {
+  return EXCHANGE_PANES.map(getPaneElements);
+}
+
+function setBurnTokensHeaderText(text = '', visible = false) {
+  const header = document.querySelector('.available-burn-tokens-exchange-text');
+  if (!header) return;
+
+  header.textContent = visible ? text : '';
+  header.style.visibility = visible ? 'visible' : 'hidden';
+}
+
+function setDropdownState(dropdown, { maxQty = 0, enabled = false } = {}) {
+  if (!dropdown) return;
+
+  resetDropdown(dropdown);
+  populateDropdown(dropdown, maxQty);
+  dropdown.value = '';
+  dropdown.disabled = !enabled;
+  dropdown.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+}
+
+function isDropdownActionable(dropdown) {
+  return Boolean(
+    dropdown &&
+    !dropdown.disabled &&
+    !exchangeWalletTokensPending &&
+    synchronizedWalletAddress
+  );
+}
+
+function resetBurnCartDisplay() {
+  const burnCartContainer = document.querySelector('.burn-cart-display');
+  if (burnCartContainer) {
+    const emptyCartDiv = burnCartContainer.querySelector('.empty-cart-div');
+    const burnCartStructureDiv = burnCartContainer.querySelector('.burn-cart-display-structure-div');
+    if (emptyCartDiv && burnCartStructureDiv) {
+      burnCartStructureDiv.innerHTML = '';
+      emptyCartDiv.style.display = 'block';
+      burnCartStructureDiv.style.display = 'none';
+    }
+  }
+
+  exchangeState.hasCartItems = false;
+  resetTotalDisplay();
+}
+
+function setExchangeActionPendingState() {
+  ['.exchange-button-connect.w-button', '.exchange-button-empty.w-button', '.exchange-button.w-button']
+    .forEach((selector) => {
+      const button = document.querySelector(selector);
+      if (button) button.style.display = 'none';
+    });
+}
+
+function commitPaneState(paneElements, {
+  spinnerVisible = false,
+  noTokensVisible = false,
+  rowsVisible = false,
+  terminal = false
+} = {}) {
+  const { wrapper, spinner, noTokens, rows } = paneElements;
+
+  if (spinner) spinner.style.display = spinnerVisible ? 'block' : 'none';
+  if (noTokens) noTokens.style.display = noTokensVisible && !spinnerVisible ? 'flex' : 'none';
+
+  if (!rowsVisible) {
+    rows.forEach((row) => {
+      row.style.display = 'none';
+    });
+  }
+
+  if (terminal && wrapper) {
+    wrapper.classList.remove(EXCHANGE_WALLET_PENDING_CLASS);
+  }
+}
+
+function renderWalletTokenLoadingState() {
+  exchangeWalletTokensPending = true;
+  setBurnTokensHeaderText('', false);
+  getExchangePaneElements().forEach((paneElements) => {
+    paneElements.wrapper?.classList.add(EXCHANGE_WALLET_PENDING_CLASS);
+    paneElements.rows.forEach((row) => {
+      setDropdownState(row.querySelector('.token-qty.w-select'));
+      row.style.display = 'none';
+    });
+    commitPaneState(paneElements, { spinnerVisible: true });
+  });
+  resetBurnCartDisplay();
+  setExchangeActionPendingState();
+}
+
+function renderDisconnectedWalletTokenState() {
+  exchangeWalletTokensPending = false;
+  resetUI();
+  setContractAndTokenAttributes();
+  setBurnTokensHeaderText('ELIGIBLE BURN TOKENS', true);
+
+  getExchangePaneElements().forEach((paneElements) => {
+    paneElements.rows.forEach((row) => {
+      const dropdown = row.querySelector('.token-qty.w-select');
+      setDropdownState(dropdown);
+      row.style.display = '';
+    });
+    commitPaneState(paneElements, { rowsVisible: true, terminal: true });
+  });
+
+  updateCartButtons();
+}
+
+function renderConnectedWalletTokenFailureState() {
+  exchangeWalletTokensPending = false;
+  setContractAndTokenAttributes();
+  setBurnTokensHeaderText('AVAILABLE BURN TOKENS', true);
+
+  getExchangePaneElements().forEach((paneElements) => {
+    paneElements.rows.forEach((row) => {
+      setDropdownState(row.querySelector('.token-qty.w-select'));
+      row.style.display = 'none';
+    });
+    commitPaneState(paneElements, { terminal: true });
+  });
+
+  resetBurnCartDisplay();
+  updateCartButtons();
+}
+
+function renderConnectedWalletTokenState(nfts) {
+  exchangeWalletTokensPending = false;
+  setContractAndTokenAttributes();
+  setBurnTokensHeaderText('AVAILABLE BURN TOKENS', true);
+
+  const paneResults = processWalletNFTs(nfts);
+  getExchangePaneElements().forEach((paneElements) => {
+    const result = paneResults[paneElements.key] || { eligibleCount: 0 };
+    commitPaneState(paneElements, {
+      noTokensVisible: result.eligibleCount === 0,
+      rowsVisible: result.eligibleCount > 0,
+      terminal: true
+    });
+  });
+
+  updateBurnCart();
+}
+
+async function refreshExchangeWallet(account, generation, nftsPromise) {
+  try {
+    const nfts = await (nftsPromise || fetchNFTs(account.address));
+
+    if (
+      generation !== walletRefreshGeneration ||
+      synchronizedWalletAddress !== account.address
+    ) {
+      return;
+    }
+
+    renderConnectedWalletTokenState(nfts);
+  } catch (error) {
+    if (
+      generation === walletRefreshGeneration &&
+      synchronizedWalletAddress === account.address
+    ) {
+      console.error('Error refreshing Exchange wallet-token state:', error);
+      renderConnectedWalletTokenFailureState();
+    }
+  }
+}
+
+function synchronizeExchangeWalletState(walletState) {
+  if (!walletState || walletState.status === 'pending') {
+    renderWalletTokenLoadingState();
+    return;
+  }
+
+  const account = walletState.status === 'connected'
+    ? walletState.account
+    : null;
+  const address = account?.address || null;
+
+  if (address === synchronizedWalletAddress) return;
+
+  synchronizedWalletAddress = address;
+  const generation = ++walletRefreshGeneration;
+
+  if (!account) {
+    renderDisconnectedWalletTokenState();
+    return;
+  }
+
+  renderWalletTokenLoadingState();
+  void refreshExchangeWallet(account, generation, walletState.nftsPromise);
+}
+
+function receivePublicWalletState(walletState) {
+  if (!exchangeWalletSyncReady) {
+    pendingPublicWalletState = walletState;
+    return;
+  }
+
+  synchronizeExchangeWalletState(walletState);
+}
+
+document.addEventListener(PUBLIC_WALLET_STATE_EVENT, event => {
+  receivePublicWalletState(event.detail);
+});
+
 // =============================================================================
 // CORE FUNCTIONALITY
 // =============================================================================
@@ -304,21 +494,14 @@ function normalizeString(str) {
  * Iterates through tab panes and their rows to set data attributes for matching wallet NFTs.
  */
 function setContractAndTokenAttributes() {
-  const paneIds = Object.keys(tabContractAddresses);
+  getExchangePaneElements().forEach((paneElements) => {
+    if (!paneElements.contractAddress) return;
 
-  paneIds.forEach((paneId) => {
-    const pane = document.getElementById(paneId);
-    if (!pane) return;
-
-    const tabContractAddress = tabContractAddresses[paneId];
-    if (!tabContractAddress) return;
-
-    const rows = pane.querySelectorAll('.collection-item-01-div');
-    rows.forEach((row) => {
+    paneElements.rows.forEach((row) => {
       const tokenIdElem = row.querySelector('.token-id-number');
       if (tokenIdElem) {
         const tokenId = normalizeString(tokenIdElem.textContent.trim());
-        row.setAttribute('data-contract-address', tabContractAddress);
+        row.setAttribute('data-contract-address', paneElements.contractAddress);
         row.setAttribute('data-token-id', tokenId);
       }
     });
@@ -336,6 +519,8 @@ function getBurnCart() {
   const dropdowns = document.querySelectorAll('.token-qty.w-select');
 
   dropdowns.forEach((dropdown) => {
+    if (!isDropdownActionable(dropdown)) return;
+
     const quantity = parseInt(dropdown.value) || 0;
     if (quantity > 0) {
       const row = dropdown.closest('.collection-item-01-div');
@@ -388,8 +573,9 @@ async function prepareUpdateOperators(userWalletAddress, burnCart) {
  */
 async function fetchNFTs(walletAddress) {
   if (!networkConfigAvailable) {
+    const error = new Error(networkUnavailableMessage);
     console.error(networkUnavailableMessage);
-    return [];
+    throw error;
   }
 
   logger.log("Fetching NFTs for wallet address:", walletAddress);
@@ -399,18 +585,37 @@ async function fetchNFTs(walletAddress) {
 
   try {
     const response = await fetch(apiUrl);
+    if (!response.ok) {
+      const body = await response.text().catch(() => '');
+      throw new Error(
+        `TzKT request failed ${response.status}: ${apiUrl}${body ? `\n${body}` : ''}`
+      );
+    }
+
     const nfts = await response.json();
+    if (!Array.isArray(nfts)) {
+      throw new TypeError(`TzKT NFT response was not an array: ${apiUrl}`);
+    }
+
     logger.log(`NFTs fetched from ${network}:`, nfts);
 
     // Map to extract tokenId, contractAddress, and balance.
-    return nfts.map(nft => ({
-      tokenId: nft.token.tokenId,
-      contractAddress: nft.token.contract.address,
-      balance: nft.balance,
-    }));
+    return nfts.map((nft) => {
+      const tokenId = nft?.token?.tokenId;
+      const contractAddress = nft?.token?.contract?.address;
+      if (tokenId == null || !contractAddress || nft?.balance == null) {
+        throw new TypeError(`Malformed TzKT NFT balance payload: ${apiUrl}`);
+      }
+
+      return {
+        tokenId,
+        contractAddress,
+        balance: nft.balance,
+      };
+    });
   } catch (error) {
     console.error("Error fetching NFTs:", error);
-    return [];
+    throw error;
   }
 }
 
@@ -418,46 +623,38 @@ async function fetchNFTs(walletAddress) {
  * Processes the fetched NFTs and updates CMS rows in the UI.
  */
 function processWalletNFTs(nfts) {
-  const cmsRows = document.querySelectorAll('.collection-item-01-div');
   logger.log("Processing wallet NFTs:", JSON.stringify(nfts, null, 2));
 
-  cmsRows.forEach(row => {
-    const dropdown = row.querySelector('.token-qty.w-select');
-    const contract = row.getAttribute('data-contract-address');
-    const tokenId  = row.getAttribute('data-token-id');
+  return getExchangePaneElements().reduce((results, paneElements) => {
+    let eligibleCount = 0;
 
-    // Find the matching NFT balance (normalizeString is your helper)
-    const match = nfts.find(nft =>
-      normalizeString(nft.contractAddress) === normalizeString(contract) &&
-      normalizeString(nft.tokenId)        === normalizeString(tokenId)
-    );
+    paneElements.rows.forEach(row => {
+      const dropdown = row.querySelector('.token-qty.w-select');
+      const contract = row.getAttribute('data-contract-address');
+      const tokenId  = row.getAttribute('data-token-id');
 
-    if (match && Number(match.balance) > 0) {
-      // Limit the dropdown to the actual balance
-      window.updateDropdownOptions(dropdown, Number(match.balance));
-    } else {
-      // Hide rows with zero (or no) balance
-      row.style.display = 'none';
-    }
-  });
+      const match = nfts.find(nft =>
+        normalizeString(nft.contractAddress) === normalizeString(contract) &&
+        normalizeString(nft.tokenId)        === normalizeString(tokenId) &&
+        Number(nft.balance) > 0
+      );
 
-  // --- No Tokens Toggle Logic (unchanged) ---
-  const totals = {};
-  nfts.forEach(nft => {
-    totals[nft.contractAddress] = (totals[nft.contractAddress] || 0) + Number(nft.balance);
-  });
-  const pane0Addr = tabContractAddresses['w-tabs-0-data-w-pane-0'];
-  const pane1Addr = tabContractAddresses['w-tabs-0-data-w-pane-1'];
+      if (match) {
+        eligibleCount += 1;
+        setDropdownState(dropdown, {
+          maxQty: Number(match.balance),
+          enabled: true
+        });
+        row.style.display = '';
+      } else {
+        setDropdownState(dropdown);
+        row.style.display = 'none';
+      }
+    });
 
-  const div419 = document.querySelector('.no-tokens-in-walet-div---419');
-  if (div419) {
-    div419.style.display = (!totals[pane0Addr] || totals[pane0Addr] <= 0) ? 'flex' : 'none';
-  }
-
-  const divCanaan = document.querySelector('.no-tokens-in-walet-div---canaan');
-  if (divCanaan) {
-    divCanaan.style.display = (!totals[pane1Addr] || totals[pane1Addr] <= 0) ? 'flex' : 'none';
-  }
+    results[paneElements.key] = { eligibleCount };
+    return results;
+  }, {});
 }
 
 // =============================================================================
@@ -532,6 +729,8 @@ function updateBurnCart() {
   let hasItems = false; // Flag to track if the cart contains items.
 
   dropdowns.forEach((dropdown, index) => {
+    if (!isDropdownActionable(dropdown)) return;
+
     const quantity = parseInt(dropdown.value) || 0;
     if (quantity === 0) return; // Skip if no quantity is selected.
 
@@ -636,6 +835,11 @@ function handleRemoveRow(index, dropdown) {
  * Updates the visibility of cart-related buttons based on wallet connection and cart state.
  */
 function updateCartButtons() {
+  if (exchangeWalletTokensPending) {
+    setExchangeActionPendingState();
+    return;
+  }
+
   if (!networkConfigAvailable) {
     renderNetworkUnavailable();
     return;
@@ -648,6 +852,11 @@ function updateCartButtons() {
   const exchangeButton = document.querySelector('.exchange-button.w-button');
 
   getVerifiedPublicActiveAccount().then((account) => {
+    if (exchangeWalletTokensPending) {
+      setExchangeActionPendingState();
+      return;
+    }
+
     if (!account) {
       // Not connected: show connect and exchange connect, hide cart buttons.
       if (connectButton) connectButton.style.display = 'inline-block';
@@ -688,6 +897,8 @@ function updateTotal() {
 
   // Calculate total redeem value from each visible dropdown.
   dropdowns.forEach((dropdown) => {
+    if (!isDropdownActionable(dropdown)) return;
+
     const row = dropdown.closest('.collection-item-01-div');
     if (row && row.style.display === 'none') return; // Skip hidden rows
 
@@ -722,7 +933,8 @@ function handleDropdownChange(event) {
   if (
     event.target &&
     event.target.classList.contains('token-qty') &&
-    event.target.classList.contains('w-select')
+    event.target.classList.contains('w-select') &&
+    isDropdownActionable(event.target)
   ) {
     logger.log('Dropdown changed, updating total...');
     updateTotal();
@@ -778,9 +990,7 @@ async function buildApprovalOps(userWalletAddress, burnCart) {
 // -----------------------------------------------------
 
 function refreshConnectedState(nfts) {
-  setContractAndTokenAttributes();
-  processWalletNFTs(nfts);
-  updateBurnCart();
+  renderConnectedWalletTokenState(nfts);
 }
 
 // -----------------------------------------------------
@@ -1003,7 +1213,9 @@ async function handleExchange() {
       startingBalance: item.startingBalance
     }));
     const refreshedNFTs = await pollForNFTUpdate(userWalletAddress, tradedTokens);
-    refreshConnectedState(refreshedNFTs);
+    if (synchronizedWalletAddress === userWalletAddress) {
+      refreshConnectedState(refreshedNFTs);
+    }
 
     // After balances reflect, swap spinner to checkbox & finalize.
     if (text6) {
@@ -1103,6 +1315,7 @@ function bootExchangePage() {
   }
 
   logger.log('DOM fully loaded. Initializing UI...');
+  renderWalletTokenLoadingState();
 
   setTimeout(() => {
     // Initialize dropdowns with token edition counts.
@@ -1168,22 +1381,6 @@ function bootExchangePage() {
       });
     }
 
-    // Fetch NFTs on page load if wallet is connected and update UI.
-    getVerifiedPublicActiveAccount().then((account) => {
-      if (account) {
-        logger.log("Active account detected on page load:", account.address);
-        fetchNFTs(account.address).then((nfts) => {
-          if (typeof window.receiveNFTs === 'function') {
-            window.receiveNFTs(nfts);
-          } else {
-            console.error('receiveNFTs function not found.');
-          }
-        });
-      } else {
-        logger.log('No active account detected on page load.');
-      }
-    });
-
     // Observe burn cart container for changes to update cart state.
     const burnCartStructureDiv = document.querySelector('.burn-cart-display-structure-div');
     if (burnCartStructureDiv) {
@@ -1195,20 +1392,12 @@ function bootExchangePage() {
       observer.observe(burnCartStructureDiv, { childList: true });
     }
 
-    document.addEventListener('walletDisconnected', () => {
-      resetUI();
-      updateCartButtons(); // Update button states on disconnect immediately.
-      // Explicitly hide the no tokens in wallet DIVs when the wallet disconnects.
-      const div419 = document.querySelector('.no-tokens-in-walet-div---419');
-      const divCanaan = document.querySelector('.no-tokens-in-walet-div---canaan');
-      if (div419) {
-        div419.style.display = 'none';
-      }
-      if (divCanaan) {
-        divCanaan.style.display = 'none';
-      }
-      logger.log('UI reset after wallet disconnect');
-    });
+    // Resolve Exchange wallet-token state from the shared verified wallet lifecycle.
+    renderWalletTokenLoadingState();
+    exchangeWalletSyncReady = true;
+    const initialWalletState = pendingPublicWalletState || getPublicWalletState();
+    pendingPublicWalletState = null;
+    receivePublicWalletState(initialWalletState);
 
   }, INIT_DELAY_MS);
 }
