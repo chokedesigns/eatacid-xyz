@@ -1614,6 +1614,7 @@ function commitWalletTokenRegion({
   if (heading) {
     heading.textContent = headingVisible ? headingText : '';
     heading.style.visibility = headingVisible ? 'visible' : 'hidden';
+    heading.style.display = headingVisible ? 'block' : 'none';
   }
 
   if (spinner) spinner.style.display = spinnerVisible ? 'flex' : 'none';

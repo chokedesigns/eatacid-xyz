@@ -289,6 +289,7 @@ function setBurnTokensHeaderText(text = '', visible = false) {
 
   header.textContent = visible ? text : '';
   header.style.visibility = visible ? 'visible' : 'hidden';
+  header.style.display = visible ? 'block' : 'none';
 }
 
 function setDropdownState(dropdown, { maxQty = 0, enabled = false } = {}) {
