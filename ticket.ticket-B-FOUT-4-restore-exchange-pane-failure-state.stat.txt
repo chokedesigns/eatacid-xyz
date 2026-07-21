@@ -1,0 +1,3 @@
+﻿ exchange/index.html     |  4 ++--
+ exchange/js/exchange.js | 19 ++++++++++++++++---
+ 2 files changed, 18 insertions(+), 5 deletions(-)

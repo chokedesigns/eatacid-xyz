@@ -275,6 +275,7 @@ function getPaneElements(config) {
     wrapper,
     spinner: wrapper?.querySelector('.loading-spinner-01-exchange-ui') || null,
     noTokens: wrapper?.querySelector(config.noTokensSelector) || null,
+    collection: wrapper?.querySelector('.w-dyn-list') || null,
     rows: Array.from(wrapper?.querySelectorAll('.collection-item-01-div') || [])
   };
 }
@@ -341,10 +342,11 @@ function commitPaneState(paneElements, {
   rowsVisible = false,
   terminal = false
 } = {}) {
-  const { wrapper, spinner, noTokens, rows } = paneElements;
+  const { wrapper, spinner, noTokens, collection, rows } = paneElements;
 
   if (spinner) spinner.style.display = spinnerVisible ? 'block' : 'none';
   if (noTokens) noTokens.style.display = noTokensVisible && !spinnerVisible ? 'flex' : 'none';
+  if (collection) collection.style.display = rowsVisible ? 'block' : 'none';
 
   if (!rowsVisible) {
     rows.forEach((row) => {
@@ -395,12 +397,23 @@ function renderConnectedWalletTokenFailureState() {
   setContractAndTokenAttributes();
   setBurnTokensHeaderText('AVAILABLE BURN TOKENS', true);
 
-  getExchangePaneElements().forEach((paneElements) => {
+  const panes = getExchangePaneElements();
+  logger.debug('Rendering Exchange wallet-token fetch failure state:', panes.map((paneElements) => ({
+    key: paneElements.key,
+    paneFound: Boolean(paneElements.pane),
+    wrapperFound: Boolean(paneElements.wrapper),
+    spinnerFound: Boolean(paneElements.spinner),
+    noTokensFound: Boolean(paneElements.noTokens),
+    collectionFound: Boolean(paneElements.collection),
+    rowCount: paneElements.rows.length
+  })));
+
+  panes.forEach((paneElements) => {
     paneElements.rows.forEach((row) => {
       setDropdownState(row.querySelector('.token-qty.w-select'));
       row.style.display = 'none';
     });
-    commitPaneState(paneElements, { terminal: true });
+    commitPaneState(paneElements, { noTokensVisible: true, terminal: true });
   });
 
   resetBurnCartDisplay();
