@@ -13,7 +13,8 @@ import { createPublicLogger } from '../../shared/public-logger.js';
 import {
   getVerifiedPublicActiveAccount,
   getPublicWalletState,
-  PUBLIC_WALLET_STATE_EVENT
+  PUBLIC_WALLET_STATE_EVENT,
+  requestPublicWalletConnection
 } from '../../shared/beacon-setup.js';
 const { network, rpc, tzkt, contracts, validation, isConfigured, unavailableMessage } = cfg;
 // pick the right network’s contract set
@@ -104,6 +105,7 @@ let pendingPublicWalletState = null;
 let synchronizedWalletAddress;
 let walletRefreshGeneration = 0;
 let exchangeWalletTokensPending = true;
+let exchangeWalletLifecycleStatus = 'pending';
 
 // =============================================================================
 // GLOBAL UTILITIES
@@ -328,12 +330,40 @@ function resetBurnCartDisplay() {
   resetTotalDisplay();
 }
 
-function setExchangeActionPendingState() {
-  ['.exchange-button-connect.w-button', '.exchange-button-empty.w-button', '.exchange-button.w-button']
-    .forEach((selector) => {
-      const button = document.querySelector(selector);
-      if (button) button.style.display = 'none';
-    });
+function getExchangeActionControls() {
+  return {
+    pending: document.querySelector('.exchange-button-pending'),
+    connect: document.querySelector('.exchange-button-connect.w-button'),
+    empty: document.querySelector('.exchange-button-empty.w-button'),
+    live: document.querySelector('.exchange-button.w-button')
+  };
+}
+
+function setExchangeActionControlVisibility(control, visible, displayValue) {
+  if (!control) return;
+  control.style.display = visible ? displayValue : 'none';
+}
+
+function renderExchangeBottomAction() {
+  const { pending, connect, empty, live } = getExchangeActionControls();
+  const actionPending = exchangeWalletLifecycleStatus === 'pending' || exchangeWalletTokensPending;
+  const walletConnected = exchangeWalletLifecycleStatus === 'connected';
+  const walletDisconnected = !actionPending && !walletConnected;
+
+  setExchangeActionControlVisibility(pending, actionPending, 'block');
+  setExchangeActionControlVisibility(connect, walletDisconnected, 'inline-block');
+  setExchangeActionControlVisibility(empty, !actionPending && walletConnected && !exchangeState.hasCartItems, 'block');
+  setExchangeActionControlVisibility(live, !actionPending && walletConnected && exchangeState.hasCartItems, 'block');
+}
+
+function getExchangeWalletLifecycleStatus(walletState) {
+  if (!walletState || walletState.status === 'pending') {
+    return 'pending';
+  }
+
+  return walletState.status === 'connected' && walletState.account
+    ? 'connected'
+    : 'unconnected';
 }
 
 function commitPaneState(paneElements, {
@@ -371,7 +401,7 @@ function renderWalletTokenLoadingState() {
     commitPaneState(paneElements, { spinnerVisible: true });
   });
   resetBurnCartDisplay();
-  setExchangeActionPendingState();
+  updateCartButtons();
 }
 
 function renderDisconnectedWalletTokenState() {
@@ -462,17 +492,22 @@ async function refreshExchangeWallet(account, generation, nftsPromise) {
 }
 
 function synchronizeExchangeWalletState(walletState) {
-  if (!walletState || walletState.status === 'pending') {
+  exchangeWalletLifecycleStatus = getExchangeWalletLifecycleStatus(walletState);
+
+  if (exchangeWalletLifecycleStatus === 'pending') {
     renderWalletTokenLoadingState();
     return;
   }
 
-  const account = walletState.status === 'connected'
+  const account = exchangeWalletLifecycleStatus === 'connected'
     ? walletState.account
     : null;
   const address = account?.address || null;
 
-  if (address === synchronizedWalletAddress) return;
+  if (address === synchronizedWalletAddress && !exchangeWalletTokensPending) {
+    updateCartButtons();
+    return;
+  }
 
   synchronizedWalletAddress = address;
   const generation = ++walletRefreshGeneration;
@@ -849,50 +884,13 @@ function handleRemoveRow(index, dropdown) {
  * Updates the visibility of cart-related buttons based on wallet connection and cart state.
  */
 function updateCartButtons() {
-  if (exchangeWalletTokensPending) {
-    setExchangeActionPendingState();
-    return;
-  }
-
   if (!networkConfigAvailable) {
     renderNetworkUnavailable();
     return;
   }
 
-  // Select button elements.
-  const connectButton = document.querySelector('.button-primary.w-button');
-  const exchangeConnectButton = document.querySelector('.exchange-button-connect.w-button');
-  const emptyCartButton = document.querySelector('.exchange-button-empty.w-button');
-  const exchangeButton = document.querySelector('.exchange-button.w-button');
-
-  getVerifiedPublicActiveAccount().then((account) => {
-    if (exchangeWalletTokensPending) {
-      setExchangeActionPendingState();
-      return;
-    }
-
-    if (!account) {
-      // Not connected: show connect and exchange connect, hide cart buttons.
-      if (connectButton) connectButton.style.display = 'inline-block';
-      if (exchangeConnectButton) exchangeConnectButton.style.display = 'inline-block';
-      if (emptyCartButton) emptyCartButton.style.display = 'none';
-      if (exchangeButton) exchangeButton.style.display = 'none';
-    } else {
-      // Connected: hide connect and exchange connect buttons.
-      if (connectButton) connectButton.style.display = 'none';
-      if (exchangeConnectButton) exchangeConnectButton.style.display = 'none';
-      // If cart has items, show exchange button; otherwise, show empty cart button.
-      if (exchangeState.hasCartItems) {
-         if (exchangeButton) exchangeButton.style.display = 'block';
-         if (emptyCartButton) emptyCartButton.style.display = 'none';
-      } else {
-         if (exchangeButton) exchangeButton.style.display = 'none';
-         if (emptyCartButton) emptyCartButton.style.display = 'block';
-      }
-    }
-  });
+  renderExchangeBottomAction();
 }
-
 // =============================================================================
 // TOTAL CALCULATION
 // =============================================================================
@@ -1301,6 +1299,7 @@ function renderNetworkUnavailable() {
 
   [
     '.button-primary.w-button',
+    '.exchange-button-pending',
     '.exchange-button-connect.w-button',
     '.exchange-button-empty.w-button',
     '.exchange-button.w-button'
@@ -1381,17 +1380,13 @@ function bootExchangePage() {
       });
     }
 
-    // Bind Exchange Connect button event to trigger the primary wallet connect flow.
+    // Bind Exchange Connect button event to trigger the shared wallet connect flow.
     const exchangeConnectButton = document.querySelector('.exchange-button-connect.w-button');
     if (exchangeConnectButton) {
-      exchangeConnectButton.addEventListener('click', async () => {
+      exchangeConnectButton.addEventListener('click', async (event) => {
+        event.preventDefault();
         logger.log('Exchange Connect button clicked.');
-        const primaryConnectButton = document.querySelector('.button-primary.w-button');
-        if (primaryConnectButton) {
-          primaryConnectButton.click();
-        } else {
-          console.error('Primary connect button not found.');
-        }
+        await requestPublicWalletConnection();
       });
     }
 

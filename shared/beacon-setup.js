@@ -198,6 +198,7 @@ detail: publicWalletState
 let lastButtonState = { status: null, address: null };
 let clearingMismatchedActiveAccount = false;
 let walletLifecycleGeneration = 0;
+let walletConnectionRequestPromise = null;
 
 // ----------------------------------------------------------------------------
 // Helper: Get wallet button elements
@@ -439,6 +440,11 @@ return null;
 // Connect / Disconnect Flows
 // ----------------------------------------------------------------------------
 async function connectWallet() {
+if (walletConnectionRequestPromise) {
+return walletConnectionRequestPromise;
+}
+
+walletConnectionRequestPromise = (async () => {
 try {
 logger.log(
 'Requesting wallet permissions using constructor network:',
@@ -452,6 +458,17 @@ await dAppClient.requestPermissions();
 } catch (error) {
 logBeaconError(error);
 }
+})();
+
+try {
+return await walletConnectionRequestPromise;
+} finally {
+walletConnectionRequestPromise = null;
+}
+}
+
+export async function requestPublicWalletConnection() {
+return connectWallet();
 }
 
 async function disconnectWallet() {
