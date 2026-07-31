@@ -1,0 +1,444 @@
+{
+  "generatedAt": "2026-07-31T21:32:48.030Z",
+  "fieldCategories": [
+    {
+      "fieldCategory": "token identity",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_STRUCTURED",
+        "GIT_CONFIG",
+        "GIT_GENERATED_HTML"
+      ],
+      "currentBehaviorSource": "Hidden HTML Token ID plus Git collection/contract context; HEN mirror IDs are supplied by Git config.",
+      "ownershipClassification": "DUPLICATED, CONSISTENT",
+      "consistency": "66/66 committed Webflow IDs match title keys and all 97 HTML occurrences; 17 HEN main IDs map explicitly to Shadownet 0-16.",
+      "derivationRule": "reconciliationKey = normalized collection + main contract + main token ID; environmentTokenId = configured mirror[mainTokenId] when present, otherwise mainTokenId.",
+      "migrationRequirement": "ALREADY PRESENT IN STRUCTURED GIT",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "admin-ui/src/titles/*.json",
+        "shared/chain-registry.js",
+        "drops/index.html .token-id-number",
+        "exchange/index.html .token-id-number",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "collection identity",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_CONFIG",
+        "GIT_GENERATED_HTML"
+      ],
+      "currentBehaviorSource": "Git registry key and wrapper/pane membership select the transaction contract; CMS Collection text is presentation.",
+      "ownershipClassification": "GIT AUTHORITATIVE",
+      "consistency": "Contract routing is consistent; display labels intentionally vary (HIC ET NUNC/HEN, INTRODUCTION variants).",
+      "derivationRule": "Resolve collection key from the known list/pane, then resolve its network contract in shared/chain-registry.js.",
+      "migrationRequirement": "ALREADY PRESENT IN STRUCTURED GIT",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "shared/chain-registry.js",
+        "drops/js/events-config.js",
+        "exchange/js/exchange-config.js",
+        "docs/webflow-migration/03-cms-presentation-runtime.md",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "title",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_STRUCTURED",
+        "GIT_GENERATED_HTML"
+      ],
+      "currentBehaviorSource": "Checked-in HTML supplies public row/cart title; admin title maps supply admin UI titles.",
+      "ownershipClassification": "DUPLICATED, CONSISTENT",
+      "consistency": "66/66 exact, including punctuation, Unicode, case, slashes, and leading zeros.",
+      "derivationRule": "Lookup exact main token ID in the collection title map.",
+      "migrationRequirement": "ALREADY PRESENT IN STRUCTURED GIT",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "admin-ui/src/titles/*.json",
+        "drops/index.html",
+        "exchange/index.html",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "name",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_STRUCTURED"
+      ],
+      "currentBehaviorSource": "Webflow owns CMS item Name; it is not bound on Drops/Exchange.",
+      "ownershipClassification": "DUPLICATED, CONSISTENT",
+      "consistency": "66/66 Webflow Name equals Title and the local title map.",
+      "derivationRule": "Use the exact structured title when a separate CMS Name semantic is not required.",
+      "migrationRequirement": "DERIVABLE FROM STRUCTURED GIT",
+      "exactPreservationRequired": false,
+      "evidence": [
+        "docs/webflow-migration/02-items.json",
+        "admin-ui/src/titles/*.json",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "editions",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_GENERATED_HTML"
+      ],
+      "currentBehaviorSource": "Baked HTML edition text drives visible rows and Exchange quantity/$ACID runtime behavior.",
+      "ownershipClassification": "WEBFLOW AUTHORITATIVE",
+      "consistency": "66/66 unique items and all 97 HTML occurrences match current live Webflow; no structured edition manifest exists.",
+      "derivationRule": "None established; do not equate Editions with circulating supply.",
+      "migrationRequirement": "PRESENT ONLY IN GENERATED HTML",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "docs/webflow-migration/02-items.json",
+        "drops/index.html",
+        "exchange/index.html",
+        "exchange/js/exchange.js",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": [
+        "Chain supply was not queried and Editions semantics were not independently verified."
+      ]
+    },
+    {
+      "fieldCategory": "image",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_GENERATED_HTML",
+        "STATIC_ASSET"
+      ],
+      "currentBehaviorSource": "Webflow-hosted src/srcset in checked-in HTML drives current public rows; admin uses local thumbnail manifest.",
+      "ownershipClassification": "DUPLICATED, CONFLICTING",
+      "consistency": "66/66 HTML images resolve to the same Webflow asset path as the snapshot: 25 exact URLs and 41 host aliases. Local candidates exist 66/66 but are not pixel-verified. HEN mainnet manifest keys conflict with sparse IDs.",
+      "derivationRule": "Public image is the CMS asset; active-environment local HEN thumbnail index is mirror[mainTokenId].",
+      "migrationRequirement": "MUST BE IMPORTED FROM WEBFLOW",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "docs/webflow-migration/02-items.json image file IDs/URLs",
+        "drops/index.html src/srcset",
+        "exchange/index.html src/srcset",
+        "admin-ui/src/thumbs.manifest.js",
+        "admin-ui/src/thumbs/**",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": [
+        "Local thumbnail visual equivalence was not pixel-verified; Webflow assets were not downloaded."
+      ]
+    },
+    {
+      "fieldCategory": "mint date",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS"
+      ],
+      "currentBehaviorSource": "INTRODUCTIONS uses Mint Date for initial list sorting; other current rows do not display/read it.",
+      "ownershipClassification": "WEBFLOW AUTHORITATIVE",
+      "consistency": "35 values exist only in Webflow; 31 CANAAN items have no Mint Date field.",
+      "derivationRule": "No repository derivation exists.",
+      "migrationRequirement": "MUST BE IMPORTED FROM WEBFLOW",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "docs/webflow-migration/02-items.json fieldData.mint-date",
+        "docs/webflow-migration/03-collection-lists.json INTRO sort",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": [
+        "Dates were not independently compared with chain mint timestamps."
+      ]
+    },
+    {
+      "fieldCategory": "OBJKT link",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_CONFIG",
+        "EXTERNAL_URL"
+      ],
+      "currentBehaviorSource": "Not bound or consumed on Drops/Exchange; stored routes are reproducible from collection route family and main contract/token identity.",
+      "ownershipClassification": "DERIVED AUTHORITATIVE",
+      "consistency": "35/35 stored routes are mechanically reproducible: 13 current /asset routes, 17 legacy /tokens/hicetnunc routes, and 5 legacy /tokens/{contract} routes. CANAAN has no OBJKT Link field.",
+      "derivationRule": "SCRIPT: /asset/{mainnetContract}/{mainTokenId}; HEN: /tokens/hicetnunc/{mainTokenId}; INTRODUCTIONS: /tokens/{mainnetContract}/{mainTokenId}.",
+      "migrationRequirement": "DERIVABLE FROM CONTRACT/TOKEN ID",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "docs/webflow-migration/02-items.json",
+        "shared/chain-registry.js",
+        "Exact route-family comparison",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "$ACID value",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_GENERATED_HTML",
+        "RUNTIME_DERIVED"
+      ],
+      "currentBehaviorSource": "HTML displays the CMS value; Exchange transaction/cart behavior derives the value from Editions.",
+      "ownershipClassification": "DERIVED AUTHORITATIVE",
+      "consistency": "44/44 unique values and all 75 quantity-row occurrences equal ceil(100 / Editions).",
+      "derivationRule": "ceil(100 / Editions); transaction total multiplies by selected quantity.",
+      "migrationRequirement": "DERIVABLE FROM OTHER WEBFLOW FIELDS",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "exchange/js/exchange.js",
+        "docs/webflow-migration/02-items.json",
+        "drops/index.html",
+        "exchange/index.html",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "slug",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS"
+      ],
+      "currentBehaviorSource": "Webflow CMS template route families use exact item slugs; Drops/Exchange do not link them.",
+      "ownershipClassification": "WEBFLOW AUTHORITATIVE",
+      "consistency": "66 values exist only in Webflow exports. A simple slugger matches 65; CANAAN token 3 proves exact Webflow punctuation behavior cannot be assumed.",
+      "derivationRule": "No safe repository derivation established for route-compatible exactness.",
+      "migrationRequirement": "MUST BE IMPORTED FROM WEBFLOW",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "docs/webflow-migration/01-page-inventory.json",
+        "docs/webflow-migration/02-items.json",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "publication state",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS"
+      ],
+      "currentBehaviorSource": "Webflow controls draft/archive/publication state; the committed snapshot reports all 66 published, non-draft, non-archived.",
+      "ownershipClassification": "WEBFLOW AUTHORITATIVE",
+      "consistency": "Current live item state matches WF-MIG.2 for all 66 items; all are non-draft, non-archived, and have publishedOn timestamps.",
+      "derivationRule": "A Git replacement can include only intended published items, but original timestamps are not derivable.",
+      "migrationRequirement": "OPTIONAL FOR CURRENT PARITY",
+      "exactPreservationRequired": false,
+      "evidence": [
+        "docs/webflow-migration/02-items.json",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": [
+        "Saved-versus-published equality is not exposed."
+      ]
+    },
+    {
+      "fieldCategory": "ordering",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "WEBFLOW_CMS",
+        "GIT_GENERATED_HTML",
+        "RUNTIME_DERIVED"
+      ],
+      "currentBehaviorSource": "Initial order comes from list settings/compiled HTML; connected Drops clone rendering can numeric-sort mapped IDs.",
+      "ownershipClassification": "NO CLEAR AUTHORITY",
+      "consistency": "SCRIPT/CANAAN/HEN committed orders match configured sort; INTRO is 4-to-0 under equal Mint Dates with no exposed tie break.",
+      "derivationRule": "Preserve explicit observed order; never derive token identity from order.",
+      "migrationRequirement": "PRESENT ONLY IN GENERATED HTML",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "docs/webflow-migration/03-collection-lists.json",
+        "drops/index.html",
+        "exchange/index.html",
+        "drops/js/events.js",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": [
+        "Current INTRO equal-date tie-break is unresolved."
+      ]
+    },
+    {
+      "fieldCategory": "contract address",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "GIT_CONFIG"
+      ],
+      "currentBehaviorSource": "Git chain registry and surface configs select mainnet and Shadownet contracts.",
+      "ownershipClassification": "GIT AUTHORITATIVE",
+      "consistency": "All four collection contracts resolve for both slots; current active slot is testnet/Shadownet.",
+      "derivationRule": "chainRegistry[network].collections[collectionKey]",
+      "migrationRequirement": "ALREADY PRESENT IN STRUCTURED GIT",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "shared/chain-registry.js",
+        "shared/network.js",
+        "drops/js/events-config.js",
+        "exchange/js/exchange-config.js",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "mirror mapping",
+      "collections": [
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "GIT_CONFIG"
+      ],
+      "currentBehaviorSource": "Git mapping translates main token IDs to Shadownet IDs for current Drops behavior.",
+      "ownershipClassification": "GIT AUTHORITATIVE",
+      "consistency": "HEN covers all 17 sparse IDs; INTRODUCTIONS covers 0-4 identity mappings.",
+      "derivationRule": "chainRegistry.testnet.mirrors[collection][mainTokenId]",
+      "migrationRequirement": "ALREADY PRESENT IN STRUCTURED GIT",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "shared/chain-registry.js",
+        "drops/js/events-config.js",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": []
+    },
+    {
+      "fieldCategory": "active drop eligibility",
+      "collections": [
+        "65a1be9dcae2314a8ac50aae",
+        "67be12e2583121ead44b79ed",
+        "67be31a0b7084dfce75026fd"
+      ],
+      "existingSources": [
+        "GIT_CONFIG",
+        "RUNTIME_DERIVED",
+        "CHAIN_DERIVED"
+      ],
+      "currentBehaviorSource": "Drop parameters, time, collection/mirror config, and chain balances determine eligibility; CMS row data supplies presentation only.",
+      "ownershipClassification": "DERIVED AUTHORITATIVE",
+      "consistency": "Current config enables HEN burn (excluding main ID 141634), disables INTRO burn, and redeems CANAAN 29.",
+      "derivationRule": "Evaluate shared/drop-params/drop-params.js with registry mapping, current time, and chain balances.",
+      "migrationRequirement": "DERIVABLE FROM STRUCTURED GIT",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "shared/drop-params/drop-params.js",
+        "drops/js/events.js",
+        "drops/js/events-config.js",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": [
+        "Chain balances and active pair state were not independently queried."
+      ]
+    },
+    {
+      "fieldCategory": "exchange eligibility",
+      "collections": [
+        "656f7e02b503790c02f0edff",
+        "65a1be9dcae2314a8ac50aae"
+      ],
+      "existingSources": [
+        "GIT_CONFIG",
+        "GIT_GENERATED_HTML",
+        "CHAIN_DERIVED",
+        "RUNTIME_DERIVED"
+      ],
+      "currentBehaviorSource": "Pane-configured contract plus HTML token identity and chain wallet/pair state determine eligibility.",
+      "ownershipClassification": "DERIVED AUTHORITATIVE",
+      "consistency": "No DOM index identity is used; visible Collection/$ACID text does not choose the contract or transaction amount.",
+      "derivationRule": "Resolve pane contract, match contract/token against wallet and pair state, then cap by balance/Editions.",
+      "migrationRequirement": "DERIVABLE FROM STRUCTURED GIT",
+      "exactPreservationRequired": true,
+      "evidence": [
+        "exchange/js/exchange-config.js",
+        "exchange/js/exchange.js",
+        "exchange/index.html",
+        "Current read-only list_collection_items refresh: 66/66 items equal WF-MIG.2."
+      ],
+      "unresolved": [
+        "Chain wallet, pair, and escrow state were not independently queried."
+      ]
+    }
+  ],
+  "liveRefresh": {
+    "siteName": "EATACID.xyz",
+    "siteId": "656cf42faa2b1a7a1582d9d2",
+    "status": "COMPLETE",
+    "liveCollections": 4,
+    "liveItems": 66,
+    "noChangeItems": 66,
+    "ownershipConclusions": "UNCHANGED",
+    "evidence": "All four complete list_collection_items reads matched WF-MIG.2 across every normalized item property."
+  }
+}

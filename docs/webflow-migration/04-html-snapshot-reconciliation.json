@@ -1,0 +1,3825 @@
+{
+  "generatedAt": "2026-07-31T21:32:48.030Z",
+  "pages": [
+    {
+      "page": "Drops",
+      "route": "/drops",
+      "sourceFile": "drops/index.html",
+      "lists": [
+        {
+          "collectionName": "HENs",
+          "collectionId": "67be12e2583121ead44b79ed",
+          "expectedWebflowCount": 17,
+          "htmlRowCount": 17,
+          "orderComparison": {
+            "expected": [
+              "94684",
+              "103062",
+              "104492",
+              "114368",
+              "125115",
+              "135460",
+              "141634",
+              "147893",
+              "175592",
+              "200717",
+              "209650",
+              "279300",
+              "369693",
+              "397098",
+              "422822",
+              "455835",
+              "526531"
+            ],
+            "actual": [
+              "94684",
+              "103062",
+              "104492",
+              "114368",
+              "125115",
+              "135460",
+              "141634",
+              "147893",
+              "175592",
+              "200717",
+              "209650",
+              "279300",
+              "369693",
+              "397098",
+              "422822",
+              "455835",
+              "526531"
+            ],
+            "classification": "EXACT MATCH TO COMMITTED ORDER",
+            "currentWebflowStatus": "CONFIRMED: LIVE VALUES EQUAL WF-MIG.2"
+          },
+          "rows": [
+            {
+              "tokenId": "94684",
+              "webflowItemId": "67be1933648307936604171f",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be1933648307936604171f",
+                  "title": "PAPER CHASER",
+                  "editions": 18,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be18520582582f4c09f0e1_PAPER_CHASER_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 0,
+                  "title": "PAPER CHASER",
+                  "editions": 18,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be18520582582f4c09f0e1_PAPER_CHASER_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be18520582582f4c09f0e1_PAPER_CHASER_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be18520582582f4c09f0e1_PAPER_CHASER_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be18520582582f4c09f0e1_PAPER_CHASER_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "103062",
+              "webflowItemId": "67be1c9596766e86c3f44837",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be1c9596766e86c3f44837",
+                  "title": "HIGH ON HEN",
+                  "editions": 19,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be19c3b85c39c8af21bfd5_HIGH_ON_HEN_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 1,
+                  "title": "HIGH ON HEN",
+                  "editions": 19,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be19c3b85c39c8af21bfd5_HIGH_ON_HEN_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be19c3b85c39c8af21bfd5_HIGH_ON_HEN_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be19c3b85c39c8af21bfd5_HIGH_ON_HEN_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be19c3b85c39c8af21bfd5_HIGH_ON_HEN_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "104492",
+              "webflowItemId": "67be1d0b778de2c88f67284a",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be1d0b778de2c88f67284a",
+                  "title": "HEN IS LOVE",
+                  "editions": 10,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1ce7c609cd50910ea66d_HEN_IS_LOVE_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 2,
+                  "title": "HEN IS LOVE",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1ce7c609cd50910ea66d_HEN_IS_LOVE_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1ce7c609cd50910ea66d_HEN_IS_LOVE_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1ce7c609cd50910ea66d_HEN_IS_LOVE_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1ce7c609cd50910ea66d_HEN_IS_LOVE_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "114368",
+              "webflowItemId": "67be1d6120a776c41a179438",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be1d6120a776c41a179438",
+                  "title": "BENT",
+                  "editions": 10,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1d35cc0b1b942744bf3a_BENT_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 3,
+                  "title": "BENT",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1d35cc0b1b942744bf3a_BENT_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1d35cc0b1b942744bf3a_BENT_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1d35cc0b1b942744bf3a_BENT_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1d35cc0b1b942744bf3a_BENT_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "125115",
+              "webflowItemId": "67be1eac2c88aadbcbb1df1c",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be1eac2c88aadbcbb1df1c",
+                  "title": "HUNGRY",
+                  "editions": 20,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1e85b85c39c8af2653f3_HUNGRY_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 4,
+                  "title": "HUNGRY",
+                  "editions": 20,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1e85b85c39c8af2653f3_HUNGRY_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1e85b85c39c8af2653f3_HUNGRY_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1e85b85c39c8af2653f3_HUNGRY_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1e85b85c39c8af2653f3_HUNGRY_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "135460",
+              "webflowItemId": "67be1f3907c23f2b11fb4d80",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be1f3907c23f2b11fb4d80",
+                  "title": "BRAND AWARENESS",
+                  "editions": 8,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1f1f1b11b180877e49f4_BRAND_AWARENESS_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 5,
+                  "title": "BRAND AWARENESS",
+                  "editions": 8,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1f1f1b11b180877e49f4_BRAND_AWARENESS_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1f1f1b11b180877e49f4_BRAND_AWARENESS_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1f1f1b11b180877e49f4_BRAND_AWARENESS_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1f1f1b11b180877e49f4_BRAND_AWARENESS_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "141634",
+              "webflowItemId": "67be1ff5711a00ca1a439a4e",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be1ff5711a00ca1a439a4e",
+                  "title": "COPY MACHINE",
+                  "editions": 89,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1fd40957a08a8137eab1_COPY_MACHINE_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 6,
+                  "title": "COPY MACHINE",
+                  "editions": 89,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1fd40957a08a8137eab1_COPY_MACHINE_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1fd40957a08a8137eab1_COPY_MACHINE_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1fd40957a08a8137eab1_COPY_MACHINE_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be1fd40957a08a8137eab1_COPY_MACHINE_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "147893",
+              "webflowItemId": "67be2049548d8d443e27191f",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2049548d8d443e27191f",
+                  "title": "FULL",
+                  "editions": 25,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be202f80b1053ec89acecc_FULL_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 7,
+                  "title": "FULL",
+                  "editions": 25,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be202f80b1053ec89acecc_FULL_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be202f80b1053ec89acecc_FULL_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be202f80b1053ec89acecc_FULL_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be202f80b1053ec89acecc_FULL_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "175592",
+              "webflowItemId": "67be209a20a776c41a1a7c01",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be209a20a776c41a1a7c01",
+                  "title": "PROPAGANDA",
+                  "editions": 23,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20780070f8a93c2dfa7a_PROPAGANDA_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 8,
+                  "title": "PROPAGANDA",
+                  "editions": 23,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20780070f8a93c2dfa7a_PROPAGANDA_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20780070f8a93c2dfa7a_PROPAGANDA_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20780070f8a93c2dfa7a_PROPAGANDA_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20780070f8a93c2dfa7a_PROPAGANDA_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "200717",
+              "webflowItemId": "67be20ead9d40ca490f1608e",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be20ead9d40ca490f1608e",
+                  "title": "LENS SHIFT",
+                  "editions": 19,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20d01501a9a3a2a10c3f_LENS%20SHIFT_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 9,
+                  "title": "LENS SHIFT",
+                  "editions": 19,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20d01501a9a3a2a10c3f_LENS%20SHIFT_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20d01501a9a3a2a10c3f_LENS%20SHIFT_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20d01501a9a3a2a10c3f_LENS%20SHIFT_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be20d01501a9a3a2a10c3f_LENS%20SHIFT_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "209650",
+              "webflowItemId": "67be2b78735609355454b02e",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2b78735609355454b02e",
+                  "title": "FUCK YOU, EAT ACID",
+                  "editions": 45,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b5b8c286dc569e2ba75_FYEA_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 10,
+                  "title": "FUCK YOU, EAT ACID",
+                  "editions": 45,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b5b8c286dc569e2ba75_FYEA_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b5b8c286dc569e2ba75_FYEA_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b5b8c286dc569e2ba75_FYEA_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b5b8c286dc569e2ba75_FYEA_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "279300",
+              "webflowItemId": "67be2bbb79255f0416aa1dea",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2bbb79255f0416aa1dea",
+                  "title": "REPEATER",
+                  "editions": 6,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b985f7202672ded6bdb_REPEATER_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 11,
+                  "title": "REPEATER",
+                  "editions": 6,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b985f7202672ded6bdb_REPEATER_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b985f7202672ded6bdb_REPEATER_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b985f7202672ded6bdb_REPEATER_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2b985f7202672ded6bdb_REPEATER_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "369693",
+              "webflowItemId": "67be2c0772f70fe2b6133d73",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2c0772f70fe2b6133d73",
+                  "title": "WAR PAINT",
+                  "editions": 5,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2beafeeec8dc482edd25_WAR_PAINT_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 12,
+                  "title": "WAR PAINT",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2beafeeec8dc482edd25_WAR_PAINT_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2beafeeec8dc482edd25_WAR_PAINT_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2beafeeec8dc482edd25_WAR_PAINT_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2beafeeec8dc482edd25_WAR_PAINT_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "397098",
+              "webflowItemId": "67be2c70fe1b3497902330fe",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2c70fe1b3497902330fe",
+                  "title": "DISORDER",
+                  "editions": 34,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2c552dd1b96b75a41b29_DISORDER_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 13,
+                  "title": "DISORDER",
+                  "editions": 34,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2c552dd1b96b75a41b29_DISORDER_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2c552dd1b96b75a41b29_DISORDER_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2c552dd1b96b75a41b29_DISORDER_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2c552dd1b96b75a41b29_DISORDER_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "422822",
+              "webflowItemId": "67be2cc849f25c380c01e199",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2cc849f25c380c01e199",
+                  "title": "AWKWARD",
+                  "editions": 13,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ca9983834cd4965212f_AWKWARD_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 14,
+                  "title": "AWKWARD",
+                  "editions": 13,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ca9983834cd4965212f_AWKWARD_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ca9983834cd4965212f_AWKWARD_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ca9983834cd4965212f_AWKWARD_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ca9983834cd4965212f_AWKWARD_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "455835",
+              "webflowItemId": "67be2ed06004876108b063cc",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2ed06004876108b063cc",
+                  "title": "PURPLE, NO. 419",
+                  "editions": 8,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2eb17647c77d217657a9_PURPLE_NO_419_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 15,
+                  "title": "PURPLE, NO. 419",
+                  "editions": 8,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2eb17647c77d217657a9_PURPLE_NO_419_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2eb17647c77d217657a9_PURPLE_NO_419_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2eb17647c77d217657a9_PURPLE_NO_419_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2eb17647c77d217657a9_PURPLE_NO_419_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "526531",
+              "webflowItemId": "67be2f200e39e3baf53bcc67",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be2f200e39e3baf53bcc67",
+                  "title": "COMMS TEST v1.4.2",
+                  "editions": 10,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ef4feeec8dc4831a942_COMMS_TEST_v1.4.2_01.jpg",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 16,
+                  "title": "COMMS TEST v1.4.2",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ef4feeec8dc4831a942_COMMS_TEST_v1.4.2_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ef4feeec8dc4831a942_COMMS_TEST_v1.4.2_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ef4feeec8dc4831a942_COMMS_TEST_v1.4.2_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be2ef4feeec8dc4831a942_COMMS_TEST_v1.4.2_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "HIC ET NUNC",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            }
+          ],
+          "missingRows": [],
+          "extraRows": [],
+          "duplicateRows": [],
+          "overallStatus": "MATCHES CURRENT WEBFLOW"
+        },
+        {
+          "collectionName": "INTRODUCTIONs",
+          "collectionId": "67be31a0b7084dfce75026fd",
+          "expectedWebflowCount": 5,
+          "htmlRowCount": 5,
+          "orderComparison": {
+            "expected": [
+              "4",
+              "3",
+              "2",
+              "1",
+              "0"
+            ],
+            "actual": [
+              "4",
+              "3",
+              "2",
+              "1",
+              "0"
+            ],
+            "classification": "EXACT MATCH TO COMMITTED ORDER",
+            "currentWebflowStatus": "CONFIRMED: LIVE VALUES EQUAL WF-MIG.2"
+          },
+          "rows": [
+            {
+              "tokenId": "4",
+              "webflowItemId": "67be332491b516d49aba0ef0",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be332491b516d49aba0ef0",
+                  "title": "ONE // FIVE",
+                  "editions": 11,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be32eee4e5df22ae838c65_ONE_FIVE_01.jpg",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 0,
+                  "title": "ONE // FIVE",
+                  "editions": 11,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be32eee4e5df22ae838c65_ONE_FIVE_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be32eee4e5df22ae838c65_ONE_FIVE_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be32eee4e5df22ae838c65_ONE_FIVE_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be32eee4e5df22ae838c65_ONE_FIVE_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "3",
+              "webflowItemId": "67be3361cc3b2ab001a7e073",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be3361cc3b2ab001a7e073",
+                  "title": "TWO // FIVE",
+                  "editions": 9,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be334174ab6d42f64534cc_TWO_FIVE_01.jpg",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 1,
+                  "title": "TWO // FIVE",
+                  "editions": 9,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be334174ab6d42f64534cc_TWO_FIVE_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be334174ab6d42f64534cc_TWO_FIVE_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be334174ab6d42f64534cc_TWO_FIVE_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be334174ab6d42f64534cc_TWO_FIVE_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "2",
+              "webflowItemId": "67be339fd239775b2a77f4d4",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be339fd239775b2a77f4d4",
+                  "title": "THREE // FIVE",
+                  "editions": 8,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be3385fccf37f9f76de1e1_THREE_FIVE_01.jpg",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 2,
+                  "title": "THREE // FIVE",
+                  "editions": 8,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be3385fccf37f9f76de1e1_THREE_FIVE_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be3385fccf37f9f76de1e1_THREE_FIVE_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be3385fccf37f9f76de1e1_THREE_FIVE_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be3385fccf37f9f76de1e1_THREE_FIVE_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "1",
+              "webflowItemId": "67be33ddc98a0659bcb2b379",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be33ddc98a0659bcb2b379",
+                  "title": "FOUR // FIVE",
+                  "editions": 8,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33c373560935545cf376_FOUR_FIVE_01.jpg",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 3,
+                  "title": "FOUR // FIVE",
+                  "editions": 8,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33c373560935545cf376_FOUR_FIVE_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33c373560935545cf376_FOUR_FIVE_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33c373560935545cf376_FOUR_FIVE_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33c373560935545cf376_FOUR_FIVE_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "0",
+              "webflowItemId": "67be340849f25c380c089452",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "NOT APPLICABLE",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "67be340849f25c380c089452",
+                  "title": "FIVE // FIVE",
+                  "editions": 9,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33f192e26827c0e3c924_FIVE_FIVE_01.jpg",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 4,
+                  "title": "FIVE // FIVE",
+                  "editions": 9,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33f192e26827c0e3c924_FIVE_FIVE_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33f192e26827c0e3c924_FIVE_FIVE_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33f192e26827c0e3c924_FIVE_FIVE_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/67be33f192e26827c0e3c924_FIVE_FIVE_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "INTRODUCTIONS",
+                  "acidValue": null
+                }
+              ],
+              "unresolved": []
+            }
+          ],
+          "missingRows": [],
+          "extraRows": [],
+          "duplicateRows": [],
+          "overallStatus": "MATCHES CURRENT WEBFLOW"
+        },
+        {
+          "collectionName": "CANAANs",
+          "collectionId": "65a1be9dcae2314a8ac50aae",
+          "expectedWebflowCount": 31,
+          "htmlRowCount": 31,
+          "orderComparison": {
+            "expected": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "23",
+              "24",
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30"
+            ],
+            "actual": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "23",
+              "24",
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30"
+            ],
+            "classification": "EXACT MATCH TO COMMITTED ORDER",
+            "currentWebflowStatus": "CONFIRMED: LIVE VALUES EQUAL WF-MIG.2"
+          },
+          "rows": [
+            {
+              "tokenId": "0",
+              "webflowItemId": "65a1bef667f967865601b215",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bef667f967865601b215",
+                  "title": "SERIOUSLY STONED",
+                  "editions": 10,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 0,
+                  "title": "SERIOUSLY STONED",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "1",
+              "webflowItemId": "65a1bf3dc64d193880da0093",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bf3dc64d193880da0093",
+                  "title": "I AM BICYCLE",
+                  "editions": 10,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 1,
+                  "title": "I AM BICYCLE",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "2",
+              "webflowItemId": "65a1bf5b7d17dc5aea534acf",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bf5b7d17dc5aea534acf",
+                  "title": "THIS VERY MOMENT",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 2,
+                  "title": "THIS VERY MOMENT",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "3",
+              "webflowItemId": "65a1bf85612e9792b512811e",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bf85612e9792b512811e",
+                  "title": "THE HERO'S JOURNEY",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 3,
+                  "title": "THE HERO'S JOURNEY",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "4",
+              "webflowItemId": "65a1bfa583784c8c84d01982",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bfa583784c8c84d01982",
+                  "title": "ALIGNMENT PERFECTUS",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 4,
+                  "title": "ALIGNMENT PERFECTUS",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "5",
+              "webflowItemId": "65a1bfc87dbe94da28b7a98c",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bfc87dbe94da28b7a98c",
+                  "title": "GOOD TIMES",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 5,
+                  "title": "GOOD TIMES",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "6",
+              "webflowItemId": "65a1bfe8e5760e9cf81a65ec",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bfe8e5760e9cf81a65ec",
+                  "title": "ROYALS",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 6,
+                  "title": "ROYALS",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "7",
+              "webflowItemId": "65a1c119847caa5268e2bf38",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c119847caa5268e2bf38",
+                  "title": "ALL UP IN IT",
+                  "editions": 9,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 7,
+                  "title": "ALL UP IN IT",
+                  "editions": 9,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "8",
+              "webflowItemId": "65a1c15d83784c8c84d104cc",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c15d83784c8c84d104cc",
+                  "title": "THE EXPLORER",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 8,
+                  "title": "THE EXPLORER",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "9",
+              "webflowItemId": "65a1c18507efc2af8049a607",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c18507efc2af8049a607",
+                  "title": "DENSITY",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 9,
+                  "title": "DENSITY",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "10",
+              "webflowItemId": "65a1c1ae7dbe94da28b89e36",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c1ae7dbe94da28b89e36",
+                  "title": "THE PAGE",
+                  "editions": 3,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 10,
+                  "title": "THE PAGE",
+                  "editions": 3,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "11",
+              "webflowItemId": "65a1c2b93a064c4ad4db3d68",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c2b93a064c4ad4db3d68",
+                  "title": "YELLOW JACKETS",
+                  "editions": 9,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 11,
+                  "title": "YELLOW JACKETS",
+                  "editions": 9,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "12",
+              "webflowItemId": "65a1c2e6fc7fdb5d377b41c6",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c2e6fc7fdb5d377b41c6",
+                  "title": "THE CLASSIC",
+                  "editions": 8,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 13
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 12,
+                  "title": "THE CLASSIC",
+                  "editions": 8,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 13
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "13",
+              "webflowItemId": "65a1c314e5760e9cf81c2935",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c314e5760e9cf81c2935",
+                  "title": "SELF",
+                  "editions": 7,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 15
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 13,
+                  "title": "SELF",
+                  "editions": 7,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 15
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "14",
+              "webflowItemId": "65a1c33d8c1ee331dbe5ea19",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c33d8c1ee331dbe5ea19",
+                  "title": "IN BLOOM",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 14,
+                  "title": "IN BLOOM",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "15",
+              "webflowItemId": "65a1c382b6ff8e5ea08a3db9",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c382b6ff8e5ea08a3db9",
+                  "title": "FEEL Ü",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 15,
+                  "title": "FEEL Ü",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "16",
+              "webflowItemId": "65a1c3b567f9678656043651",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c3b567f9678656043651",
+                  "title": "FYEA 2.0",
+                  "editions": 3,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 16,
+                  "title": "FYEA 2.0",
+                  "editions": 3,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "17",
+              "webflowItemId": "65a1c3d5cae2314a8ac83fb1",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c3d5cae2314a8ac83fb1",
+                  "title": "KINGPIN",
+                  "editions": 2,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 17,
+                  "title": "KINGPIN",
+                  "editions": 2,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "18",
+              "webflowItemId": "65dcff4ce6ba60dec918f46a",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dcff4ce6ba60dec918f46a",
+                  "title": "TEK",
+                  "editions": 20,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 18,
+                  "title": "TEK",
+                  "editions": 20,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "19",
+              "webflowItemId": "65dcff9e27226dc26e8b1130",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dcff9e27226dc26e8b1130",
+                  "title": "INVERTED KINGPIN",
+                  "editions": 2,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 19,
+                  "title": "INVERTED KINGPIN",
+                  "editions": 2,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "20",
+              "webflowItemId": "65dcffe577389bbb31da21ba",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dcffe577389bbb31da21ba",
+                  "title": "microDOSR",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 20,
+                  "title": "microDOSR",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "21",
+              "webflowItemId": "65dd0025addade1b7c9e8c32",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd0025addade1b7c9e8c32",
+                  "title": "FACE MELTER",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 21,
+                  "title": "FACE MELTER",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "22",
+              "webflowItemId": "65dd005654c63a120e5649b9",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd005654c63a120e5649b9",
+                  "title": "BETWEEN TWO WORLDS",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 22,
+                  "title": "BETWEEN TWO WORLDS",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "23",
+              "webflowItemId": "65dd0082eedbb748322e33c1",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd0082eedbb748322e33c1",
+                  "title": "EVT",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 23,
+                  "title": "EVT",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "24",
+              "webflowItemId": "65dd00eed55f0c8789540c86",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd00eed55f0c8789540c86",
+                  "title": "HONK IF YOU BONK",
+                  "editions": 24,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 24,
+                  "title": "HONK IF YOU BONK",
+                  "editions": 24,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "25",
+              "webflowItemId": "65dd029bf32f19961dfb353f",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd029bf32f19961dfb353f",
+                  "title": "COPY MACHINE GO BRRRRR",
+                  "editions": 6,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 17
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 25,
+                  "title": "COPY MACHINE GO BRRRRR",
+                  "editions": 6,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 17
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "26",
+              "webflowItemId": "65dd02d613a6d26ad46296ca",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd02d613a6d26ad46296ca",
+                  "title": "BLUE",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 26,
+                  "title": "BLUE",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "27",
+              "webflowItemId": "65dd03455b33e6a25317985c",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd03455b33e6a25317985c",
+                  "title": "EAT, PRAY, LSD.",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 27,
+                  "title": "EAT, PRAY, LSD.",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "28",
+              "webflowItemId": "65dd0373b8e24ee5a59d2956",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd0373b8e24ee5a59d2956",
+                  "title": "A WAY BACK HOME",
+                  "editions": 10,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 28,
+                  "title": "A WAY BACK HOME",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "29",
+              "webflowItemId": "6a1a0af1a5e9ac44f04c94d3",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "6a1a0af1a5e9ac44f04c94d3",
+                  "title": "SPLINTERED",
+                  "editions": 10,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 29,
+                  "title": "SPLINTERED",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "30",
+              "webflowItemId": "6a1a0c033b962bc5f194b9b8",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "6a1a0c033b962bc5f194b9b8",
+                  "title": "BD25",
+                  "editions": 40,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 3
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "drops/index.html",
+                  "rowOrder": 30,
+                  "title": "BD25",
+                  "editions": 40,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 3
+                }
+              ],
+              "unresolved": []
+            }
+          ],
+          "missingRows": [],
+          "extraRows": [],
+          "duplicateRows": [],
+          "overallStatus": "MATCHES CURRENT WEBFLOW"
+        }
+      ]
+    },
+    {
+      "page": "The Exchange",
+      "route": "/exchange",
+      "sourceFile": "exchange/index.html",
+      "lists": [
+        {
+          "collectionName": "THE 419 SCRIPTs",
+          "collectionId": "656f7e02b503790c02f0edff",
+          "expectedWebflowCount": 13,
+          "htmlRowCount": 13,
+          "orderComparison": {
+            "expected": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12"
+            ],
+            "actual": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12"
+            ],
+            "classification": "EXACT MATCH TO COMMITTED ORDER",
+            "currentWebflowStatus": "CONFIRMED: LIVE VALUES EQUAL WF-MIG.2"
+          },
+          "rows": [
+            {
+              "tokenId": "0",
+              "webflowItemId": "656f8042fafe53839534f2c9",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f8042fafe53839534f2c9",
+                  "title": "// 01",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f8006b56f7e5545e558ec_01.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 0,
+                  "title": "// 01",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8006b56f7e5545e558ec_01.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8006b56f7e5545e558ec_01-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8006b56f7e5545e558ec_01.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "1",
+              "webflowItemId": "656f80a3a2351dad65454831",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f80a3a2351dad65454831",
+                  "title": "// 02",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f80805e960a40058d9e9a_02.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 1,
+                  "title": "// 02",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f80805e960a40058d9e9a_02.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f80805e960a40058d9e9a_02-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f80805e960a40058d9e9a_02.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "2",
+              "webflowItemId": "656f80efbed80d5266244eb4",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f80efbed80d5266244eb4",
+                  "title": "// 03",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f80e25e24c1741573b74b_03.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 2,
+                  "title": "// 03",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f80e25e24c1741573b74b_03.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f80e25e24c1741573b74b_03-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f80e25e24c1741573b74b_03.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "3",
+              "webflowItemId": "656f811bf98f1971052ae289",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f811bf98f1971052ae289",
+                  "title": "// 04",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f810bf98f1971052ada86_04.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 3,
+                  "title": "// 04",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f810bf98f1971052ada86_04.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f810bf98f1971052ada86_04-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f810bf98f1971052ada86_04.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "4",
+              "webflowItemId": "656f815be9e0f0b55fda6ea2",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f815be9e0f0b55fda6ea2",
+                  "title": "// 05",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f813e4d25af82067a88d3_05.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 4,
+                  "title": "// 05",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f813e4d25af82067a88d3_05.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f813e4d25af82067a88d3_05-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f813e4d25af82067a88d3_05.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "5",
+              "webflowItemId": "656f81c424f6ae7a9375f0d6",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f81c424f6ae7a9375f0d6",
+                  "title": "// 06",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f81bac2c1d5213bcfb415_06.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 5,
+                  "title": "// 06",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81bac2c1d5213bcfb415_06.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81bac2c1d5213bcfb415_06-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81bac2c1d5213bcfb415_06.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "6",
+              "webflowItemId": "656f81df76153a9b5cee63e8",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f81df76153a9b5cee63e8",
+                  "title": "// 07",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f81d75d651729c6ef1e36_07.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 6,
+                  "title": "// 07",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81d75d651729c6ef1e36_07.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81d75d651729c6ef1e36_07-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81d75d651729c6ef1e36_07.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "7",
+              "webflowItemId": "656f81f5c2c1d5213bcfe411",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f81f5c2c1d5213bcfe411",
+                  "title": "// 08",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f81ed57a961100361168c_08.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 7,
+                  "title": "// 08",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81ed57a961100361168c_08.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81ed57a961100361168c_08-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f81ed57a961100361168c_08.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "8",
+              "webflowItemId": "656f820cecafff42f8b004dc",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f820cecafff42f8b004dc",
+                  "title": "// 09",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f8203561a4e44aab657a8_09.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 8,
+                  "title": "// 09",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8203561a4e44aab657a8_09.png",
+                  "imageSrcset": "",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "9",
+              "webflowItemId": "656f82465d651729c6ef6612",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f82465d651729c6ef6612",
+                  "title": "// 10",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f8240561a4e44aab6754d_10.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 9,
+                  "title": "// 10",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8240561a4e44aab6754d_10.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8240561a4e44aab6754d_10-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8240561a4e44aab6754d_10.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "10",
+              "webflowItemId": "656f828d47349dc899a2ff83",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f828d47349dc899a2ff83",
+                  "title": "// 11",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f8283a7978a03c8092686_11.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 10,
+                  "title": "// 11",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8283a7978a03c8092686_11.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8283a7978a03c8092686_11-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f8283a7978a03c8092686_11.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "11",
+              "webflowItemId": "656f82a28c2e746cf88890a0",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "656f82a28c2e746cf88890a0",
+                  "title": "// 12",
+                  "editions": 100,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/656f829a5e960a40058f22f8_12.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 11,
+                  "title": "// 12",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f829a5e960a40058f22f8_12.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f829a5e960a40058f22f8_12-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/656f829a5e960a40058f22f8_12.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "12",
+              "webflowItemId": "69543cc3e0451cddbf1ffdda",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "69543cc3e0451cddbf1ffdda",
+                  "title": "// 13",
+                  "editions": 100,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/69543c71d2c166a9737ece0c_13.png",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 12,
+                  "title": "// 13",
+                  "editions": 100,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/69543c71d2c166a9737ece0c_13.png",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/69543c71d2c166a9737ece0c_13-p-500.png 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/69543c71d2c166a9737ece0c_13.png 792w",
+                  "imageAlt": "",
+                  "collectionLabel": "THE 419 SCRIPT",
+                  "acidValue": 1
+                }
+              ],
+              "unresolved": []
+            }
+          ],
+          "missingRows": [],
+          "extraRows": [],
+          "duplicateRows": [],
+          "overallStatus": "MATCHES CURRENT WEBFLOW"
+        },
+        {
+          "collectionName": "CANAANs",
+          "collectionId": "65a1be9dcae2314a8ac50aae",
+          "expectedWebflowCount": 31,
+          "htmlRowCount": 31,
+          "orderComparison": {
+            "expected": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "23",
+              "24",
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30"
+            ],
+            "actual": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10",
+              "11",
+              "12",
+              "13",
+              "14",
+              "15",
+              "16",
+              "17",
+              "18",
+              "19",
+              "20",
+              "21",
+              "22",
+              "23",
+              "24",
+              "25",
+              "26",
+              "27",
+              "28",
+              "29",
+              "30"
+            ],
+            "classification": "EXACT MATCH TO COMMITTED ORDER",
+            "currentWebflowStatus": "CONFIRMED: LIVE VALUES EQUAL WF-MIG.2"
+          },
+          "rows": [
+            {
+              "tokenId": "0",
+              "webflowItemId": "65a1bef667f967865601b215",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bef667f967865601b215",
+                  "title": "SERIOUSLY STONED",
+                  "editions": 10,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 0,
+                  "title": "SERIOUSLY STONED",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bee673197ea642e3eee0_00_Seriously_Stoned_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "1",
+              "webflowItemId": "65a1bf3dc64d193880da0093",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bf3dc64d193880da0093",
+                  "title": "I AM BICYCLE",
+                  "editions": 10,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 1,
+                  "title": "I AM BICYCLE",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf3789f7470b14f399b7_01_I_Am_Bicycle_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "2",
+              "webflowItemId": "65a1bf5b7d17dc5aea534acf",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bf5b7d17dc5aea534acf",
+                  "title": "THIS VERY MOMENT",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 2,
+                  "title": "THIS VERY MOMENT",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf5683784c8c84cfec32_02_This_Very_Moment_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "3",
+              "webflowItemId": "65a1bf85612e9792b512811e",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bf85612e9792b512811e",
+                  "title": "THE HERO'S JOURNEY",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 3,
+                  "title": "THE HERO'S JOURNEY",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bf7ba4d5d6dbe886a2a9_03_Kill_The_Snake_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "4",
+              "webflowItemId": "65a1bfa583784c8c84d01982",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bfa583784c8c84d01982",
+                  "title": "ALIGNMENT PERFECTUS",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 4,
+                  "title": "ALIGNMENT PERFECTUS",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfa173352e86a30b54a2_04_Alignment_Perfectus_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "5",
+              "webflowItemId": "65a1bfc87dbe94da28b7a98c",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bfc87dbe94da28b7a98c",
+                  "title": "GOOD TIMES",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 5,
+                  "title": "GOOD TIMES",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfbdbb295f561f366b91_05_Good_Times_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "6",
+              "webflowItemId": "65a1bfe8e5760e9cf81a65ec",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1bfe8e5760e9cf81a65ec",
+                  "title": "ROYALS",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 6,
+                  "title": "ROYALS",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1bfe1736b28beba608c02_06_Royals_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "7",
+              "webflowItemId": "65a1c119847caa5268e2bf38",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c119847caa5268e2bf38",
+                  "title": "ALL UP IN IT",
+                  "editions": 9,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 7,
+                  "title": "ALL UP IN IT",
+                  "editions": 9,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c10d7d17dc5aea543d7c_07_All_Up_In_It_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "8",
+              "webflowItemId": "65a1c15d83784c8c84d104cc",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c15d83784c8c84d104cc",
+                  "title": "THE EXPLORER",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 8,
+                  "title": "THE EXPLORER",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c15207efc2af80498cb8_08_The_Explorer_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "9",
+              "webflowItemId": "65a1c18507efc2af8049a607",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c18507efc2af8049a607",
+                  "title": "DENSITY",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 9,
+                  "title": "DENSITY",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c17f96ca78d98f8c770c_09_Density_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "10",
+              "webflowItemId": "65a1c1ae7dbe94da28b89e36",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c1ae7dbe94da28b89e36",
+                  "title": "THE PAGE",
+                  "editions": 3,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 10,
+                  "title": "THE PAGE",
+                  "editions": 3,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c1a28d8df299418196a1_10_The_Page_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "11",
+              "webflowItemId": "65a1c2b93a064c4ad4db3d68",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c2b93a064c4ad4db3d68",
+                  "title": "YELLOW JACKETS",
+                  "editions": 9,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 11,
+                  "title": "YELLOW JACKETS",
+                  "editions": 9,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2b05c518b24c4f45825_11_Yellow_Jackets_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 12
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "12",
+              "webflowItemId": "65a1c2e6fc7fdb5d377b41c6",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c2e6fc7fdb5d377b41c6",
+                  "title": "THE CLASSIC",
+                  "editions": 8,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 13
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 12,
+                  "title": "THE CLASSIC",
+                  "editions": 8,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c2e0b2324033dcb520ef_12_The_Classic_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 13
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "13",
+              "webflowItemId": "65a1c314e5760e9cf81c2935",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c314e5760e9cf81c2935",
+                  "title": "SELF",
+                  "editions": 7,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 15
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 13,
+                  "title": "SELF",
+                  "editions": 7,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c30d8ad6c1d35e6fd5b4_13_Self_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 15
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "14",
+              "webflowItemId": "65a1c33d8c1ee331dbe5ea19",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c33d8c1ee331dbe5ea19",
+                  "title": "IN BLOOM",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 14,
+                  "title": "IN BLOOM",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3398ad6c1d35e6feb3b_14_In_Bloom_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "15",
+              "webflowItemId": "65a1c382b6ff8e5ea08a3db9",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c382b6ff8e5ea08a3db9",
+                  "title": "FEEL Ü",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 15,
+                  "title": "FEEL Ü",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c36873352e86a30d846d_15_Feel_U_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "16",
+              "webflowItemId": "65a1c3b567f9678656043651",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c3b567f9678656043651",
+                  "title": "FYEA 2.0",
+                  "editions": 3,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 16,
+                  "title": "FYEA 2.0",
+                  "editions": 3,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3af4caa007e03d987e8_16_FYEA_2_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 34
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "17",
+              "webflowItemId": "65a1c3d5cae2314a8ac83fb1",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65a1c3d5cae2314a8ac83fb1",
+                  "title": "KINGPIN",
+                  "editions": 2,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 17,
+                  "title": "KINGPIN",
+                  "editions": 2,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65a1c3cf5893bbd619b3e68c_17_Kingpin_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "18",
+              "webflowItemId": "65dcff4ce6ba60dec918f46a",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dcff4ce6ba60dec918f46a",
+                  "title": "TEK",
+                  "editions": 20,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 18,
+                  "title": "TEK",
+                  "editions": 20,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff35de2c4d684aaec42c_18_Tek_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "19",
+              "webflowItemId": "65dcff9e27226dc26e8b1130",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dcff9e27226dc26e8b1130",
+                  "title": "INVERTED KINGPIN",
+                  "editions": 2,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 19,
+                  "title": "INVERTED KINGPIN",
+                  "editions": 2,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcff95cf2e488cb70eb9d8_19_Inverted_Kingpin_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 50
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "20",
+              "webflowItemId": "65dcffe577389bbb31da21ba",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dcffe577389bbb31da21ba",
+                  "title": "microDOSR",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 20,
+                  "title": "microDOSR",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dcffd9af3af8aef3d25235_20_microDOSR_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "21",
+              "webflowItemId": "65dd0025addade1b7c9e8c32",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd0025addade1b7c9e8c32",
+                  "title": "FACE MELTER",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 21,
+                  "title": "FACE MELTER",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd001cc94c28e865d5d86f_21_Face_Melter_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "22",
+              "webflowItemId": "65dd005654c63a120e5649b9",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd005654c63a120e5649b9",
+                  "title": "BETWEEN TWO WORLDS",
+                  "editions": 4,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 22,
+                  "title": "BETWEEN TWO WORLDS",
+                  "editions": 4,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd004cc4edec855a1c517c_22_Between_Two_Worlds_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 25
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "23",
+              "webflowItemId": "65dd0082eedbb748322e33c1",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd0082eedbb748322e33c1",
+                  "title": "EVT",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 23,
+                  "title": "EVT",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00758ace0b85b7021035_23_EVT_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "24",
+              "webflowItemId": "65dd00eed55f0c8789540c86",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd00eed55f0c8789540c86",
+                  "title": "HONK IF YOU BONK",
+                  "editions": 24,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 24,
+                  "title": "HONK IF YOU BONK",
+                  "editions": 24,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd00a65f92132aa2b8512d_24_Honk_If_You_Bonk_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 5
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "25",
+              "webflowItemId": "65dd029bf32f19961dfb353f",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd029bf32f19961dfb353f",
+                  "title": "COPY MACHINE GO BRRRRR",
+                  "editions": 6,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 17
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 25,
+                  "title": "COPY MACHINE GO BRRRRR",
+                  "editions": 6,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02811eb1612111a9563c_25_Copy_Machine_Go_Brrrrr_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 17
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "26",
+              "webflowItemId": "65dd02d613a6d26ad46296ca",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd02d613a6d26ad46296ca",
+                  "title": "BLUE",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 26,
+                  "title": "BLUE",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd02b9611ad6eec3c54985_26_Blue_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "27",
+              "webflowItemId": "65dd03455b33e6a25317985c",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd03455b33e6a25317985c",
+                  "title": "EAT, PRAY, LSD.",
+                  "editions": 5,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 27,
+                  "title": "EAT, PRAY, LSD.",
+                  "editions": 5,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd03325ecaeb6184f86701_27_Eat_Pray_LSD_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 20
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "28",
+              "webflowItemId": "65dd0373b8e24ee5a59d2956",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "SAME WEBFLOW ASSET, DIFFERENT HOST",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "65dd0373b8e24ee5a59d2956",
+                  "title": "A WAY BACK HOME",
+                  "editions": 10,
+                  "imageUrl": "https://uploads-ssl.webflow.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 28,
+                  "title": "A WAY BACK HOME",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/65dd035ac805212391b650d6_28_A_Way_Back_Home_01.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "29",
+              "webflowItemId": "6a1a0af1a5e9ac44f04c94d3",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "6a1a0af1a5e9ac44f04c94d3",
+                  "title": "SPLINTERED",
+                  "editions": 10,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 29,
+                  "title": "SPLINTERED",
+                  "editions": 10,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0ade301bec1e3a6a3ab7_29_Splintered.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 10
+                }
+              ],
+              "unresolved": []
+            },
+            {
+              "tokenId": "30",
+              "webflowItemId": "6a1a0c033b962bc5f194b9b8",
+              "presentInWebflow": true,
+              "presentInHtml": true,
+              "titleMatch": "EXACT MATCH",
+              "editionsMatch": "EXACT MATCH",
+              "imageMatch": "EXACT URL MATCH",
+              "collectionLabelMatch": "EXACT MATCH",
+              "acidValueMatch": "EXACT MATCH",
+              "status": "MATCHES CURRENT WEBFLOW",
+              "evidence": [
+                {
+                  "source": "WEBFLOW_CMS live refresh",
+                  "itemId": "6a1a0c033b962bc5f194b9b8",
+                  "title": "BD25",
+                  "editions": 40,
+                  "imageUrl": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25.jpg",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 3
+                },
+                {
+                  "source": "GIT_GENERATED_HTML",
+                  "sourceFile": "exchange/index.html",
+                  "rowOrder": 30,
+                  "title": "BD25",
+                  "editions": 40,
+                  "imageSrc": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25.jpg",
+                  "imageSrcset": "https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25-p-500.jpg 500w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25-p-800.jpg 800w, https://cdn.prod.website-files.com/656d1d76a2cda12f26e04688/6a1a0beb57972eb2c34fb620_30_BD25.jpg 814w",
+                  "imageAlt": "",
+                  "collectionLabel": "CANAAN",
+                  "acidValue": 3
+                }
+              ],
+              "unresolved": []
+            }
+          ],
+          "missingRows": [],
+          "extraRows": [],
+          "duplicateRows": [],
+          "overallStatus": "MATCHES CURRENT WEBFLOW"
+        }
+      ]
+    }
+  ],
+  "liveRefresh": {
+    "siteName": "EATACID.xyz",
+    "siteId": "656cf42faa2b1a7a1582d9d2",
+    "status": "CURRENT",
+    "liveCollections": 4,
+    "liveItems": 66,
+    "checkedInOccurrences": 97,
+    "currentOccurrences": 97,
+    "newlyStaleOccurrences": 0,
+    "evidence": "All 66 live item payloads equal WF-MIG.2, so the prior deterministic 97-row comparison remains current."
+  },
+  "totals": {
+    "lists": 5,
+    "htmlRows": 97,
+    "currentRows": 97,
+    "staleRows": 0,
+    "missingRows": 0,
+    "extraRows": 0,
+    "duplicateRows": 0
+  }
+}
