@@ -1,0 +1,159 @@
+{
+  "generatedAt": "2026-07-31T19:53:03.824Z",
+  "dependencies": [
+    {
+      "file":"webflow/drops.js","symbol":"module entry","page":"Drops","selectorOrTraversal":"import '../drops/js/main.js'","dependencyType":"other",
+      "expectedStructure":"The deployed Webflow footer loads drops.js as a module and the entry reaches drops/js/main.js.","expectedValueFormat":"ES module URL",
+      "extraction":"Webflow uses https://chokedesigns.github.io/eatacid-xyz/drops.js; checked-in drops/index.html uses js/main.js.","downstreamUse":"Bootstraps CMS-row behavior.","affectedFeature":"Drops loading and transactions",
+      "orderingDependency":"HARD DEPENDENCY: the entry must execute after or wait for the page DOM.","failureMode":"No row stamping, wallet filtering, cart, or transaction handlers.","parityRequirement":"FUNCTIONAL EQUIVALENT ACCEPTABLE",
+      "evidence":["[WEBFLOW] Read-only page custom-code response returned the deployed module URL.","[REPOSITORY] webflow/drops.js:1 and drops/js/main.js:1-3."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"findCMSRows","page":"Drops","selectorOrTraversal":"document.querySelectorAll('.' + getCollectionSlug(collKey) + '-collection .w-dyn-item')","dependencyType":"selector",
+      "expectedStructure":"One .hen-collection, .intros-collection, and .canaan-collection contains .w-dyn-item wrappers; initial counts are 17, 5, and 31.","expectedValueFormat":"HEN, INTRODUCTIONS, and CANAAN keys; INTRODUCTIONS maps to intros.",
+      "extraction":"Captures initial CMS wrapper arrays before wallet filtering.","downstreamUse":"Stamping, metadata lookup, cloning, ordering, and eligibility.","affectedFeature":"Drops eligible-token list and cart",
+      "orderingDependency":"SOFT PRESENTATION DEPENDENCY: arrays preserve initial Webflow order; identity never uses array index.","failureMode":"The affected collection has no captured rows.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:668-674.","[REPOSITORY] drops/index.html contains all three wrappers and item counts."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"stampRowAttributes / setEventContractAndTokenAttributes","page":"Drops","selectorOrTraversal":"row.querySelector('.token-id-number') || row.querySelector('.token-id-container'); row.dataset.tokenId; row.dataset.contractAddress","dependencyType":"text-parse",
+      "expectedStructure":"Every captured outer .w-dyn-item contains a hidden .token-id-number; .token-id-container is a fallback.","expectedValueFormat":"Trimmed base-10 integer without prefix or zero-padding; Git-owned contract address.",
+      "extraction":"Copies CMS Token ID text and Git contract identity to row data attributes.","downstreamUse":"Balance matching, selection, cloning, metadata lookup, and payload construction.","affectedFeature":"Drops token identity and transactions",
+      "orderingDependency":"HARD DEPENDENCY: token text and collection grouping define identity.","failureMode":"A missing ID returns without attributes and later consumers skip or reject the row.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:678-684,1238-1250.","[WEBFLOW] Each of the three templates binds Token ID to .token-id-number."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"getTokenData","page":"Drops","selectorOrTraversal":"row.getAttribute('data-token-id'); .collection-item-title-text; .collection-item-collection-text; .collection-item-editions-text-number; .collection-item-image-div img[src|srcset]","dependencyType":"selector",
+      "expectedStructure":"The selected outer row contains title, collection, editions, and an img nested beneath the image wrapper.","expectedValueFormat":"Trimmed text; loadable src and optional srcset.",
+      "extraction":"Reads CMS presentation values with empty/unavailable fallbacks.","downstreamUse":"Selected burn-token preview.","affectedFeature":"Drops cart preview",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Preview metadata or image falls back while stamped identity may remain usable.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:481-489."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"getSelectedTokens / checkbox delegation","page":"Drops","selectorOrTraversal":".w-checkbox-input.events_checkbox:checked; checked.closest('[data-token-id]'); row.dataset; .collection-item-owned-text; event.target.matches('.w-checkbox-input.events_checkbox')","dependencyType":"event-binding",
+      "expectedStructure":"Each selectable HEN/INTRO input has both classes beneath the stamped outer row; owned-count text is a sibling descendant.","expectedValueFormat":"checked boolean, integer token ID, contract string, owned integer or 00.",
+      "extraction":"Delegates changes, enforces exclusivity, and reads selected identity/balance; malformed owned text becomes zero.","downstreamUse":"Burn selection and transaction payload.","affectedFeature":"Drops selection and exchange action",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Selection is not detected, exclusivity is lost, or balance is treated as zero.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:538-555,2411-2422,2464-2495."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"reset/update wallet rows","page":"Drops","selectorOrTraversal":".w-dyn-item[data-token-id]; .collection-item-owned-text; wrapper.dataset; wrapper.remove()","dependencyType":"visibility-state",
+      "expectedStructure":"Stamped HEN/INTRO outer wrappers contain owned-count nodes and remain removable children of their collection list.","expectedValueFormat":"Contract/token dataset and integer/00 owned text.",
+      "extraction":"Writes balances, removes ineligible rows, and clears selections.","downstreamUse":"Connected-wallet row state.","affectedFeature":"Drops eligible wallet list",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Stale balance or ineligible rows remain visible.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:773-804,1541-1548."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"getWalletTokenPanes / displayDefaultTokens","page":"Drops","selectorOrTraversal":".hen-collection.w-dyn-list; .introductions-collection.w-dyn-list","dependencyType":"selector",
+      "expectedStructure":"One HEN and one INTRODUCTIONS collection wrapper should match.","expectedValueFormat":"Exact class tokens.",
+      "extraction":"Finds list containers for clear/hide/repopulate operations.","downstreamUse":"Wallet pending, empty, and disconnected state.","affectedFeature":"Drops INTRO/HEN pane visibility",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Current .intros-collection does not match .introductions-collection, so this helper omits INTRODUCTIONS.","parityRequirement":"UNRESOLVED",
+      "evidence":["[REPOSITORY] drops/js/events.js:1567-1587,2004-2013.","[WEBFLOW] Current style/tree class is .intros-collection.","[REPOSITORY] drops/index.html also uses .intros-collection."],"unresolved":["Observed current selector/class drift; this audit does not modify it."]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"updateWalletTokenDisplay / buildEventTokenRow","page":"Drops","selectorOrTraversal":"'.' + slug + '-collection.w-dyn-list'; sort(Number(dataset.tokenId)); find(dataset.tokenId); cloneNode(true); .token-id-number; appendChild","dependencyType":"positional-index",
+      "expectedStructure":"HEN/INTRO wrappers are insertion parents and captured .w-dyn-item rows are complete deep-clone templates.","expectedValueFormat":"Numeric main token IDs and Git main-to-environment token mappings.",
+      "extraction":"Sorts source rows, finds by main ID, clones, rewrites hidden/data token ID, and appends owned mapped rows.","downstreamUse":"Shadownet wallet row rendering.","affectedFeature":"Drops network mirror behavior",
+      "orderingDependency":"HARD DEPENDENCY for ID mapping; SOFT PRESENTATION DEPENDENCY for numeric output order; array index is not identity.","failureMode":"Missing rows/mappings omit owned tokens; malformed IDs destabilize sort/match.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:1258-1280,1682-1755.","[REPOSITORY] drops/js/events-config.js:14-32 and shared/chain-registry.js:23-60."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"updateExclusionDisplay / updateRedeemTokenTitle","page":"Drops","selectorOrTraversal":"rows.find(getAttribute('data-token-id')); .canaan-collection .collection-item-01.w-dyn-item; .token-id-number; .collection-item-title-text","dependencyType":"data-lookup",
+      "expectedStructure":"Captured/stamped rows can be found by token ID; CANAAN uses outer .collection-item-01.w-dyn-item.","expectedValueFormat":"Exact token ID string and trimmed title.",
+      "extraction":"Maps Git-configured exclusion/redeem IDs to CMS titles.","downstreamUse":"Drop detail labels.","affectedFeature":"Drops parameter presentation",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Falls back to raw ID or unresolved title.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:1467-1502."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events.js","symbol":"findRedeemRow / resolveRedeemMetadata / resolveRedeemImage","page":"Drops","selectorOrTraversal":"window.cmsRowsByCollection[key].find(dataset.tokenId); CANAAN fallback selector; .collection-item-editions-text-number; .collection-item-title-text; .collection-item-image-div img","dependencyType":"selector",
+      "expectedStructure":"The configured redeem collection has a captured row with hidden ID, title, editions, and nested image.","expectedValueFormat":"Exact token ID; trimmed title/edition; image src/srcset.",
+      "extraction":"Combines Git active-drop identity with CMS presentation metadata.","downstreamUse":"Redeem preview and supply presentation.","affectedFeature":"Drops redeem side",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Unavailable metadata/image fallbacks; transaction identity still comes from Git.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events.js:1920-1982.","[REPOSITORY] shared/drop-params/drop-params.js:39-62."],"unresolved":[]
+    },
+    {
+      "file":"drops/js/events-config.js","symbol":"collections / tokenMapping / pair lookup","page":"Drops","selectorOrTraversal":"Git lookup by collection key and chain pair lookup by stamped contract/token; no visible label or DOM-index identity","dependencyType":"data-lookup",
+      "expectedStructure":"HEN, INTRODUCTIONS, and CANAAN list membership stays aligned with Git keys.","expectedValueFormat":"Contract addresses, token-ID maps, and chain pair IDs.",
+      "extraction":"Reads shared registry/drop parameters; pair ID is retrieved from chain, not CMS position.","downstreamUse":"Eligibility and transaction routing.","affectedFeature":"Drops transactions",
+      "orderingDependency":"HARD DEPENDENCY for grouping and identity; NO DEPENDENCY on DOM/chain return order.","failureMode":"Wrong/missing contract, mirror, or pair prevents a valid transaction.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] drops/js/events-config.js:14-32.","[REPOSITORY] shared/chain-registry.js:12-60.","[REPOSITORY] shared/drop-params/drop-params.js:39-62."],"unresolved":[]
+    },
+    {
+      "file":"webflow/exchange.js","symbol":"module entry","page":"The Exchange","selectorOrTraversal":"import '../exchange/js/main.js'","dependencyType":"other",
+      "expectedStructure":"The Webflow footer loads exchange.js as a module and the entry reaches exchange/js/main.js.","expectedValueFormat":"ES module URL",
+      "extraction":"Webflow uses https://chokedesigns.github.io/eatacid-xyz/exchange.js; checked-in HTML uses js/main.js.","downstreamUse":"Bootstraps Exchange row behavior.","affectedFeature":"Exchange loading and transactions",
+      "orderingDependency":"HARD DEPENDENCY: initialization waits for DOM readiness and then 500 ms.","failureMode":"No stamping, filtering, cart, or transactions.","parityRequirement":"FUNCTIONAL EQUIVALENT ACCEPTABLE",
+      "evidence":["[WEBFLOW] Read-only page custom-code returned the deployed URL.","[REPOSITORY] webflow/exchange.js:1 and exchange/js/main.js:1-3."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"getEditionCount","page":"The Exchange","selectorOrTraversal":"dropdown.closest('.collection-item-01-div').querySelector('.collection-item-editions-text-number')","dependencyType":"text-parse",
+      "expectedStructure":"Each .token-qty select is beneath its inner row, which also contains the edition node.","expectedValueFormat":"Trimmed positive base-10 integer.",
+      "extraction":"parseInt(...,10), invalid/nonpositive becomes zero.","downstreamUse":"Quantity limits and ACID formula.","affectedFeature":"Exchange quantity/value",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"No valid options/value for the row.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:122-129."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"resetDropdownsAndRows","page":"The Exchange","selectorOrTraversal":".token-qty.w-select; .collection-item-01-div","dependencyType":"visibility-state",
+      "expectedStructure":"Initial DOM has 44 selects and 44 inner rows across 13 SCRIPT and 31 CANAAN items.","expectedValueFormat":"Select values, row data attributes, and inline display state.",
+      "extraction":"Clears selection and row state.","downstreamUse":"Disconnect/network/reset handling.","affectedFeature":"Exchange state reset",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Stale identity, visibility, or quantity remains.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:214-225.","[REPOSITORY] exchange/index.html counts."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"getPaneElements / EXCHANGE_PANES","page":"The Exchange","selectorOrTraversal":".w-tab-pane[data-w-tab=419|CANAAN] > ... .exchange-ui-div; wrapper.querySelector('.w-dyn-list'); wrapper.querySelectorAll('.collection-item-01-div')","dependencyType":"selector",
+      "expectedStructure":"Exactly one 419 and one CANAAN pane contain one UI wrapper, one collection list, and their rows.","expectedValueFormat":"data-w-tab exactly 419 or CANAAN; Git contract per pane.",
+      "extraction":"Associates row groups with configured contracts, spinners, and no-token elements.","downstreamUse":"Stamping and wallet visibility.","affectedFeature":"Exchange collection grouping",
+      "orderingDependency":"HARD DEPENDENCY: pane membership determines contract identity.","failureMode":"Missing/misgrouped pane yields no rows or wrong contract.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:270-282.","[REPOSITORY] exchange/js/exchange-config.js:14-25.","[WEBFLOW] Lists are in separate 419/CANAAN TabsPane nodes."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"setPanePending / setPaneResolved","page":"The Exchange","selectorOrTraversal":".exchange-ui-div.exchange-wallet-tokens-pending; row.querySelector('.token-qty.w-select'); row.style.display; wrapper.classList.add/remove","dependencyType":"class-mutation",
+      "expectedStructure":"Each pane wrapper starts pending and contains row selects.","expectedValueFormat":"Class plus inline display/disabled state.",
+      "extraction":"Transitions pane and row wallet state.","downstreamUse":"Spinner, no-token, eligible-row UI.","affectedFeature":"Exchange wallet state",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Pending persists or rows/controls show wrong state.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:388-445.","[WEBFLOW] Both current wrappers carry the pending combo class."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"setContractAndTokenAttributes","page":"The Exchange","selectorOrTraversal":"row.querySelector('.token-id-number'); textContent.trim(); row.setAttribute('data-token-id'|'data-contract-address')","dependencyType":"text-parse",
+      "expectedStructure":"Every inner row contains hidden Token ID text.","expectedValueFormat":"Trimmed integer and pane-configured contract.",
+      "extraction":"Stamps identity on .collection-item-01-div, not outer .w-dyn-item.","downstreamUse":"Chain match and cart payload.","affectedFeature":"Exchange eligibility/transactions",
+      "orderingDependency":"HARD DEPENDENCY: text and pane grouping, not index, define identity.","failureMode":"Row is unmatchable/unusable.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:545-557."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"getBurnCart / processWalletNFTs","page":"The Exchange","selectorOrTraversal":".token-qty.w-select; dropdown.closest('.collection-item-01-div'); data-token-id; data-contract-address; row.style.display","dependencyType":"attribute-read",
+      "expectedStructure":"Each select is beneath its stamped inner row; rows remain in configured panes.","expectedValueFormat":"Quantity/token integers, contract string, chain balance.",
+      "extraction":"Matches chain NFTs, shows/enables owned rows, and reads selected burn items.","downstreamUse":"Eligibility and transaction input.","affectedFeature":"Exchange wallet list and burn payload",
+      "orderingDependency":"NO DEPENDENCY on DOM or chain-return order.","failureMode":"Owned row hidden/disabled or cart item missing identity.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:568-593,674-690."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"updateBurnCart / updateTotalDisplay","page":"The Exchange","selectorOrTraversal":"dropdown.closest('.collection-item-01-div'); .collection-item-title-text; .collection-item-01-image; .collection-item-editions-text-number; row.style.display","dependencyType":"selector",
+      "expectedStructure":"Selected visible inner rows contain title, image, edition, and select.","expectedValueFormat":"Trimmed title, loadable image src, positive edition integer, quantity integer.",
+      "extraction":"Copies title/image and computes Math.ceil(100/editionCount)*quantity; CMS $ACID text is not read.","downstreamUse":"Dynamic cart rows and total.","affectedFeature":"Exchange cart/value",
+      "orderingDependency":"SOFT PRESENTATION DEPENDENCY: cart order follows select DOM order; identity does not.","failureMode":"Row is skipped or cart/total is invalid.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:775-852,904-929."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"quantity change delegation","page":"The Exchange","selectorOrTraversal":"event.target.classList contains token-qty and w-select","dependencyType":"event-binding",
+      "expectedStructure":"The select event target carries both classes.","expectedValueFormat":"Change event with numeric-or-empty value.",
+      "extraction":"Delegates changes to cart and total updates.","downstreamUse":"Interactive selection.","affectedFeature":"Exchange cart",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Quantity changes do not update UI.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:944-953."],"unresolved":[]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"tab observation","page":"The Exchange","selectorOrTraversal":".tab-link[aria-selected=true]; getAttribute('aria-controls'); document.querySelectorAll('.tab-link')","dependencyType":"attribute-read",
+      "expectedStructure":"Tabs expose active aria-selected and aria-controls relationships.","expectedValueFormat":"ARIA boolean text and pane ID.",
+      "extraction":"Observes/binds tab state; contract mapping itself uses data-w-tab membership.","downstreamUse":"Tab observation and UI switching context.","affectedFeature":"Exchange tabs",
+      "orderingDependency":"NO DEPENDENCY","failureMode":"Observation/logging is incomplete; broken equivalent switching would block a pane.","parityRequirement":"FUNCTIONAL EQUIVALENT ACCEPTABLE",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:1345-1370.","[REPOSITORY] exchange/index.html contains Webflow Tabs and Webflow scripts."],"unresolved":["Read-only MCP does not expose widget/interaction initialization internals."]
+    },
+    {
+      "file":"exchange/js/exchange.js","symbol":"initialization / pair lookup","page":"The Exchange","selectorOrTraversal":"DOMContentLoaded/readyState; setTimeout(...,500); MutationObserver(children); Git/chain lookup by stamped contract/token","dependencyType":"other",
+      "expectedStructure":"All CMS rows and Tabs exist by delayed boot; cart container exists.","expectedValueFormat":"Complete DOM; chain pair IDs resolved from contract/token.",
+      "extraction":"Initializes options/stamps/events, then retrieves pair identity from chain; dropdown index is never token/pair ID.","downstreamUse":"Startup and transaction construction.","affectedFeature":"Exchange runtime",
+      "orderingDependency":"HARD DEPENDENCY on boot timing and identity; NO DEPENDENCY on CMS index or chain order.","failureMode":"Late rows remain unstamped/unbound or pair lookup fails.","parityRequirement":"EXACT PARITY REQUIRED",
+      "evidence":["[REPOSITORY] exchange/js/exchange.js:1320-1402 and transaction pipeline.","[REPOSITORY] shared/chain-registry.js:12-30."],"unresolved":[]
+    }
+  ]
+}

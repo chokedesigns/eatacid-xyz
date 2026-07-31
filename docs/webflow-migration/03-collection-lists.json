@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-07-31T19:53:03.824Z",
+  "siteId": "656cf42faa2b1a7a1582d9d2",
+  "pages": [
+    {
+      "pageId": "67be119ce0fb23251217c7a9",
+      "pageName": "Drops",
+      "route": "/drops",
+      "collectionLists": [
+        {
+          "elementId": "ae68042e-a003-3b81-3054-355b079d3ad1",
+          "collectionId": "67be12e2583121ead44b79ed",
+          "collectionName": "HENs",
+          "parentElementId": "3b87c72a-4b98-faa7-209e-2d12063a8fe7",
+          "ancestorElementIds": ["656cf42faa2b1a7a1582d9de","2b436b4b-d839-a8fd-24e5-e193f361f70a","a1c12a67-3131-e3fa-6377-6da9c4afa77c","60cc2d6c-cf5a-a27d-e7f1-49cdd5bfe81d","0d3ea3d4-bb8b-bdae-61d8-8ffbbf3596dc","3b87c72a-4b98-faa7-209e-2d12063a8fe7"],
+          "itemWrapperElementId": "ae68042e-a003-3b81-3054-355b079d3ad3",
+          "itemLimit": 100,
+          "pagination": null,
+          "sorts": [{"fieldId":"24b3148425dbe6d85b7ca8c369fdd733","fieldApiName":"token-id","direction":"ascending"}],
+          "filters": [],
+          "conditionalVisibility": [],
+          "emptyState": {"elementId":"ae68042e-a003-3b81-3054-355b079d3ad4","text":"No items found.","paginationControls":[]},
+          "componentContext": {"insideComponentInstance":false,"componentId":null,"componentName":null,"nestedCollection":false,"webflowWidget":null,"tabName":null},
+          "savedPublishedState": {"relationship":"unresolved","lastUpdated":"2026-07-24T21:16:21.758Z","lastPublished":"2026-07-24T21:16:04.114Z"},
+          "evidence": ["[WEBFLOW] Current Designer tree exposes HEN Collection at this ID beneath Events Wallet UI Div.","[WEBFLOW] Raw list settings report dynamic collection 67be12e2583121ead44b79ed, limit 100, offset 0, no filters/pagination, and Token ID ascending.","[REPOSITORY] drops/index.html has .hen-collection > .w-dyn-items > .hen-collection-item-01.w-dyn-item."],
+          "unresolved": ["The MCP response does not label settings as saved, published, or identical in both states."]
+        },
+        {
+          "elementId": "d8f397d1-f69c-180a-7ee6-b53dda6483b1",
+          "collectionId": "67be31a0b7084dfce75026fd",
+          "collectionName": "INTRODUCTIONs",
+          "parentElementId": "3b87c72a-4b98-faa7-209e-2d12063a8fe7",
+          "ancestorElementIds": ["656cf42faa2b1a7a1582d9de","2b436b4b-d839-a8fd-24e5-e193f361f70a","a1c12a67-3131-e3fa-6377-6da9c4afa77c","60cc2d6c-cf5a-a27d-e7f1-49cdd5bfe81d","0d3ea3d4-bb8b-bdae-61d8-8ffbbf3596dc","3b87c72a-4b98-faa7-209e-2d12063a8fe7"],
+          "itemWrapperElementId": "d8f397d1-f69c-180a-7ee6-b53dda6483b3",
+          "itemLimit": 100,
+          "pagination": null,
+          "sorts": [{"fieldId":"ca12c6f0cc6376d741dda81505eb4993","fieldApiName":"mint-date","direction":"ascending"}],
+          "filters": [],
+          "conditionalVisibility": [],
+          "emptyState": {"elementId":"d8f397d1-f69c-180a-7ee6-b53dda6483ca","text":"No items found.","paginationControls":[]},
+          "componentContext": {"insideComponentInstance":false,"componentId":null,"componentName":null,"nestedCollection":false,"webflowWidget":null,"tabName":null},
+          "savedPublishedState": {"relationship":"unresolved","lastUpdated":"2026-07-24T21:16:21.758Z","lastPublished":"2026-07-24T21:16:04.114Z"},
+          "evidence": ["[WEBFLOW] Current Designer tree exposes INTROs Collection at this ID beneath Events Wallet UI Div.","[WEBFLOW] Raw settings report dynamic collection 67be31a0b7084dfce75026fd, limit 100, offset 0, no filters/pagination, and Mint Date ascending.","[REPOSITORY] drops/index.html has .intros-collection > .collection-list-4.w-dyn-items > .intros-collection-item-01.w-dyn-item."],
+          "unresolved": ["Saved-versus-published relationship is not exposed.","All current items share one Mint Date; tie-break order is not exposed."]
+        },
+        {
+          "elementId": "10d66a25-e077-73df-b103-49c09151fb87",
+          "collectionId": "65a1be9dcae2314a8ac50aae",
+          "collectionName": "CANAANs",
+          "parentElementId": "3b87c72a-4b98-faa7-209e-2d12063a8fe7",
+          "ancestorElementIds": ["656cf42faa2b1a7a1582d9de","2b436b4b-d839-a8fd-24e5-e193f361f70a","a1c12a67-3131-e3fa-6377-6da9c4afa77c","60cc2d6c-cf5a-a27d-e7f1-49cdd5bfe81d","0d3ea3d4-bb8b-bdae-61d8-8ffbbf3596dc","3b87c72a-4b98-faa7-209e-2d12063a8fe7"],
+          "itemWrapperElementId": "10d66a25-e077-73df-b103-49c09151fb89",
+          "itemLimit": 100,
+          "pagination": null,
+          "sorts": [{"fieldId":"5568b8d3e695834bf80dcae1552c6d22","fieldApiName":"token-id","direction":"ascending"}],
+          "filters": [],
+          "conditionalVisibility": [],
+          "emptyState": {"elementId":"10d66a25-e077-73df-b103-49c09151fba6","text":"No items found.","paginationControls":[]},
+          "componentContext": {"insideComponentInstance":false,"componentId":null,"componentName":null,"nestedCollection":false,"webflowWidget":null,"tabName":null},
+          "savedPublishedState": {"relationship":"unresolved","lastUpdated":"2026-07-24T21:16:21.758Z","lastPublished":"2026-07-24T21:16:04.114Z"},
+          "evidence": ["[WEBFLOW] Current Designer tree exposes CANAAN Collection at this ID beneath Events Wallet UI Div.","[WEBFLOW] Raw settings report dynamic collection 65a1be9dcae2314a8ac50aae, limit 100, offset 0, no filters/pagination, and Token ID ascending.","[REPOSITORY] drops/index.html has .canaan-collection > .collection-list-5.w-dyn-items > .collection-item-01.w-dyn-item."],
+          "unresolved": ["The MCP response does not label settings as saved, published, or identical in both states."]
+        }
+      ]
+    },
+    {
+      "pageId": "65dcf9fcd636fdd5996f46ec",
+      "pageName": "The Exchange",
+      "route": "/exchange",
+      "collectionLists": [
+        {
+          "elementId": "ae68042e-a003-3b81-3054-355b079d3ad1",
+          "collectionId": "656f7e02b503790c02f0edff",
+          "collectionName": "THE 419 SCRIPTs",
+          "parentElementId": "3b87c72a-4b98-faa7-209e-2d12063a8fe7",
+          "ancestorElementIds": ["656cf42faa2b1a7a1582d9de","2b436b4b-d839-a8fd-24e5-e193f361f70a","a1c12a67-3131-e3fa-6377-6da9c4afa77c","9c92f73d-e8d9-550d-ce33-69e2a2314a81","36b00f63-9f2a-7f18-f3fa-4e3a3308df0e","b39a8ba8-62ab-e0a9-818e-7147fb91b70d","b39a8ba8-62ab-e0a9-818e-7147fb91b718","b39a8ba8-62ab-e0a9-818e-7147fb91b719","3b87c72a-4b98-faa7-209e-2d12063a8fe7"],
+          "itemWrapperElementId": "ae68042e-a003-3b81-3054-355b079d3ad3",
+          "itemLimit": 100,
+          "pagination": null,
+          "sorts": [{"fieldId":"dbb1beb8648b9795cbaacd06f5f0b84a","fieldApiName":"token-id","direction":"ascending"}],
+          "filters": [],
+          "conditionalVisibility": [],
+          "emptyState": {"elementId":"ae68042e-a003-3b81-3054-355b079d3ad4","text":"No items found.","paginationControls":[]},
+          "componentContext": {"insideComponentInstance":false,"componentId":null,"componentName":null,"nestedCollection":false,"webflowWidget":"Tabs","tabName":"419"},
+          "savedPublishedState": {"relationship":"unresolved","lastUpdated":"2026-07-24T21:16:21.758Z","lastPublished":"2026-07-24T21:16:04.114Z"},
+          "evidence": ["[WEBFLOW] Current Designer tree exposes Exchange Collection 01 beneath the 419 TabsPane.","[WEBFLOW] Raw settings report dynamic collection 656f7e02b503790c02f0edff, limit 100, offset 0, no filters/pagination, and Token ID ascending.","[REPOSITORY] exchange/index.html has the matching 419 pane and .collection-list-3.w-dyn-items."],
+          "unresolved": ["The MCP response does not label settings as saved, published, or identical in both states."]
+        },
+        {
+          "elementId": "f158e130-ffad-eb67-3544-150761deb4e2",
+          "collectionId": "65a1be9dcae2314a8ac50aae",
+          "collectionName": "CANAANs",
+          "parentElementId": "48b64ed3-db19-9c60-f2cb-f31eb37ba4d3",
+          "ancestorElementIds": ["656cf42faa2b1a7a1582d9de","2b436b4b-d839-a8fd-24e5-e193f361f70a","a1c12a67-3131-e3fa-6377-6da9c4afa77c","9c92f73d-e8d9-550d-ce33-69e2a2314a81","36b00f63-9f2a-7f18-f3fa-4e3a3308df0e","b39a8ba8-62ab-e0a9-818e-7147fb91b70d","b39a8ba8-62ab-e0a9-818e-7147fb91b718","2437c555-c468-6029-5ae4-4f14158f8610","48b64ed3-db19-9c60-f2cb-f31eb37ba4d3"],
+          "itemWrapperElementId": "f158e130-ffad-eb67-3544-150761deb4e4",
+          "itemLimit": 100,
+          "pagination": null,
+          "sorts": [{"fieldId":"5568b8d3e695834bf80dcae1552c6d22","fieldApiName":"token-id","direction":"ascending"}],
+          "filters": [],
+          "conditionalVisibility": [],
+          "emptyState": {"elementId":"f158e130-ffad-eb67-3544-150761deb4e5","text":"No items found.","paginationControls":[]},
+          "componentContext": {"insideComponentInstance":false,"componentId":null,"componentName":null,"nestedCollection":false,"webflowWidget":"Tabs","tabName":"CANAAN"},
+          "savedPublishedState": {"relationship":"unresolved","lastUpdated":"2026-07-24T21:16:21.758Z","lastPublished":"2026-07-24T21:16:04.114Z"},
+          "evidence": ["[WEBFLOW] Current Designer tree exposes Exchange Collection 01 beneath the CANAAN TabsPane.","[WEBFLOW] Raw settings report dynamic collection 65a1be9dcae2314a8ac50aae, limit 100, offset 0, no filters/pagination, and Token ID ascending.","[REPOSITORY] exchange/index.html has the matching CANAAN pane and .collection-list-5.w-dyn-items."],
+          "unresolved": ["The MCP response does not label settings as saved, published, or identical in both states."]
+        }
+      ]
+    }
+  ]
+}
