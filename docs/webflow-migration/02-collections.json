@@ -1,0 +1,85 @@
+{
+  "generatedAt": "2026-07-31T19:00:57.425Z",
+  "siteId": "656cf42faa2b1a7a1582d9d2",
+  "siteName": "EATACID.xyz",
+  "collections": [
+    {
+      "id": "656f7e02b503790c02f0edff",
+      "displayName": "THE 419 SCRIPTs",
+      "singularName": "THE 419 SCRIPT",
+      "slug": "the-419-script",
+      "itemCount": 13,
+      "createdOn": "2023-12-05T19:46:10.872Z",
+      "updatedOn": "2025-07-10T21:19:51.803Z",
+      "templatePageId": "656f7e03b503790c02f0ee0a",
+      "routeFamily": "/the-419-script/{item-slug}",
+      "collectionListPageIds": [
+        "65dcf9fcd636fdd5996f46ec"
+      ],
+      "referenceTargets": [],
+      "unresolved": [
+        "The CMS collection response did not expose templatePageId or routeFamily directly; these values are repository-confirmed from the committed WF-MIG.1 page inventory.",
+        "The CMS endpoints do not identify whether returned schema state is saved-only, published-only, or identical in both states."
+      ]
+    },
+    {
+      "id": "65a1be9dcae2314a8ac50aae",
+      "displayName": "CANAANs",
+      "singularName": "CANAAN",
+      "slug": "canaan",
+      "itemCount": 31,
+      "createdOn": "2024-01-12T22:35:09.987Z",
+      "updatedOn": "2025-07-10T21:19:51.808Z",
+      "templatePageId": "65a1be9ecae2314a8ac50ac1",
+      "routeFamily": "/canaan/{item-slug}",
+      "collectionListPageIds": [
+        "67be119ce0fb23251217c7a9",
+        "65dcf9fcd636fdd5996f46ec"
+      ],
+      "referenceTargets": [],
+      "unresolved": [
+        "The CMS collection response did not expose templatePageId or routeFamily directly; these values are repository-confirmed from the committed WF-MIG.1 page inventory.",
+        "The CMS endpoints do not identify whether returned schema state is saved-only, published-only, or identical in both states."
+      ]
+    },
+    {
+      "id": "67be12e2583121ead44b79ed",
+      "displayName": "HENs",
+      "singularName": "HEN",
+      "slug": "hen",
+      "itemCount": 17,
+      "createdOn": "2025-02-25T18:58:42.493Z",
+      "updatedOn": "2025-07-10T21:19:51.805Z",
+      "templatePageId": "67be12e2583121ead44b7a2a",
+      "routeFamily": "/hen/{item-slug}",
+      "collectionListPageIds": [
+        "67be119ce0fb23251217c7a9"
+      ],
+      "referenceTargets": [],
+      "unresolved": [
+        "The CMS collection response did not expose templatePageId or routeFamily directly; these values are repository-confirmed from the committed WF-MIG.1 page inventory.",
+        "The CMS endpoints do not identify whether returned schema state is saved-only, published-only, or identical in both states."
+      ]
+    },
+    {
+      "id": "67be31a0b7084dfce75026fd",
+      "displayName": "INTRODUCTIONs",
+      "singularName": "INTRODUCTIONS",
+      "slug": "introductions",
+      "itemCount": 5,
+      "createdOn": "2025-02-25T21:09:52.210Z",
+      "updatedOn": "2025-07-10T21:19:51.810Z",
+      "templatePageId": "67be31a0b7084dfce7502995",
+      "routeFamily": "/introductions/{item-slug}",
+      "collectionListPageIds": [
+        "67be119ce0fb23251217c7a9"
+      ],
+      "referenceTargets": [],
+      "unresolved": [
+        "The CMS collection response did not expose templatePageId or routeFamily directly; these values are repository-confirmed from the committed WF-MIG.1 page inventory.",
+        "The CMS endpoints do not identify whether returned schema state is saved-only, published-only, or identical in both states."
+      ]
+    }
+  ]
+}
+

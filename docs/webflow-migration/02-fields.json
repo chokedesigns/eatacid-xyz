@@ -1,0 +1,1255 @@
+{
+  "generatedAt": "2026-07-31T19:00:57.425Z",
+  "siteId": "656cf42faa2b1a7a1582d9d2",
+  "fields": [
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "5eb3b7a1e4d9e48b08d9d0bf2640fe76",
+      "displayName": "Title",
+      "apiName": "title",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 13,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Title (title) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] admin-ui/src/titles/the419script.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "0eae768d30aee3b7a376ea9ef796205d",
+      "displayName": "Editions",
+      "apiName": "editions",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "edition count",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 1,
+      "observedValueShape": "number",
+      "localEquivalent": "PARTIAL",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Editions (editions) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] drops/index.html and exchange/index.html contain rendered CMS-row presentation values, but no obvious structured canonical source was found in the allowed inputs."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "c826cf5e376ccb8f55bad734d09db1b7",
+      "displayName": "Image",
+      "apiName": "image",
+      "type": "Image",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token image/thumbnail",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 13,
+      "observedValueShape": "object { fileId: string, url: string, alt: null }",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Image (image) as Image, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] admin-ui/src/thumbs.manifest.js contains a collection-specific thumbnail mapping with matching collection item coverage."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details.",
+        "Image dimensions, MIME type, and file size behavior were not returned by the collection or item reads."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "ae927d74d9ea7b8c52ff87b05e7ddf58",
+      "displayName": "Collection",
+      "apiName": "collection",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "collection identity label",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 1,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Collection (collection) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] shared/chain-registry.js defines matching collection keys and network-specific contract addresses."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "dbb1beb8648b9795cbaacd06f5f0b84a",
+      "displayName": "Token ID",
+      "apiName": "token-id",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token ID",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 13,
+      "observedValueShape": "number",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Token ID (token-id) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] admin-ui/src/titles/the419script.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "feb6233845b68735bd91b4012fce75fc",
+      "displayName": "Mint Date",
+      "apiName": "mint-date",
+      "type": "DateTime",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "mint date",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 2,
+      "observedValueShape": "ISO 8601 datetime string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Mint Date (mint-date) as DateTime, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "edcb19345f5dd8746a12b03b382971b5",
+      "displayName": "OBJKT Link",
+      "apiName": "objkt-link",
+      "type": "Link",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "OBJKT marketplace token URL",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 13,
+      "observedValueShape": "URL string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned OBJKT Link (objkt-link) as Link, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "0f8eae27f35331f9e5e3aa844776b08b",
+      "displayName": "$ACID Value",
+      "apiName": "acid-value",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "burn/exchange value denominated in $ACID",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 1,
+      "observedValueShape": "number",
+      "localEquivalent": "PARTIAL",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned $ACID Value (acid-value) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] drops/index.html and exchange/index.html contain rendered CMS-row presentation values, but no obvious structured canonical source was found in the allowed inputs."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "b92987af82b1a731d4a5dea215565914",
+      "displayName": "Name",
+      "apiName": "name",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "Webflow item name and token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 13,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Name (name) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] admin-ui/src/titles/the419script.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "656f7e02b503790c02f0edff",
+      "collectionName": "THE 419 SCRIPTs",
+      "id": "756fac1077c08d225f0526b8e231645f",
+      "displayName": "Slug",
+      "apiName": "slug",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256,
+        "pattern": {},
+        "messages": {
+          "pattern": "Must be alphanumerical and not contain any spaces or special characters",
+          "maxLength": "Must be less than 256 characters"
+        }
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "CMS item route slug",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 13,
+      "emptyCount": 0,
+      "distinctValueCount": 13,
+      "observedValueShape": "string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Slug (slug) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 13 of 13 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "41cec932797980088510d2877c5954fc",
+      "displayName": "Title",
+      "apiName": "title",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 31,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Title (title) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] admin-ui/src/titles/canaan.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "dcbdaef2beca828fb09ed68949ca7298",
+      "displayName": "Editions",
+      "apiName": "editions",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "edition count",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 12,
+      "observedValueShape": "number",
+      "localEquivalent": "PARTIAL",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Editions (editions) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] drops/index.html and exchange/index.html contain rendered CMS-row presentation values, but no obvious structured canonical source was found in the allowed inputs."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "d3af580da0c1b7c0f486a0d86ca20ba6",
+      "displayName": "Image",
+      "apiName": "image",
+      "type": "Image",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token image/thumbnail",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 31,
+      "observedValueShape": "object { fileId: string, url: string, alt: null }",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Image (image) as Image, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] admin-ui/src/thumbs.manifest.js contains a collection-specific thumbnail mapping with matching collection item coverage."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details.",
+        "Image dimensions, MIME type, and file size behavior were not returned by the collection or item reads."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "59eb1a083e925b4c598fe0a637b95af1",
+      "displayName": "Collection",
+      "apiName": "collection",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "collection identity label",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 1,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Collection (collection) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] shared/chain-registry.js defines matching collection keys and network-specific contract addresses."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "5568b8d3e695834bf80dcae1552c6d22",
+      "displayName": "Token ID",
+      "apiName": "token-id",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token ID",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 31,
+      "observedValueShape": "number",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Token ID (token-id) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] admin-ui/src/titles/canaan.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "260f690630a82ef1b80d1d9994237000",
+      "displayName": "$ACID Value",
+      "apiName": "acid-value",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "burn/exchange value denominated in $ACID",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 11,
+      "observedValueShape": "number",
+      "localEquivalent": "PARTIAL",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned $ACID Value (acid-value) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] drops/index.html and exchange/index.html contain rendered CMS-row presentation values, but no obvious structured canonical source was found in the allowed inputs."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "d85126cb01e22a1e5f2c77fb67db40bb",
+      "displayName": "Name",
+      "apiName": "name",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "Webflow item name and token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 31,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Name (name) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] admin-ui/src/titles/canaan.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "65a1be9dcae2314a8ac50aae",
+      "collectionName": "CANAANs",
+      "id": "7a68efae01cf5c6eddc975ef05d37f0e",
+      "displayName": "Slug",
+      "apiName": "slug",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256,
+        "pattern": {},
+        "messages": {
+          "pattern": "Must be alphanumerical and not contain any spaces or special characters",
+          "maxLength": "Must be less than 256 characters"
+        }
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "CMS item route slug",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 31,
+      "emptyCount": 0,
+      "distinctValueCount": 31,
+      "observedValueShape": "string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Slug (slug) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 31 of 31 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "f34101f4263c89764c06e22ef0fa45be",
+      "displayName": "Title",
+      "apiName": "title",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 17,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Title (title) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] admin-ui/src/titles/hen.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "fbaf9b09c4ed56fddf7500d5e9a4c3e2",
+      "displayName": "Editions",
+      "apiName": "editions",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "edition count",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 13,
+      "observedValueShape": "number",
+      "localEquivalent": "PARTIAL",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Editions (editions) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] drops/index.html and exchange/index.html contain rendered CMS-row presentation values, but no obvious structured canonical source was found in the allowed inputs."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "b4827b58963f8c3df8304a1a1ef693ef",
+      "displayName": "Image",
+      "apiName": "image",
+      "type": "Image",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token image/thumbnail",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 17,
+      "observedValueShape": "object { fileId: string, url: string, alt: null }",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Image (image) as Image, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] admin-ui/src/thumbs.manifest.js contains a collection-specific thumbnail mapping with matching collection item coverage."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details.",
+        "Image dimensions, MIME type, and file size behavior were not returned by the collection or item reads."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "f1df86a8172320d463c9b473a033cd7d",
+      "displayName": "Collection",
+      "apiName": "collection",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "collection identity label",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 1,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Collection (collection) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] shared/chain-registry.js defines matching collection keys and network-specific contract addresses."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "24b3148425dbe6d85b7ca8c369fdd733",
+      "displayName": "Token ID",
+      "apiName": "token-id",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token ID",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 17,
+      "observedValueShape": "number",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Token ID (token-id) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] admin-ui/src/titles/hen.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "561607692c61233d3fca36737c6a0b1d",
+      "displayName": "Mint Date",
+      "apiName": "mint-date",
+      "type": "DateTime",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "mint date",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 17,
+      "observedValueShape": "ISO 8601 datetime string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Mint Date (mint-date) as DateTime, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "536d8ed020285d61d474f98fe9971315",
+      "displayName": "OBJKT Link",
+      "apiName": "objkt-link",
+      "type": "Link",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "OBJKT marketplace token URL",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 17,
+      "observedValueShape": "URL string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned OBJKT Link (objkt-link) as Link, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "c1abbe442bde4893e91f83066064f762",
+      "displayName": "Name",
+      "apiName": "name",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "Webflow item name and token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 17,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Name (name) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] admin-ui/src/titles/hen.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be12e2583121ead44b79ed",
+      "collectionName": "HENs",
+      "id": "306d657df6af610a63375e7f44661401",
+      "displayName": "Slug",
+      "apiName": "slug",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256,
+        "pattern": {},
+        "messages": {
+          "pattern": "Must be alphanumerical and not contain any spaces or special characters",
+          "maxLength": "Must be less than 256 characters"
+        }
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "CMS item route slug",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 17,
+      "emptyCount": 0,
+      "distinctValueCount": 17,
+      "observedValueShape": "string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Slug (slug) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 17 of 17 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "465f7168855896685e36a56b0ecb82d0",
+      "displayName": "Title",
+      "apiName": "title",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 5,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Title (title) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] admin-ui/src/titles/introductions.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "111477e69c374053aa0aed54791d650c",
+      "displayName": "Editions",
+      "apiName": "editions",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "edition count",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 3,
+      "observedValueShape": "number",
+      "localEquivalent": "PARTIAL",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Editions (editions) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] drops/index.html and exchange/index.html contain rendered CMS-row presentation values, but no obvious structured canonical source was found in the allowed inputs."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "690d58d156dea12fda259b8f30ca547c",
+      "displayName": "Image",
+      "apiName": "image",
+      "type": "Image",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token image/thumbnail",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 5,
+      "observedValueShape": "object { fileId: string, url: string, alt: null }",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Image (image) as Image, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] admin-ui/src/thumbs.manifest.js contains a collection-specific thumbnail mapping with matching collection item coverage."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details.",
+        "Image dimensions, MIME type, and file size behavior were not returned by the collection or item reads."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "202bd9b1088c9faebdfb7ce7e17b6cb3",
+      "displayName": "Collection",
+      "apiName": "collection",
+      "type": "PlainText",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "singleLine": true
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "collection identity label",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 1,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Collection (collection) as PlainText, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] shared/chain-registry.js defines matching collection keys and network-specific contract addresses."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "c66bccdef4e9c2b5e76a0fd8f764cb82",
+      "displayName": "Token ID",
+      "apiName": "token-id",
+      "type": "Number",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "format": "integer",
+        "precision": 1,
+        "allowNegative": false
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "token ID",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 5,
+      "observedValueShape": "number",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Token ID (token-id) as Number, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] admin-ui/src/titles/introductions.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "ca12c6f0cc6376d741dda81505eb4993",
+      "displayName": "Mint Date",
+      "apiName": "mint-date",
+      "type": "DateTime",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "mint date",
+      "semanticConfidence": "INFERRED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 1,
+      "observedValueShape": "ISO 8601 datetime string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Mint Date (mint-date) as DateTime, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "df7f5c8b9d2bf4ea6a08f8d421e1c113",
+      "displayName": "OBJKT Link",
+      "apiName": "objkt-link",
+      "type": "Link",
+      "required": false,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": null,
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": false,
+      "semanticRole": "OBJKT marketplace token URL",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 5,
+      "observedValueShape": "URL string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned OBJKT Link (objkt-link) as Link, required=false, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "6798a458e449033c9c3392caee375576",
+      "displayName": "Name",
+      "apiName": "name",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "Webflow item name and token title",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 5,
+      "observedValueShape": "string",
+      "localEquivalent": "YES",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Name (name) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] admin-ui/src/titles/introductions.json contains collection-specific token-title mappings; its entry count matches the Webflow collection."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    },
+    {
+      "collectionId": "67be31a0b7084dfce75026fd",
+      "collectionName": "INTRODUCTIONs",
+      "id": "ff89bb9201cc519812a653a0fa0993b4",
+      "displayName": "Slug",
+      "apiName": "slug",
+      "type": "PlainText",
+      "required": true,
+      "editable": true,
+      "helpText": null,
+      "defaultValue": null,
+      "validation": {
+        "maxLength": 256,
+        "pattern": {},
+        "messages": {
+          "pattern": "Must be alphanumerical and not contain any spaces or special characters",
+          "maxLength": "Must be less than 256 characters"
+        }
+      },
+      "options": [],
+      "referenceCollectionId": null,
+      "multiReferenceCollectionId": null,
+      "builtIn": true,
+      "semanticRole": "CMS item route slug",
+      "semanticConfidence": "CONFIRMED SEMANTIC ROLE",
+      "populatedCount": 5,
+      "emptyCount": 0,
+      "distinctValueCount": 5,
+      "observedValueShape": "string",
+      "localEquivalent": "NO",
+      "evidence": [
+        "[WEBFLOW] get_collection_details returned Slug (slug) as PlainText, required=true, editable=true.",
+        "[WEBFLOW] list_collection_items returned this field on 5 of 5 items.",
+        "[REPOSITORY] No obvious equivalent was found in the ticket-authorized local sources."
+      ],
+      "unresolved": [
+        "helpText and defaultValue were not returned by get_collection_details."
+      ]
+    }
+  ]
+}
+
