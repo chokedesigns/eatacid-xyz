@@ -1,3 +1,0 @@
-﻿ index.html                   |  2 +-
- shared/public-first-paint.js | 92 ++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 90 insertions(+), 4 deletions(-)
