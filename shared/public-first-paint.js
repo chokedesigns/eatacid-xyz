@@ -7,10 +7,12 @@ import { network } from './network.js';
 const STATE_KEY = '__EA_PUBLIC_FIRST_PAINT__';
 const STYLE_ID = 'ea-public-first-paint-style';
 const TESTNET_BANNER_HEIGHT = '35px';
+const HOME_HERO_IMAGE_SELECTOR = '.home-hero-character-image';
 
 // Keep first paint bounded: if critical webfonts are not ready within 1000ms,
 // reveal the page using fallback state instead of waiting indefinitely.
 const FONT_READY_TIMEOUT_MS = 1000;
+const HOME_HERO_IMAGE_READY_TIMEOUT_MS = 1200;
 const FAIL_OPEN_TIMEOUT_MS = FONT_READY_TIMEOUT_MS + 300;
 const FONT_CHECK_INTERVAL_MS = 50;
 
@@ -184,6 +186,85 @@ async function isFontDescriptorReady(font) {
   }
 }
 
+async function waitForHomeHeroImage(body) {
+  const image = body.querySelector(HOME_HERO_IMAGE_SELECTOR);
+
+  if (!image) {
+    return 'hero-not-required';
+  }
+
+  return Promise.race([
+    waitForImagePaintReady(image),
+    delay(HOME_HERO_IMAGE_READY_TIMEOUT_MS).then(() => 'hero-timeout')
+  ]);
+}
+
+async function waitForImagePaintReady(image) {
+  const loadStatus = isLoadedImage(image)
+    ? 'hero-loaded'
+    : await waitForImageLoad(image);
+
+  if (loadStatus !== 'hero-loaded') {
+    return loadStatus;
+  }
+
+  const decoded = await decodeImage(image);
+
+  if (!decoded) {
+    return 'hero-decode-failed';
+  }
+
+  await nextFrame();
+  return 'hero-ready';
+}
+
+function isLoadedImage(image) {
+  return image.complete && image.naturalWidth > 0;
+}
+
+function waitForImageLoad(image) {
+  return new Promise(resolve => {
+    if (isLoadedImage(image)) {
+      resolve('hero-loaded');
+      return;
+    }
+
+    if (image.complete) {
+      resolve('hero-error');
+      return;
+    }
+
+    const cleanup = () => {
+      image.removeEventListener('load', onLoad);
+      image.removeEventListener('error', onError);
+    };
+    const onLoad = () => {
+      cleanup();
+      resolve(isLoadedImage(image) ? 'hero-loaded' : 'hero-error');
+    };
+    const onError = () => {
+      cleanup();
+      resolve('hero-error');
+    };
+
+    image.addEventListener('load', onLoad, { once: true });
+    image.addEventListener('error', onError, { once: true });
+  });
+}
+
+async function decodeImage(image) {
+  if (typeof image.decode !== 'function') {
+    return true;
+  }
+
+  try {
+    await image.decode();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function applyNetworkState(body) {
   if (network === 'testnet') {
     body.classList.add('is-testnet');
@@ -268,8 +349,12 @@ async function runFirstPaint(body, state) {
 
   await nextFrame();
 
-  const fontStatus = await waitForCriticalFonts();
-  reveal(body, state, fontStatus !== 'fonts-ready');
+  const [fontStatus, heroStatus] = await Promise.all([
+    waitForCriticalFonts(),
+    waitForHomeHeroImage(body)
+  ]);
+  const heroReady = heroStatus === 'hero-not-required' || heroStatus === 'hero-ready';
+  reveal(body, state, fontStatus !== 'fonts-ready' || !heroReady);
 }
 
 function startPublicFirstPaint() {
@@ -327,6 +412,7 @@ const publicFirstPaint = startPublicFirstPaint();
 
 export {
   FONT_READY_TIMEOUT_MS,
+  HOME_HERO_IMAGE_READY_TIMEOUT_MS,
   startPublicFirstPaint,
   publicFirstPaint
 };
