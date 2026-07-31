@@ -1,0 +1,151 @@
+{
+  "generatedAt": "2026-07-31T01:29:23.367Z",
+  "siteId": "656cf42faa2b1a7a1582d9d2",
+  "components": [
+    {
+      "id": "33cee78f-b5e2-edea-20f8-24dcd14c85bd",
+      "name": "Nav Bar",
+      "apparentPurpose": "Shared responsive site navigation, wallet controls, and nested Brand Logo.",
+      "instanceCount": 4,
+      "pageIds": [
+        "656cf42faa2b1a7a1582d9db",
+        "6978f5a970f1cfe7b14f7b09",
+        "67be119ce0fb23251217c7a9",
+        "65dcf9fcd636fdd5996f46ec"
+      ],
+      "props": [],
+      "variants": [
+        {
+          "id": "base",
+          "name": "Base",
+          "isSelected": true
+        }
+      ],
+      "slots": [],
+      "evidence": [
+        "[WEBFLOW] get_all_components reported instanceCount 4, no props, and only the Base variant.",
+        "[WEBFLOW] Full page trees show one direct Nav Bar instance on Home, Collection Utility, Drops, and The Exchange.",
+        "[WEBFLOW] Scoped component tree contains COLLECTION UTILITY, DROPS, THE EXCHANGE, CONNECT, CONNECTED, and DISCONNECT controls plus a nested Brand Logo."
+      ],
+      "unresolved": [
+        "No explicit slot metadata is exposed because the component reports no slots.",
+        "Exact responsive style declarations require a connected Designer Bridge or exported CSS inspection."
+      ]
+    },
+    {
+      "id": "7071118a-87de-def0-e628-185bd2f6b11f",
+      "name": "Brand Logo",
+      "apparentPurpose": "Reusable brand-logo image nested inside Nav Bar.",
+      "instanceCount": 4,
+      "pageIds": [
+        "656cf42faa2b1a7a1582d9db",
+        "6978f5a970f1cfe7b14f7b09",
+        "67be119ce0fb23251217c7a9",
+        "65dcf9fcd636fdd5996f46ec"
+      ],
+      "props": [],
+      "variants": [
+        {
+          "id": "base",
+          "name": "Base",
+          "isSelected": true
+        }
+      ],
+      "slots": [],
+      "evidence": [
+        "[WEBFLOW] get_all_components reported instanceCount 4, no props, and only the Base variant.",
+        "[WEBFLOW] The Nav Bar scoped tree contains one nested Brand Logo instance; its scoped tree is an Image.",
+        "[INFERENCE] pageIds are inherited from the four Nav Bar page instances rather than direct page-level Brand Logo instances."
+      ],
+      "unresolved": []
+    },
+    {
+      "id": "c3f54d45-c0a2-e7d1-d095-34c06136b65f",
+      "name": "Nav Button - THE EXCHANGE",
+      "apparentPurpose": "Standalone THE EXCHANGE navigation-link definition not used by the current component/page trees.",
+      "instanceCount": 0,
+      "pageIds": [],
+      "props": [],
+      "variants": [
+        {
+          "id": "base",
+          "name": "Base",
+          "isSelected": true
+        }
+      ],
+      "slots": [],
+      "evidence": [
+        "[WEBFLOW] get_all_components reported instanceCount 0.",
+        "[WEBFLOW] Scoped tree is a Nav Link containing THE EXCHANGE."
+      ],
+      "unresolved": []
+    },
+    {
+      "id": "8390f3d4-fc5d-5c84-e933-b11f4154d42a",
+      "name": "Nav Button - FLOW",
+      "apparentPurpose": "Standalone DROPS navigation-link definition not used by the current component/page trees.",
+      "instanceCount": 0,
+      "pageIds": [],
+      "props": [],
+      "variants": [
+        {
+          "id": "base",
+          "name": "Base",
+          "isSelected": true
+        }
+      ],
+      "slots": [],
+      "evidence": [
+        "[WEBFLOW] get_all_components reported instanceCount 0.",
+        "[WEBFLOW] Scoped tree is a Nav Link containing DROPS."
+      ],
+      "unresolved": [
+        "The component name FLOW does not match its observed DROPS text; intent is not inferred."
+      ]
+    },
+    {
+      "id": "3b3b8150-bcc4-7c4f-274f-5faf12d28a5c",
+      "name": "Nav Button - UTILITY",
+      "apparentPurpose": "Standalone navigation-link definition not used by the current component/page trees.",
+      "instanceCount": 0,
+      "pageIds": [],
+      "props": [],
+      "variants": [
+        {
+          "id": "base",
+          "name": "Base",
+          "isSelected": true
+        }
+      ],
+      "slots": [],
+      "evidence": [
+        "[WEBFLOW] get_all_components reported instanceCount 0.",
+        "[WEBFLOW] Scoped tree is a Nav Link containing DROPS."
+      ],
+      "unresolved": [
+        "The component name UTILITY does not match its observed DROPS text; intent is not inferred."
+      ]
+    },
+    {
+      "id": "07a2c535-7c07-89d5-e374-cae95d916be5",
+      "name": "Nav Button - Connect Wallet",
+      "apparentPurpose": "Standalone CONNECT wallet-button definition not used by the current component/page trees.",
+      "instanceCount": 0,
+      "pageIds": [],
+      "props": [],
+      "variants": [
+        {
+          "id": "base",
+          "name": "Base",
+          "isSelected": true
+        }
+      ],
+      "slots": [],
+      "evidence": [
+        "[WEBFLOW] get_all_components reported instanceCount 0.",
+        "[WEBFLOW] Scoped tree is a button-primary link containing CONNECT."
+      ],
+      "unresolved": []
+    }
+  ]
+}

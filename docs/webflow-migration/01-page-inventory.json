@@ -1,0 +1,339 @@
+{
+  "generatedAt": "2026-07-31T01:29:23.367Z",
+  "siteId": "656cf42faa2b1a7a1582d9d2",
+  "siteName": "EATACID.xyz",
+  "pages": [
+    {
+      "id": "656cf42faa2b1a7a1582d9db",
+      "name": "Home",
+      "slug": null,
+      "route": "/",
+      "parentId": null,
+      "type": "static",
+      "classification": "APPLICATION SHELL",
+      "isHome": true,
+      "isDraft": false,
+      "sitemapIncluded": true,
+      "cmsCollectionId": null,
+      "customCodePresent": true,
+      "seoTitlePresent": true,
+      "metaDescriptionPresent": true,
+      "openGraphPresent": true,
+      "ownership": {
+        "overall": "SHARED BOUNDARY",
+        "webflowOwned": [
+          "Nav Bar component instance",
+          "hero composition and hosted imagery",
+          "marquee and footer structure",
+          "responsive class composition"
+        ],
+        "repoRuntimeOwned": [
+          "first-paint coordination",
+          "network banner state",
+          "Beacon wallet lifecycle and wallet button state"
+        ],
+        "sharedBoundary": [
+          "Webflow classes first-paint-* and wallet button classes are consumed by shared/public-first-paint.js and shared/beacon-setup.js",
+          "Webflow page footer code loads the GitHub Pages home.js module"
+        ],
+        "unresolved": []
+      },
+      "evidence": [
+        "[WEBFLOW] list_pages/get_page_metadata: publishedPath /, draft false, archived false, SEO title and description present, copied Open Graph title/description.",
+        "[WEBFLOW] get_all_elements: Home includes the Nav Bar component, home hero, first-paint classes, marquee, and repeated footer.",
+        "[WEBFLOW] get_page_freeform_code: footer loads https://chokedesigns.github.io/eatacid-xyz/home.js and includes page CSS.",
+        "[REPOSITORY] index.html has matching data-wf-site and data-wf-page values; webflow/home.js imports shared/public-first-paint.js and shared/beacon-setup.js."
+      ],
+      "unresolved": [
+        "The Pages API omitted a slug for Home; null is retained rather than inventing an empty slug.",
+        "Element/style reads do not distinguish saved Designer state from the last published state."
+      ]
+    },
+    {
+      "id": "6978f5a970f1cfe7b14f7b09",
+      "name": "Collection Utility",
+      "slug": "collection-utility",
+      "route": "/collection-utility",
+      "parentId": null,
+      "type": "static",
+      "classification": "APPLICATION SHELL",
+      "isHome": false,
+      "isDraft": false,
+      "sitemapIncluded": true,
+      "cmsCollectionId": null,
+      "customCodePresent": true,
+      "seoTitlePresent": true,
+      "metaDescriptionPresent": true,
+      "openGraphPresent": true,
+      "ownership": {
+        "overall": "SHARED BOUNDARY",
+        "webflowOwned": [
+          "Nav Bar component instance",
+          "page image/viewport structure",
+          "marquee and footer structure"
+        ],
+        "repoRuntimeOwned": [
+          "first-paint/network behavior and Beacon wallet lifecycle loaded by home.js"
+        ],
+        "sharedBoundary": [
+          "Webflow wallet and first-paint selectors are consumed by repository modules",
+          "Webflow page footer code loads the GitHub Pages home.js module"
+        ],
+        "unresolved": [
+          "No dedicated collection-utility HTML entrypoint or repository runtime module exists in the current root repository."
+        ]
+      },
+      "evidence": [
+        "[WEBFLOW] list_pages/get_page_metadata: publishedPath /collection-utility, draft false, archived false, SEO title and description present, copied Open Graph title/description.",
+        "[WEBFLOW] get_all_elements: Collection Utility includes the Nav Bar component, a home-viewport/Image 6 region, marquee, testnet banner, and repeated footer.",
+        "[WEBFLOW] get_page_freeform_code: footer loads https://chokedesigns.github.io/eatacid-xyz/home.js and includes page CSS.",
+        "[REPOSITORY] webflow/home.js contains only shared first-paint and Beacon imports; collection-utility/index.html is absent."
+      ],
+      "unresolved": [
+        "The API exposes no parent-folder identifier; parentId is null.",
+        "Collection Utility's feature-specific runtime, if any, is not identified by its current custom-code loader."
+      ]
+    },
+    {
+      "id": "67be119ce0fb23251217c7a9",
+      "name": "Drops",
+      "slug": "drops",
+      "route": "/drops",
+      "parentId": null,
+      "type": "static",
+      "classification": "APPLICATION SHELL",
+      "isHome": false,
+      "isDraft": false,
+      "sitemapIncluded": true,
+      "cmsCollectionId": null,
+      "customCodePresent": true,
+      "seoTitlePresent": true,
+      "metaDescriptionPresent": true,
+      "openGraphPresent": true,
+      "ownership": {
+        "overall": "SHARED BOUNDARY",
+        "webflowOwned": [
+          "Nav Bar, page chrome, loading modal, drop-details composition, cart composition, footer",
+          "three CMS Collection Lists and their item/form markup",
+          "responsive presentation and page-specific embedded CSS"
+        ],
+        "repoRuntimeOwned": [
+          "drop schedule/parameter state",
+          "wallet and NFT reads",
+          "CMS-row filtering and cloning",
+          "selection/cart state",
+          "chain reads and burn/redeem transaction pipeline"
+        ],
+        "sharedBoundary": [
+          "drops/js/events.js consumes and mutates Webflow classes, CMS rows, checkbox controls, images, and text nodes",
+          "Webflow footer code loads the GitHub Pages drops.js module"
+        ],
+        "unresolved": []
+      },
+      "evidence": [
+        "[WEBFLOW] list_pages/get_page_metadata: publishedPath /drops, draft false, archived false, SEO and copied Open Graph text present.",
+        "[WEBFLOW] get_all_elements/get_settings: three dynamic Collection Lists source HENs, INTRODUCTIONs, and CANAANs; three form controls are nested in list items.",
+        "[WEBFLOW] get_page_freeform_code: head/footer CSS plus https://chokedesigns.github.io/eatacid-xyz/drops.js.",
+        "[REPOSITORY] drops/index.html has matching Webflow IDs; webflow/drops.js -> drops/js/main.js -> shared first-paint, Beacon, and drops/js/events.js."
+      ],
+      "unresolved": [
+        "The API exposes no parent-folder identifier; parentId is null.",
+        "Element/style reads do not distinguish saved Designer state from the last published state."
+      ]
+    },
+    {
+      "id": "65dcf9fcd636fdd5996f46ec",
+      "name": "The Exchange",
+      "slug": "exchange",
+      "route": "/exchange",
+      "parentId": null,
+      "type": "static",
+      "classification": "APPLICATION SHELL",
+      "isHome": false,
+      "isDraft": false,
+      "sitemapIncluded": true,
+      "cmsCollectionId": null,
+      "customCodePresent": true,
+      "seoTitlePresent": true,
+      "metaDescriptionPresent": true,
+      "openGraphPresent": true,
+      "ownership": {
+        "overall": "SHARED BOUNDARY",
+        "webflowOwned": [
+          "Nav Bar, page chrome, loading modal, tabs, exchange details/cart structure, footer",
+          "two CMS Collection Lists and quantity-select form markup",
+          "responsive presentation and page-specific embedded CSS"
+        ],
+        "repoRuntimeOwned": [
+          "wallet and NFT reads",
+          "tab/list filtering and quantity/cart state",
+          "contract/token attribution",
+          "chain approval, trade construction, send, and status pipeline"
+        ],
+        "sharedBoundary": [
+          "exchange/js/exchange.js consumes Webflow tabs, CMS rows, select controls, modal/cart nodes, and action buttons",
+          "Webflow footer code loads the GitHub Pages exchange.js module"
+        ],
+        "unresolved": []
+      },
+      "evidence": [
+        "[WEBFLOW] list_pages/get_page_metadata: publishedPath /exchange, draft false, archived false, SEO and copied Open Graph text present.",
+        "[WEBFLOW] get_all_elements/get_settings: two dynamic Collection Lists source THE 419 SCRIPTs and CANAANs within Webflow tabs; two quantity-select forms are present.",
+        "[WEBFLOW] get_page_freeform_code: footer CSS plus https://chokedesigns.github.io/eatacid-xyz/exchange.js.",
+        "[REPOSITORY] exchange/index.html has matching Webflow IDs; webflow/exchange.js -> exchange/js/main.js -> shared first-paint, Beacon, and exchange/js/exchange.js."
+      ],
+      "unresolved": [
+        "The API exposes no parent-folder identifier; parentId is null.",
+        "Element/style reads do not distinguish saved Designer state from the last published state."
+      ]
+    },
+    {
+      "id": "656f7e03b503790c02f0ee0a",
+      "name": "THE 419 SCRIPTs Template",
+      "slug": "detail_the-419-script",
+      "route": "/the-419-script/{item-slug}",
+      "parentId": null,
+      "type": "cms-template",
+      "classification": "CMS TEMPLATE",
+      "isHome": false,
+      "isDraft": false,
+      "sitemapIncluded": null,
+      "cmsCollectionId": "656f7e02b503790c02f0edff",
+      "customCodePresent": false,
+      "seoTitlePresent": false,
+      "metaDescriptionPresent": false,
+      "openGraphPresent": false,
+      "ownership": {
+        "overall": "WEBFLOW-OWNED",
+        "webflowOwned": [
+          "CMS template route definition"
+        ],
+        "repoRuntimeOwned": [],
+        "sharedBoundary": [],
+        "unresolved": [
+          "The saved template Body contains no child elements, so no rendered page regions were available to classify."
+        ]
+      },
+      "evidence": [
+        "[WEBFLOW] Page metadata links collectionId 656f7e02b503790c02f0edff and publishedPath /the-419-script.",
+        "[WEBFLOW] Full element-tree read returned only an empty Body; page freeform code is empty.",
+        "[INFERENCE] {item-slug} denotes the normal CMS item-route suffix; item slugs were deliberately not enumerated."
+      ],
+      "unresolved": [
+        "CMS template sitemap status is unsupported by the static-page sitemap endpoint.",
+        "The API exposes no parent-folder identifier; parentId is null."
+      ]
+    },
+    {
+      "id": "65a1be9ecae2314a8ac50ac1",
+      "name": "CANAANs Template",
+      "slug": "detail_canaan",
+      "route": "/canaan/{item-slug}",
+      "parentId": null,
+      "type": "cms-template",
+      "classification": "CMS TEMPLATE",
+      "isHome": false,
+      "isDraft": false,
+      "sitemapIncluded": null,
+      "cmsCollectionId": "65a1be9dcae2314a8ac50aae",
+      "customCodePresent": false,
+      "seoTitlePresent": false,
+      "metaDescriptionPresent": false,
+      "openGraphPresent": false,
+      "ownership": {
+        "overall": "WEBFLOW-OWNED",
+        "webflowOwned": [
+          "CMS template route definition"
+        ],
+        "repoRuntimeOwned": [],
+        "sharedBoundary": [],
+        "unresolved": [
+          "The saved template Body contains no child elements, so no rendered page regions were available to classify."
+        ]
+      },
+      "evidence": [
+        "[WEBFLOW] Page metadata links collectionId 65a1be9dcae2314a8ac50aae and publishedPath /canaan.",
+        "[WEBFLOW] Full element-tree read returned only an empty Body; page freeform code is empty.",
+        "[INFERENCE] {item-slug} denotes the normal CMS item-route suffix; item slugs were deliberately not enumerated."
+      ],
+      "unresolved": [
+        "CMS template sitemap status is unsupported by the static-page sitemap endpoint.",
+        "The API exposes no parent-folder identifier; parentId is null."
+      ]
+    },
+    {
+      "id": "67be12e2583121ead44b7a2a",
+      "name": "HENs Template",
+      "slug": "detail_hen",
+      "route": "/hen/{item-slug}",
+      "parentId": null,
+      "type": "cms-template",
+      "classification": "CMS TEMPLATE",
+      "isHome": false,
+      "isDraft": false,
+      "sitemapIncluded": null,
+      "cmsCollectionId": "67be12e2583121ead44b79ed",
+      "customCodePresent": false,
+      "seoTitlePresent": false,
+      "metaDescriptionPresent": false,
+      "openGraphPresent": false,
+      "ownership": {
+        "overall": "WEBFLOW-OWNED",
+        "webflowOwned": [
+          "CMS template route definition"
+        ],
+        "repoRuntimeOwned": [],
+        "sharedBoundary": [],
+        "unresolved": [
+          "The saved template Body contains no child elements, so no rendered page regions were available to classify."
+        ]
+      },
+      "evidence": [
+        "[WEBFLOW] Page metadata links collectionId 67be12e2583121ead44b79ed and publishedPath /hen.",
+        "[WEBFLOW] Full element-tree read returned only an empty Body; page freeform code is empty.",
+        "[INFERENCE] {item-slug} denotes the normal CMS item-route suffix; item slugs were deliberately not enumerated."
+      ],
+      "unresolved": [
+        "CMS template sitemap status is unsupported by the static-page sitemap endpoint.",
+        "The API exposes no parent-folder identifier; parentId is null."
+      ]
+    },
+    {
+      "id": "67be31a0b7084dfce7502995",
+      "name": "INTRODUCTIONs Template",
+      "slug": "detail_introductions",
+      "route": "/introductions/{item-slug}",
+      "parentId": null,
+      "type": "cms-template",
+      "classification": "CMS TEMPLATE",
+      "isHome": false,
+      "isDraft": false,
+      "sitemapIncluded": null,
+      "cmsCollectionId": "67be31a0b7084dfce75026fd",
+      "customCodePresent": false,
+      "seoTitlePresent": false,
+      "metaDescriptionPresent": false,
+      "openGraphPresent": false,
+      "ownership": {
+        "overall": "WEBFLOW-OWNED",
+        "webflowOwned": [
+          "CMS template route definition"
+        ],
+        "repoRuntimeOwned": [],
+        "sharedBoundary": [],
+        "unresolved": [
+          "The saved template Body contains no child elements, so no rendered page regions were available to classify."
+        ]
+      },
+      "evidence": [
+        "[WEBFLOW] Page metadata links collectionId 67be31a0b7084dfce75026fd and publishedPath /introductions.",
+        "[WEBFLOW] Full element-tree read returned only an empty Body; page freeform code is empty.",
+        "[INFERENCE] {item-slug} denotes the normal CMS item-route suffix; item slugs were deliberately not enumerated."
+      ],
+      "unresolved": [
+        "CMS template sitemap status is unsupported by the static-page sitemap endpoint.",
+        "The API exposes no parent-folder identifier; parentId is null."
+      ]
+    }
+  ]
+}
