@@ -65,6 +65,16 @@ Rules:
 
 ---
 
+## Webflow MCP boundary
+
+* Webflow MCP access is read-only unless the current ticket explicitly authorizes specific mutations.
+* Before detailed inspection, confirm the exact target site ID stated by the ticket.
+* During read-only tickets, do not invoke any Webflow operation that creates, updates, deletes, publishes, archives, uploads, reorders, or otherwise mutates site data.
+* If required information cannot be obtained through read operations, report it as unresolved.
+* Write Webflow audit artifacts only to local repository paths explicitly allowed by the ticket.
+
+---
+
 ## Runtime contracts
 
 Preserve these unless the ticket explicitly changes them:
