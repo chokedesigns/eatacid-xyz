@@ -1,0 +1,995 @@
+{
+  "generatedAt": "2026-08-03T00:00:00-05:00",
+  "architectureDecision": "Generate complete static HTML from canonical Git data and reusable templates, preserve runtime-sensitive DOM through cutover, and use targeted client enhancement for existing wallet/transaction behavior plus owned Navbar, Tabs, and first-paint modules.",
+  "tickets": [
+    {
+      "id": "WF-MIG.8",
+      "originalId": "WF-MIG.7",
+      "title": "Capture and freeze the published baseline",
+      "profile": "AUDIT",
+      "objective": "Own reproducible published HTTP, DOM, CSS/runtime, screenshot, route, and Collection Utility evidence before implementation.",
+      "scope": [
+        "Confirm site ID 656cf42faa2b1a7a1582d9d2 read-only",
+        "Capture four static routes, CMS item-route behavior, unknown-path behavior, external request inventory, exact CSS/runtime hashes, and four responsive families",
+        "Record content freeze and sanitized fixture policy",
+        "Resolve Collection Utility published structure sufficiently for reconstruction"
+      ],
+      "likelyFiles": [
+        "tests/fixtures/webflow-published/**",
+        "docs/webflow-migration/fixtures/08-published-baseline.json",
+        "docs/webflow-migration/08-published-baseline.md"
+      ],
+      "dependencies": [
+        "WF-MIG.6"
+      ],
+      "nonGoals": [
+        "No Webflow mutation or publishing",
+        "No local page implementation",
+        "No asset/font download unless separately authorized",
+        "No parity claim"
+      ],
+      "validation": [
+        "Exact site/route IDs",
+        "Fixture hashes verify",
+        "All eight route families intentionally sampled or enumerated",
+        "No secrets/session data",
+        "Collection Utility gap explicitly resolved or blocked"
+      ],
+      "rollback": "Local evidence only; remove/recreate fixtures while Webflow remains unchanged.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "criticalPath": true,
+      "phase": "Phase 1 — Baseline and freeze",
+      "completionGate": "Published comparator, content freeze, route/status behavior, and Collection Utility recovery evidence are reviewable and hash-addressed.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.8"
+    },
+    {
+      "id": "WF-MIG.9",
+      "originalId": "WF-MIG.8",
+      "title": "Acquire and verify Webflow-hosted assets",
+      "profile": "HIGH-RISK",
+      "objective": "Create independent verified ownership for 13 material non-CMS assets and 66 CMS media records.",
+      "scope": [
+        "Acquire exact authorized bytes and responsive variants",
+        "Record source URL/file ID/hash/MIME/dimensions/animation/provenance",
+        "Compare existing local candidates",
+        "Define stable main-token-ID naming and hashed deployment mapping",
+        "Cover logo, hero, Collection Utility banner, spinner/state art, arrows, coin, favicon/webclip, and token media"
+      ],
+      "likelyFiles": [
+        "site/assets/site/**",
+        "site/assets/tokens/**",
+        "docs/webflow-migration/fixtures/09-asset-acquisition.json",
+        "site/assets/manifest.source.json"
+      ],
+      "dependencies": [
+        "WF-MIG.8"
+      ],
+      "nonGoals": [
+        "No Webflow mutation",
+        "No image redesign or format conversion",
+        "No HTML integration",
+        "No unverified substitution"
+      ],
+      "validation": [
+        "13/13 and 66/66 coverage",
+        "Hashes/MIME/dimensions",
+        "Animation and responsive variants",
+        "Decoded visual comparison where bytes differ",
+        "Forbidden secret metadata scan"
+      ],
+      "rollback": "Keep production Webflow URLs active; imported assets are additive and unused.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 2 — Asset and font ownership",
+      "completionGate": "Every required current media dependency has verified local bytes or an explicit blocking exception.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.9"
+    },
+    {
+      "id": "WF-MIG.10",
+      "originalId": "WF-MIG.9",
+      "title": "Verify and implement independent font delivery",
+      "profile": "HIGH-RISK",
+      "objective": "Remove Google WebFont Loader/Google-host dependency while preserving Changa One and Inconsolata metrics and fallback behavior.",
+      "scope": [
+        "Verify licenses/provenance and exact binaries for Changa One 400 normal/italic and Inconsolata 400/700",
+        "Define local font-face, preload, font-display, and fallback stacks",
+        "Capture metric/layout-shift evidence",
+        "Specify webflow-icons replacement boundary"
+      ],
+      "likelyFiles": [
+        "site/assets/fonts/**",
+        "site/styles/fonts.css",
+        "docs/webflow-migration/fixtures/10-font-provenance.json",
+        "tests/visual/fonts/**"
+      ],
+      "dependencies": [
+        "WF-MIG.8"
+      ],
+      "nonGoals": [
+        "No unlicensed redistribution",
+        "No typography redesign",
+        "No Navbar implementation",
+        "No font-family substitution without evidence"
+      ],
+      "validation": [
+        "License/provenance record",
+        "Requested faces load locally",
+        "Loaded/failed-font screenshots",
+        "Layout-shift and fallback usability",
+        "No Google font network request"
+      ],
+      "rollback": "Retain current font loading until the local path passes; revert the isolated font CSS/assets.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "criticalPath": true,
+      "phase": "Phase 2 — Asset and font ownership",
+      "completionGate": "An authorized, independently deliverable font set or an explicitly approved metric-equivalent path is proven.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.10"
+    },
+    {
+      "id": "WF-MIG.11",
+      "originalId": "WF-MIG.10",
+      "title": "Create canonical CMS replacement data",
+      "profile": "COMPLEX",
+      "objective": "Import four collections and 66 items into validated Git-owned structured data.",
+      "scope": [
+        "Implement collection/token schemas",
+        "Import exact titles, IDs, Editions, Mint Dates, slugs, labels, image paths/alts, and explicit orders",
+        "Reference registry contracts/mirrors",
+        "Derive Name, acidValue, OBJKT URL, and environment identity",
+        "Retain Webflow metadata only as migration provenance"
+      ],
+      "likelyFiles": [
+        "site/data/schema/**",
+        "site/data/collections.json",
+        "site/data/tokens/*.json",
+        "scripts/site/validate-data.mjs",
+        "docs/webflow-migration/fixtures/11-cms-import-source.json",
+        "site/README.md"
+      ],
+      "dependencies": [
+        "WF-MIG.8",
+        "WF-MIG.9"
+      ],
+      "nonGoals": [
+        "No CMS UI/service",
+        "No chain-supply reinterpretation",
+        "No slug regeneration",
+        "No generated HTML",
+        "No runtime changes"
+      ],
+      "validation": [
+        "4 collections/66 items/36 field occurrences",
+        "Unique stable identities and slugs",
+        "Exact reconciliation with WF-MIG.2/4",
+        "44 acidValue and 35 OBJKT derivations",
+        "35 Mint Dates and INTRO explicit order"
+      ],
+      "rollback": "Additive data layer not yet consumed by production; revert data/validator patch.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 3 — Structured content",
+      "completionGate": "The full presentation dataset validates without a Webflow read and unresolved semantics remain labeled.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.11"
+    },
+    {
+      "id": "WF-MIG.12",
+      "originalId": "WF-MIG.11",
+      "title": "Resolve HEN sparse-token thumbnail mapping",
+      "profile": "COMPLEX",
+      "objective": "Make HEN media lookup correct for sparse mainnet IDs and active Shadownet mirror IDs without implicit 0-16 mainnet keys.",
+      "scope": [
+        "Define mainTokenId as canonical asset key",
+        "Implement or generate explicit adapter from shared mirror mapping",
+        "Cover 17 sparse IDs and 17 active IDs",
+        "Detect missing/duplicate/fallback lookup"
+      ],
+      "likelyFiles": [
+        "site/data/tokens/hen.json",
+        "site/assets/manifest.source.json",
+        "scripts/site/validate-data.mjs",
+        "tests/contracts/hen-assets.*",
+        "admin-ui/src/thumbs.manifest.js only if a later scoped consumer decision explicitly requires it"
+      ],
+      "dependencies": [
+        "WF-MIG.9",
+        "WF-MIG.11"
+      ],
+      "nonGoals": [
+        "No chain-registry address/network change",
+        "No token ID normalization",
+        "No image replacement",
+        "No unrelated admin refactor"
+      ],
+      "validation": [
+        "17/17 bijective main-to-active map",
+        "Mainnet sparse lookup",
+        "Shadownet active lookup",
+        "No silent fallback",
+        "Public and admin consumer impact reviewed"
+      ],
+      "rollback": "Revert adapter/manifest while existing Webflow image URLs remain available.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 3 — Structured content",
+      "completionGate": "Every HEN identity resolves the intended verified asset in both identity contexts.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.12"
+    },
+    {
+      "id": "WF-MIG.13",
+      "originalId": "WF-MIG.12",
+      "title": "Localize the Webflow CSS baseline",
+      "profile": "COMPLEX",
+      "objective": "Serve the complete current presentation baseline locally with owned load order and no Webflow stylesheet request.",
+      "scope": [
+        "Vendor exact frozen CSS with provenance",
+        "Localize asset/font URLs via reviewed override or manifest",
+        "Preserve reset/base, widgets, states, forms, first-paint rules, and four breakpoints",
+        "Inventory inline page CSS and establish load order",
+        "Add forbidden remote-style scan"
+      ],
+      "likelyFiles": [
+        "site/styles/vendor/webflow-baseline.css",
+        "site/styles/base.css",
+        "site/styles/shell.css",
+        "site/styles/pages/*.css",
+        "scripts/site/validate-output.mjs",
+        "docs/webflow-migration/fixtures/13-css-provenance.json"
+      ],
+      "dependencies": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10"
+      ],
+      "nonGoals": [
+        "No manual redesign",
+        "No dead-style purge",
+        "No class rename",
+        "No design-token conversion",
+        "No responsive breakpoint change"
+      ],
+      "validation": [
+        "Frozen baseline hash/provenance",
+        "No Webflow CSS request",
+        "Selector and load-order contracts",
+        "Four-family screenshots",
+        "Runtime/first-paint static state coverage"
+      ],
+      "rollback": "Continue serving current remote CSS in production until the isolated local baseline passes.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "criticalPath": true,
+      "phase": "Phase 4 — Local presentation baseline",
+      "completionGate": "All current presentation dependencies are locally addressable without combining migration and restyling.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.13"
+    },
+    {
+      "id": "WF-MIG.14",
+      "originalId": "WF-MIG.13",
+      "title": "Reconstruct Collection Utility locally",
+      "profile": "HIGH-RISK",
+      "objective": "Create the missing Git-owned Collection Utility source from frozen published evidence.",
+      "scope": [
+        "Reconstruct exact shared shell and page-specific structure",
+        "Integrate verified banner/logo/spinner/fonts and local CSS",
+        "Preserve metadata, links, wallet/first-paint selectors, responsive serialization, and route",
+        "Determine whether any feature-specific runtime exists"
+      ],
+      "likelyFiles": [
+        "site/templates/pages/collection-utility.html",
+        "site/styles/pages/collection-utility.css",
+        "site/data/pages.json",
+        "tests/fixtures/webflow-published/collection-utility/**"
+      ],
+      "dependencies": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.13"
+      ],
+      "nonGoals": [
+        "No redesign or content rewrite",
+        "No invented feature behavior",
+        "No Webflow mutation",
+        "No shared-shell refactor beyond evidenced parity"
+      ],
+      "validation": [
+        "DOM/metadata/route reconciliation",
+        "Four responsive families",
+        "Asset/font requests",
+        "Wallet/first-paint selector inventory",
+        "Published screenshot comparison"
+      ],
+      "rollback": "Collection Utility remains served by Webflow; local reconstruction is isolated until generation/cutover.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 4 — Local presentation baseline",
+      "completionGate": "The formerly missing route has a source-owned, evidence-matched local representation with no hidden unresolved runtime.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.14"
+    },
+    {
+      "id": "WF-MIG.15",
+      "originalId": "WF-MIG.14",
+      "title": "Implement deterministic page and route generation",
+      "profile": "COMPLEX",
+      "objective": "Build the shared shell, four static routes, 66 compatibility routes, route manifest, and deterministic deploy tree.",
+      "scope": [
+        "Implement small Node/HTML template build",
+        "Render Home, Collection Utility, Drops, Exchange shell/body slots",
+        "Render captured CMS template status/body behavior for exact slugs",
+        "Emit directory-index routes, 404, manifests, and generated-file policy",
+        "Run double-build comparison"
+      ],
+      "likelyFiles": [
+        "site/templates/layouts/**",
+        "site/templates/pages/**",
+        "site/templates/components/**",
+        "site/data/pages.json",
+        "scripts/site/build-site.mjs",
+        "scripts/site/compare-builds.mjs",
+        "dist/site/**"
+      ],
+      "dependencies": [
+        "WF-MIG.11",
+        "WF-MIG.13",
+        "WF-MIG.14"
+      ],
+      "nonGoals": [
+        "No SPA/hydration/server rendering",
+        "No CMS row behavior yet beyond slots",
+        "No runtime relocation",
+        "No route retirement"
+      ],
+      "validation": [
+        "Eight route families and 66 exact item paths",
+        "HTML parse and internal links",
+        "Deterministic double build",
+        "Source/output drift",
+        "404/direct-navigation contract"
+      ],
+      "rollback": "Existing checked snapshots and Webflow remain deployable; generated artifact is not promoted.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 5 — Page generation",
+      "completionGate": "A clean checkout deterministically emits the complete route tree from source templates/data.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.15"
+    },
+    {
+      "id": "WF-MIG.16",
+      "originalId": "WF-MIG.15",
+      "title": "Generate CMS rows with DOM-contract parity",
+      "profile": "HIGH-RISK",
+      "objective": "Generate the five Drops/Exchange collection lists from canonical data while preserving every runtime-sensitive contract.",
+      "scope": [
+        "Implement checkbox and quantity row templates with list/page variants",
+        "Generate HEN, INTRODUCTIONS, and CANAAN Drops lists plus SCRIPT/CANAAN Exchange lists",
+        "Preserve hidden IDs, ancestry, cloneability, stamping levels, pane/list membership, image/title/edition descendants, and explicit order",
+        "Derive visible acid values"
+      ],
+      "likelyFiles": [
+        "site/templates/components/token-row-*.html",
+        "site/templates/pages/drops.html",
+        "site/templates/pages/exchange.html",
+        "scripts/site/build-site.mjs",
+        "tests/contracts/cms-dom.*"
+      ],
+      "dependencies": [
+        "WF-MIG.11",
+        "WF-MIG.12",
+        "WF-MIG.15"
+      ],
+      "nonGoals": [
+        "No selector cleanup",
+        "No runtime rewrite",
+        "No `.intros-collection` normalization",
+        "No control redesign",
+        "No identity-by-index"
+      ],
+      "validation": [
+        "Five list-specific DOM contracts",
+        "97 audited row occurrences and list counts",
+        "Drops outer/Exchange inner stamping targets",
+        "Clone/filter/select fixture behavior",
+        "Exact labels/titles/editions/images/IDs/order"
+      ],
+      "rollback": "Revert generated-row templates and use the previous static artifact/Webflow baseline.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 5 — Page generation",
+      "completionGate": "Existing Git consumers pass against generated rows without selector or transaction identity changes.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.16"
+    },
+    {
+      "id": "WF-MIG.17",
+      "originalId": "WF-MIG.16",
+      "title": "Replace the Webflow Navbar runtime",
+      "profile": "COMPLEX",
+      "objective": "Provide owned responsive, pointer, keyboard, focus, ARIA, overlay, current-route, wallet-compatible, and no-JS navigation.",
+      "scope": [
+        "Standalone Navbar module and state CSS",
+        "Desktop/collapsed breakpoint behavior",
+        "Open/close/overlay/Escape/resize/focus return",
+        "ARIA and current-route state",
+        "No-JS visible links",
+        "Owned hamburger glyph replacing webflow-icons dependency"
+      ],
+      "likelyFiles": [
+        "site/runtime/widgets/navbar.js",
+        "site/templates/components/navbar.html",
+        "site/styles/widgets.css",
+        "tests/browser/navbar.*",
+        "tests/visual/navbar/**"
+      ],
+      "dependencies": [
+        "WF-MIG.13",
+        "WF-MIG.15"
+      ],
+      "nonGoals": [
+        "No navigation redesign",
+        "No link/copy normalization",
+        "No wallet lifecycle rewrite",
+        "No framework"
+      ],
+      "validation": [
+        "Pointer and keyboard matrix",
+        "Focus order/return",
+        "ARIA relationships/state",
+        "<=991 resize/open behavior",
+        "Wallet states",
+        "No-JS/script-failure fallback"
+      ],
+      "rollback": "Restore the prior artifact/Webflow Navbar runtime before promotion.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "criticalPath": true,
+      "phase": "Phase 6 — Widget and initialization replacement",
+      "completionGate": "All four static pages navigate accessibly without Webflow JS or webflow-icons.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.17"
+    },
+    {
+      "id": "WF-MIG.18",
+      "originalId": "WF-MIG.17",
+      "title": "Replace Exchange Tabs and the 500 ms seam",
+      "profile": "HIGH-RISK",
+      "objective": "Own accessible tab behavior and make pane/contract identity synchronously ready before Exchange consumes it.",
+      "scope": [
+        "Standalone Tabs module",
+        "419/CANAAN initial selection and pane identity",
+        "Click and Left/Right/Home/End roving focus",
+        "ARIA tab/tabpanel relationships",
+        "Explicit readiness API/event",
+        "Coordinate exchange initializer to remove fixed 500 ms",
+        "Preserve no-hash behavior"
+      ],
+      "likelyFiles": [
+        "site/runtime/widgets/tabs.js",
+        "site/templates/pages/exchange.html",
+        "site/styles/widgets.css",
+        "exchange/js/exchange.js",
+        "webflow/exchange.js",
+        "tests/browser/exchange-tabs.*"
+      ],
+      "dependencies": [
+        "WF-MIG.15",
+        "WF-MIG.16"
+      ],
+      "nonGoals": [
+        "No cart/transaction redesign",
+        "No pane reorder",
+        "No hash/history feature",
+        "No unrelated timeout cleanup"
+      ],
+      "validation": [
+        "Keyboard/focus/ARIA",
+        "Initial and switched pane visibility",
+        "Pane-to-contract mapping",
+        "Readiness ordering without sleeps",
+        "Quantity/cart/identity regression fixtures"
+      ],
+      "rollback": "Revert Tabs and Exchange integration together; serve the prior immutable artifact/Webflow.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 6 — Widget and initialization replacement",
+      "completionGate": "Exchange never infers contract identity before an explicit valid selected pane and no fixed-delay correctness dependency remains.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.18"
+    },
+    {
+      "id": "WF-MIG.19",
+      "originalId": "WF-MIG.18",
+      "title": "Harden first paint with visible-first enhancement",
+      "profile": "HIGH-RISK",
+      "objective": "Remove the permanent-hide failure mode while preserving stable first render and page-specific readiness behavior.",
+      "scope": [
+        "Visible initial HTML/CSS",
+        "Bounded enhancement waits and fail-open",
+        "Hero/font/image readiness",
+        "No-JS/slow/offline/module-error behavior",
+        "Page-specific pending regions",
+        "Reduced-motion/accessibility implications"
+      ],
+      "likelyFiles": [
+        "shared/public-first-paint.js",
+        "site/runtime/first-paint.js",
+        "site/styles/shell.css",
+        "site/styles/pages/*.css",
+        "webflow/*.js",
+        "tests/browser/first-paint.*",
+        "tests/visual/first-paint/**"
+      ],
+      "dependencies": [
+        "WF-MIG.13",
+        "WF-MIG.15"
+      ],
+      "nonGoals": [
+        "No page redesign",
+        "No wallet state rewrite",
+        "No unbounded hidden-first animation",
+        "No unrelated loader cleanup"
+      ],
+      "validation": [
+        "Pre-script and post-script visibility",
+        "No-JS",
+        "Slow/failed module",
+        "Font and image success/failure",
+        "Timeout/fail-open",
+        "FOUC/layout-shift and focusability"
+      ],
+      "rollback": "Revert first-paint module/styles together and redeploy prior artifact; Webflow remains fallback.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 6 — Widget and initialization replacement",
+      "completionGate": "No supported failure mode can leave the only useful page content permanently hidden.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.19"
+    },
+    {
+      "id": "WF-MIG.20",
+      "originalId": "WF-MIG.19",
+      "title": "Build the reproducible static deployment pipeline",
+      "profile": "COMPLEX",
+      "objective": "Build, validate, identify, deploy, verify, retain, and roll back one complete same-origin static artifact.",
+      "scope": [
+        "Pinned clean CI build",
+        "Versioned/content-hashed assets and bundles",
+        "Root-relative manifest URLs",
+        "Directory routes and 404",
+        "Staging/production environment behavior",
+        "Fetched-byte verification",
+        "Cache policy and artifact retention",
+        "GitHub Pages capability validation"
+      ],
+      "likelyFiles": [
+        "package.json",
+        "package-lock.json only for explicitly required pinned tooling",
+        "deployment/**",
+        ".github/workflows/**",
+        "scripts/site/build-site.mjs",
+        "scripts/site/validate-output.mjs",
+        "dist/site/**"
+      ],
+      "dependencies": [
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.15",
+        "WF-MIG.16",
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19"
+      ],
+      "nonGoals": [
+        "No vendor switch without failed capability evidence",
+        "No server runtime/CMS",
+        "No mainnet change",
+        "No production cutover"
+      ],
+      "validation": [
+        "Clean deterministic build",
+        "Same-origin paths",
+        "Manifest/fetched hashes",
+        "Direct nested routes/404",
+        "Cache behavior",
+        "Staging hostname selects Shadownet",
+        "Rollback artifact retention"
+      ],
+      "rollback": "Redeploy the retained prior artifact; production remains Webflow until cutover ticket.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "criticalPath": true,
+      "phase": "Phase 7 — Deployment pipeline",
+      "completionGate": "The validated bytes can be promoted without rebuilding and rolled back to a retained artifact.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.20"
+    },
+    {
+      "id": "WF-MIG.21",
+      "originalId": "WF-MIG.20",
+      "title": "Enforce automated data, route, dependency, and DOM contracts",
+      "profile": "VALIDATION",
+      "objective": "Turn canonical data, route completeness, dependency independence, and hard DOM/CSS contracts into required automated gates.",
+      "scope": [
+        "Schema/identity/slug/route/asset checks",
+        "Determinism and source/output drift",
+        "Forbidden Webflow URL/runtime and external inventory",
+        "HTML parse",
+        "Five list contracts and selector ancestry",
+        "CSS selector/load-order contracts",
+        "Bundle/deploy manifest integrity"
+      ],
+      "likelyFiles": [
+        "scripts/site/validate-data.mjs",
+        "scripts/site/validate-output.mjs",
+        "tests/contracts/**",
+        "package.json"
+      ],
+      "dependencies": [
+        "WF-MIG.20"
+      ],
+      "nonGoals": [
+        "No feature implementation",
+        "No broad source cleanup",
+        "No visual approval",
+        "No live transaction"
+      ],
+      "validation": [
+        "Intentional negative fixtures fail",
+        "All production outputs pass",
+        "Coverage maps to WF-MIG.3/5",
+        "No ignored blocking failure",
+        "Stable machine-readable report"
+      ],
+      "rollback": "Revert isolated validators only if demonstrably incorrect; never waive a valid contract failure for cutover.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "criticalPath": true,
+      "phase": "Phase 8 — Functional validation",
+      "completionGate": "CI fails on every known data/route/Webflow-dependency/DOM contract violation.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.21"
+    },
+    {
+      "id": "WF-MIG.22",
+      "originalId": "WF-MIG.21",
+      "title": "Validate browser behavior, accessibility, wallet, and transactions",
+      "profile": "VALIDATION",
+      "objective": "Prove functional parity across widgets, runtime rows, wallet/network states, and safe transaction scope.",
+      "scope": [
+        "Navbar and Tabs browser/accessibility matrix",
+        "Drops filter/clone/select/cart",
+        "Exchange quantity/cart/pane identity",
+        "Wallet persisted/disconnected/pending/connected/disconnect/network switch",
+        "HEN mirror",
+        "Transaction preconditions and approved Shadownet smoke",
+        "No-JS/slow/offline/failed assets"
+      ],
+      "likelyFiles": [
+        "tests/browser/**",
+        "tests/fixtures/**",
+        "docs/webflow-migration/fixtures/22-functional-results.json"
+      ],
+      "dependencies": [
+        "WF-MIG.21"
+      ],
+      "nonGoals": [
+        "No mainnet enablement",
+        "No destructive transaction",
+        "No feature fix hidden inside validation",
+        "No visual sign-off"
+      ],
+      "validation": [
+        "Automated required scenarios",
+        "Keyboard/focus/ARIA",
+        "Approved manual wallet/network evidence",
+        "Scoped Shadownet transaction evidence",
+        "Zero unresolved identity/transaction blocker"
+      ],
+      "rollback": "Staging-only; revert the owning implementation ticket/artifact and rerun the entire affected matrix.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 8 — Functional validation",
+      "completionGate": "Every hard runtime contract and authorized transaction-safety check has passing evidence.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.22"
+    },
+    {
+      "id": "WF-MIG.23",
+      "originalId": "WF-MIG.22",
+      "title": "Establish visual and responsive regression gates",
+      "profile": "VALIDATION",
+      "objective": "Prove owned presentation parity for all pages, material states, responsive families, and font/image/first-paint conditions.",
+      "scope": [
+        "Home and Collection Utility",
+        "Drops and Exchange material wallet/cart/modal/tab/list states",
+        "Desktop/base and <=991/<=767/<=479 boundaries",
+        "Font/image loaded and failed",
+        "First-paint before/after",
+        "Animation/reduced motion",
+        "Owned acceptable-difference policy"
+      ],
+      "likelyFiles": [
+        "tests/visual/**",
+        "tests/fixtures/webflow-published/screenshots/**",
+        "docs/webflow-migration/fixtures/23-visual-results.json"
+      ],
+      "dependencies": [
+        "WF-MIG.21",
+        "WF-MIG.22"
+      ],
+      "nonGoals": [
+        "No redesign",
+        "No blanket screenshot masks",
+        "No CSS cleanup",
+        "No approval of unexplained differences"
+      ],
+      "validation": [
+        "Complete screenshot matrix",
+        "Stable browser/viewport/timing",
+        "Automated diffs",
+        "Manual review of every exception",
+        "No clipping/hiding/focus/layout regression"
+      ],
+      "rollback": "Keep artifact in staging and revert the owning asset/CSS/widget/page change.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "high",
+      "criticalPath": true,
+      "phase": "Phase 9 — Visual and responsive validation",
+      "completionGate": "Visual parity is evidenced for all required scenarios under the approved difference policy.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.23"
+    },
+    {
+      "id": "WF-MIG.24",
+      "originalId": "WF-MIG.23",
+      "title": "Close route and Webflow-independence validation",
+      "profile": "CLOSURE",
+      "objective": "Reconcile all cutover criteria and prove the candidate artifact performs no required Webflow request.",
+      "scope": [
+        "All static and 66 exact-slug routes",
+        "Direct/refresh/back/404/custom/staging host behavior",
+        "Network trace for CSS/JS/CMS/assets/fonts/custom code",
+        "External dependency exception inventory",
+        "Source-to-deployed hash proof",
+        "Residual risk disposition"
+      ],
+      "likelyFiles": [
+        "docs/webflow-migration/fixtures/24-independence-results.json",
+        "docs/webflow-migration/24-cutover-readiness.md",
+        "tests/contracts/**"
+      ],
+      "dependencies": [
+        "WF-MIG.21",
+        "WF-MIG.22",
+        "WF-MIG.23"
+      ],
+      "nonGoals": [
+        "No production switch",
+        "No Webflow deletion",
+        "No waiver of unresolved blocker",
+        "No optional cleanup"
+      ],
+      "validation": [
+        "Zero required Webflow requests",
+        "Eight route families/66 item paths",
+        "External inventory approved",
+        "All REQUIRED pre-cutover criteria passed",
+        "Risk register reconciled"
+      ],
+      "rollback": "No mutation; failed criteria return work to the owning ticket.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 9 — Visual and responsive validation",
+      "completionGate": "No unresolved BLOCKING BEFORE CUTOVER risk and the candidate artifact is independently reproducible.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.24"
+    },
+    {
+      "id": "WF-MIG.25",
+      "originalId": "WF-MIG.24",
+      "title": "Execute and rehearse the staging cutover",
+      "profile": "HIGH-RISK",
+      "objective": "Dual-run the exact candidate at a production-like staging origin and prove deployment, monitoring, and rollback operations.",
+      "scope": [
+        "Final frozen-content reconciliation",
+        "Deploy exact immutable candidate",
+        "Route/cache/TLS/custom-domain-like probes",
+        "Wallet/Shadownet and approved transaction smoke",
+        "Webflow comparison",
+        "Rollback rehearsal",
+        "Cutover checklist"
+      ],
+      "likelyFiles": [
+        "deployment/**",
+        "docs/webflow-migration/fixtures/25-staging-results.json",
+        "docs/webflow-migration/25-staging-cutover.md"
+      ],
+      "dependencies": [
+        "WF-MIG.24"
+      ],
+      "nonGoals": [
+        "No production DNS/domain switch",
+        "No Webflow mutation",
+        "No mainnet enablement",
+        "No new feature"
+      ],
+      "validation": [
+        "Artifact hashes",
+        "All acceptance gates",
+        "No Webflow request",
+        "Hostname/network correctness",
+        "Rollback rehearsal",
+        "Monitoring probes"
+      ],
+      "rollback": "Redeploy prior staging artifact; production Webflow remains unchanged.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 10 — Staging cutover",
+      "completionGate": "The exact production candidate and rehearsed rollback procedure pass staging; production still requires explicit approval.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.25"
+    },
+    {
+      "id": "WF-MIG.26",
+      "originalId": "WF-MIG.25",
+      "title": "Execute the approved production cutover",
+      "profile": "HIGH-RISK",
+      "objective": "Switch production to the validated artifact with immediate tested rollback and transaction/network monitoring.",
+      "scope": [
+        "Preflight artifact/DNS/cache/certificate checks",
+        "Authorized domain/deploy switch",
+        "Fetched-byte/route/asset/font/bundle probes",
+        "Wallet/network/transaction-safety smoke",
+        "Monitoring and rollback-trigger evaluation",
+        "Source-of-truth handoff"
+      ],
+      "likelyFiles": [
+        "deployment/**",
+        "docs/webflow-migration/fixtures/26-production-results.json",
+        "docs/webflow-migration/26-production-cutover.md"
+      ],
+      "dependencies": [
+        "WF-MIG.25"
+      ],
+      "nonGoals": [
+        "No Webflow deletion/unpublish unless a rollback procedure explicitly requires authorized publication",
+        "No cleanup",
+        "No mainnet change",
+        "No rebuild during promotion"
+      ],
+      "validation": [
+        "Production bytes equal staged manifest",
+        "All routes/dependencies",
+        "Correct network",
+        "Wallet/transaction smoke",
+        "Monitoring thresholds",
+        "Rollback remains actionable"
+      ],
+      "rollback": "Restore prior DNS/deploy target or redeploy retained known-good artifact using the rehearsed procedure.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 11 — Production cutover",
+      "completionGate": "Production serves the validated Git artifact stably inside the monitoring window; Webflow remains retained.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.26"
+    },
+    {
+      "id": "WF-MIG.27",
+      "originalId": "WF-MIG.26",
+      "title": "Close rollback window and decommission Webflow",
+      "profile": "CLOSURE",
+      "objective": "Verify all Webflow-removal criteria, retain required evidence, and decommission only after explicit approval.",
+      "scope": [
+        "Monitoring closeout",
+        "Formal removal checklist",
+        "Rollback window/retention proof",
+        "Verify no runtime/presentation/CMS/asset/custom-code/deploy dependency",
+        "Authorized domain detachment/unpublish as reversible steps",
+        "Archive published baseline and rollback artifact"
+      ],
+      "likelyFiles": [
+        "docs/webflow-migration/27-decommission-record.md",
+        "docs/webflow-migration/fixtures/27-removal-checklist.json",
+        "deployment/** only for approved detachment"
+      ],
+      "dependencies": [
+        "WF-MIG.26"
+      ],
+      "nonGoals": [
+        "No destructive site deletion",
+        "No optional cleanup",
+        "No unapproved mutation",
+        "No removal while a REQUIRED criterion is open"
+      ],
+      "validation": [
+        "Every REQUIRED criterion passes",
+        "Conditional criteria resolved",
+        "No blocking risk",
+        "Rollback retention satisfied",
+        "Explicit decommission approval",
+        "Archive hashes verify"
+      ],
+      "rollback": "Before final detachment, restore frozen Webflow; after detachment, use the retained proven artifact/site restoration path. Destructive deletion is excluded.",
+      "model": "gpt-5.6-sol",
+      "reasoning": "xhigh",
+      "criticalPath": true,
+      "phase": "Phase 12 — Webflow rollback and decommission",
+      "completionGate": "Webflow has no operational role, retention requirements are met, and decommission is explicitly approved.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.27"
+    },
+    {
+      "id": "WF-MIG.28",
+      "originalId": "WF-MIG.27",
+      "title": "Perform post-migration presentation and legacy cleanup",
+      "profile": "ROUTINE",
+      "objective": "Reduce migration scaffolding only after the production rollback window without changing evidenced behavior.",
+      "scope": [
+        "Independently ticket selected cleanup such as CSS extraction, dead `.w-*` removal, runtime entrypoint rename, jQuery removal, unique control IDs, or asset optimization",
+        "Maintain contract and screenshot gates per cleanup"
+      ],
+      "likelyFiles": [
+        "site/styles/**",
+        "site/templates/**",
+        "site/runtime/**",
+        "webflow/**",
+        "drops/**",
+        "exchange/**",
+        "tests/**"
+      ],
+      "dependencies": [
+        "WF-MIG.27"
+      ],
+      "nonGoals": [
+        "No giant cleanup patch",
+        "No redesign by default",
+        "No route/content change without a separate decision",
+        "No weakened parity tests"
+      ],
+      "validation": [
+        "One cleanup concern per child ticket",
+        "Focused functional/visual/contract gates",
+        "No output behavior drift",
+        "Independent rollback"
+      ],
+      "rollback": "Revert each small cleanup independently to the decommissioned production baseline.",
+      "model": "gpt-5.6-terra",
+      "reasoning": "medium",
+      "criticalPath": false,
+      "phase": "Deferred cleanup",
+      "completionGate": "Optional; each selected cleanup is separately reviewed and behavior-preserving.",
+      "estimateReference": "docs/webflow-migration/07-ticket-estimates.json#WF-MIG.28"
+    }
+  ],
+  "criticalPath": [
+    "WF-MIG.8",
+    "WF-MIG.9",
+    "WF-MIG.10",
+    "WF-MIG.11",
+    "WF-MIG.12",
+    "WF-MIG.13",
+    "WF-MIG.14",
+    "WF-MIG.15",
+    "WF-MIG.16",
+    "WF-MIG.17",
+    "WF-MIG.18",
+    "WF-MIG.19",
+    "WF-MIG.20",
+    "WF-MIG.21",
+    "WF-MIG.22",
+    "WF-MIG.23",
+    "WF-MIG.24",
+    "WF-MIG.25",
+    "WF-MIG.26",
+    "WF-MIG.27"
+  ],
+  "optionalTickets": [
+    "WF-MIG.28"
+  ],
+  "cutoverTickets": [
+    "WF-MIG.25",
+    "WF-MIG.26",
+    "WF-MIG.27"
+  ]
+}

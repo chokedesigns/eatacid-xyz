@@ -1,0 +1,2290 @@
+{
+  "generatedAt": "2026-08-03T00:00:00-05:00",
+  "interpretationModel": {
+    "engineeringEquivalentDefinition": "The existing CODEX EXECUTION AND ITERATION, USER REVIEW AND DECISION, and MANUAL EXTERNAL WORK hours are engineering-equivalent effort allocations. They are not literal user stopwatch time and CODEX EXECUTION AND ITERATION is not literal Codex wall-clock runtime.",
+    "userAttendedDefinition": "Active user participation for prompt launch, blocker answers, report/diff review, manual checks, acceptance, authorization, wallet/DNS/production/rollback decisions, and commits. USER-CHECK-IN TIME is included and not counted separately.",
+    "unattendedWallClockDefinition": "Planning range for primary/fix Codex runs and routine scripts, builds, downloads, browser automation, screenshot suites, validation, and deploy verification that can progress without continuous user attention. It is wall-clock, not labor.",
+    "passiveElapsedDefinition": "External or queue waiting such as DNS/cache/certificate/deploy propagation, monitoring-window duration, service delays, and exceptional CI/browser queueing. Routine tool execution is represented once in unattended wall-clock; passive notes are non-additive elapsed dependencies.",
+    "conversionMethod": "Each ticket was reviewed using its user-review and manual-external hours, pass pattern, confidence, complexity, and authorization/manual gates. Attended time retains active decisions, review, checks, approvals, wallet/DNS/rollback actions, and commits; it discounts overlap, witness-only time, non-continuous monitoring, agent-led status work, and conservative engineering allowance. Shared practical prompt/launch/check-in/commit overhead is added once at 0.5/1.0/1.5 hours per included ticket for low/expected/high milestones; ticket practicalTime excludes it.",
+    "caveats": [
+      "Practical attended conversion has lower confidence than the engineering-equivalent model because work habits, review depth, authorization friction, and failure frequency are not yet observed.",
+      "Attended and unattended ranges are planning aids, not guarantees, and are not added to engineering-equivalent labor.",
+      "Unattended execution is serialized by the one-ticket-at-a-time workflow and still requires brief check-ins captured inside user-attended time.",
+      "Routine build/test/browser execution is included in unattended wall-clock; external queues, propagation, monitoring duration, and service waiting remain passive elapsed dependencies.",
+      "No calendar duration follows by summing the clocks because activity can overlap and passive dependencies are state-based."
+    ]
+  },
+  "estimationModel": {
+    "workflow": "One scoped Codex ticket at a time; optimized prompt before execution; Codex inspects, implements, validates and reports; user reviews, witnesses/executes required manual checks, resolves decisions and commits; ordinary fix passes are expected; no autonomous multi-ticket run.",
+    "laborCategories": {
+      "codexExecutionAndIteration": "Active scoped-session time for investigation, implementation, interpreting validation, correction, and expected targeted fix passes.",
+      "userReviewAndDecision": "Completion-report and result review, decisions, blocked answers, witnessed checks, approval, and commit/continuity work.",
+      "manualExternalWork": "Browser, authorization, provenance/licensing, DNS/domain, wallet, approved Shadownet, visual acceptance, monitoring and rollback work that Codex cannot independently complete.",
+      "passiveMachineTime": "Unattended builds, downloads, screenshot/browser suites, deploy propagation, DNS/cache waiting and monitoring-window elapsed duration."
+    },
+    "lowDefinition": "Evidence/access available; first implementation substantially correct; no material architecture surprise; one normal review cycle.",
+    "expectedDefinition": "One primary Codex pass, one focused review, ordinary correction/fix work and expected browser/manual checks; no architecture reversal. Expected is judgment-based, not automatically the midpoint.",
+    "highDefinition": "Multiple fix passes, difficult browser/CSS/environment behavior, external friction, and one material but contained surprise; no fundamental architecture replacement.",
+    "passiveTimeTreatment": "Excluded from every labor total; only active monitoring, interpretation, retry, or decision time is counted."
+  },
+  "totals": {
+    "minimumFoundation": {
+      "practicalTime": {
+        "userAttended": {
+          "low": 32.5,
+          "expected": 61,
+          "high": 105
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 33,
+          "expected": 74,
+          "high": 146
+        },
+        "sharedUserAttendedWorkflowOverhead": {
+          "low": 6,
+          "expected": 12,
+          "high": 18
+        },
+        "passiveElapsedNotes": "Access/authorization waits and exceptional browser or download queueing are passive; routine tool execution is already in unattended wall-clock.",
+        "confidence": "MEDIUM"
+      },
+      "low": 122.5,
+      "expected": 224,
+      "high": 375,
+      "ticketIds": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.11",
+        "WF-MIG.12",
+        "WF-MIG.13",
+        "WF-MIG.14",
+        "WF-MIG.15",
+        "WF-MIG.16",
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19"
+      ],
+      "workflowOverheadIncluded": {
+        "low": 12,
+        "expected": 18,
+        "high": 24
+      },
+      "ownership": {
+        "codexExecution": {
+          "low": 73,
+          "expected": 132,
+          "high": 222
+        },
+        "userReviewDecision": {
+          "low": 34.5,
+          "expected": 61,
+          "high": 96
+        },
+        "manualExternal": {
+          "low": 15,
+          "expected": 31,
+          "high": 57
+        }
+      },
+      "included": "WF-MIG.8–WF-MIG.19: frozen baseline, owned assets/fonts/data/CSS, Collection Utility, deterministic routes/rows, Navbar, Tabs, and visible-first local architecture proof.",
+      "excluded": "Deployment pipeline, full functional/visual closure, staging, production, monitoring closeout, Webflow decommission, optional cleanup.",
+      "confidence": "MEDIUM"
+    },
+    "cutoverReady": {
+      "practicalTime": {
+        "userAttended": {
+          "low": 53,
+          "expected": 98,
+          "high": 169
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 57,
+          "expected": 132,
+          "high": 264
+        },
+        "sharedUserAttendedWorkflowOverhead": {
+          "low": 8.5,
+          "expected": 17,
+          "high": 25.5
+        },
+        "passiveElapsedNotes": "CI/browser/screenshot queues, provider waits, and external-service delays are passive and non-additive.",
+        "confidence": "LOW"
+      },
+      "low": 192,
+      "expected": 357.5,
+      "high": 602,
+      "ticketIds": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.11",
+        "WF-MIG.12",
+        "WF-MIG.13",
+        "WF-MIG.14",
+        "WF-MIG.15",
+        "WF-MIG.16",
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19",
+        "WF-MIG.20",
+        "WF-MIG.21",
+        "WF-MIG.22",
+        "WF-MIG.23",
+        "WF-MIG.24"
+      ],
+      "workflowOverheadIncluded": {
+        "low": 17,
+        "expected": 25.5,
+        "high": 34
+      },
+      "ownership": {
+        "codexExecution": {
+          "low": 113,
+          "expected": 208,
+          "high": 349
+        },
+        "userReviewDecision": {
+          "low": 53.5,
+          "expected": 96.5,
+          "high": 154
+        },
+        "manualExternal": {
+          "low": 25.5,
+          "expected": 53,
+          "high": 99
+        }
+      },
+      "included": "WF-MIG.8–WF-MIG.24: minimum foundation plus deployable artifact, automated/browser/transaction/visual/route/Webflow-independence validation.",
+      "excluded": "Staging promotion, production promotion, production monitoring-window closeout, Webflow decommission, optional cleanup.",
+      "confidence": "MEDIUM"
+    },
+    "productionCutover": {
+      "practicalTime": {
+        "userAttended": {
+          "low": 63.5,
+          "expected": 117,
+          "high": 201
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 64,
+          "expected": 149,
+          "high": 302
+        },
+        "sharedUserAttendedWorkflowOverhead": {
+          "low": 9.5,
+          "expected": 19,
+          "high": 28.5
+        },
+        "passiveElapsedNotes": "DNS, TLS, cache and deploy propagation plus monitoring-window elapsed duration are passive; active checks remain attended.",
+        "confidence": "LOW"
+      },
+      "low": 219,
+      "expected": 404.5,
+      "high": 682,
+      "ticketIds": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.11",
+        "WF-MIG.12",
+        "WF-MIG.13",
+        "WF-MIG.14",
+        "WF-MIG.15",
+        "WF-MIG.16",
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19",
+        "WF-MIG.20",
+        "WF-MIG.21",
+        "WF-MIG.22",
+        "WF-MIG.23",
+        "WF-MIG.24",
+        "WF-MIG.25",
+        "WF-MIG.26"
+      ],
+      "workflowOverheadIncluded": {
+        "low": 19,
+        "expected": 28.5,
+        "high": 38
+      },
+      "ownership": {
+        "codexExecution": {
+          "low": 124,
+          "expected": 226,
+          "high": 380
+        },
+        "userReviewDecision": {
+          "low": 61.5,
+          "expected": 110.5,
+          "high": 177
+        },
+        "manualExternal": {
+          "low": 33.5,
+          "expected": 68,
+          "high": 125
+        }
+      },
+      "included": "WF-MIG.8–WF-MIG.26: cutover-ready candidate plus staging rehearsal, production promotion, rollback readiness, and immediate production checks.",
+      "excluded": "Elapsed monitoring-window duration, rollback-window closure, Webflow decommission, optional cleanup.",
+      "confidence": "LOW"
+    },
+    "safeWebflowIndependence": {
+      "practicalTime": {
+        "userAttended": {
+          "low": 68,
+          "expected": 125,
+          "high": 214.5
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 66,
+          "expected": 154,
+          "high": 314
+        },
+        "sharedUserAttendedWorkflowOverhead": {
+          "low": 10,
+          "expected": 20,
+          "high": 30
+        },
+        "passiveElapsedNotes": "Production monitoring-window duration, cache/DNS settlement, service waiting and decommission propagation are passive.",
+        "confidence": "LOW"
+      },
+      "low": 230,
+      "expected": 424,
+      "high": 714,
+      "ticketIds": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.11",
+        "WF-MIG.12",
+        "WF-MIG.13",
+        "WF-MIG.14",
+        "WF-MIG.15",
+        "WF-MIG.16",
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19",
+        "WF-MIG.20",
+        "WF-MIG.21",
+        "WF-MIG.22",
+        "WF-MIG.23",
+        "WF-MIG.24",
+        "WF-MIG.25",
+        "WF-MIG.26",
+        "WF-MIG.27"
+      ],
+      "workflowOverheadIncluded": {
+        "low": 20,
+        "expected": 30,
+        "high": 40
+      },
+      "ownership": {
+        "codexExecution": {
+          "low": 128,
+          "expected": 233,
+          "high": 392
+        },
+        "userReviewDecision": {
+          "low": 65.5,
+          "expected": 117,
+          "high": 187
+        },
+        "manualExternal": {
+          "low": 36.5,
+          "expected": 74,
+          "high": 135
+        }
+      },
+      "included": "WF-MIG.8–WF-MIG.27: production cutover plus stability evidence, rollback-window closure, Git source-of-truth handoff, and authorized reversible Webflow decommission.",
+      "excluded": "Destructive Webflow deletion and optional post-migration cleanup.",
+      "confidence": "LOW"
+    },
+    "deferredCleanup": {
+      "practicalTime": {
+        "userAttended": {
+          "low": 3,
+          "expected": 5.5,
+          "high": 10.5
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 5,
+          "expected": 14,
+          "high": 30
+        },
+        "sharedUserAttendedWorkflowOverhead": {
+          "low": 0.5,
+          "expected": 1,
+          "high": 1.5
+        },
+        "passiveElapsedNotes": "CI/browser/screenshot queue and runtime variance beyond routine estimated execution is passive.",
+        "confidence": "LOW"
+      },
+      "low": 14.5,
+      "expected": 28.5,
+      "high": 51,
+      "ticketIds": [
+        "WF-MIG.28"
+      ],
+      "workflowOverheadIncluded": {
+        "low": 1,
+        "expected": 1.5,
+        "high": 2
+      },
+      "ownership": {
+        "codexExecution": {
+          "low": 10,
+          "expected": 20,
+          "high": 36
+        },
+        "userReviewDecision": {
+          "low": 4,
+          "expected": 7.5,
+          "high": 12
+        },
+        "manualExternal": {
+          "low": 0.5,
+          "expected": 1,
+          "high": 3
+        }
+      },
+      "included": "WF-MIG.28 allowance for separately scoped CSS extraction, `.w-*` cleanup, entrypoint rename, jQuery removal, ID repair, asset optimization, and associated gates.",
+      "excluded": "Redesign, new features, route/content changes, or a single large cleanup patch.",
+      "confidence": "LOW"
+    },
+    "completeProgram": {
+      "practicalTime": {
+        "userAttended": {
+          "low": 71,
+          "expected": 130.5,
+          "high": 225
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 71,
+          "expected": 168,
+          "high": 344
+        },
+        "sharedUserAttendedWorkflowOverhead": {
+          "low": 10.5,
+          "expected": 21,
+          "high": 31.5
+        },
+        "passiveElapsedNotes": "All safe-independence passive dependencies plus optional cleanup queue/runtime variance; none is converted to labor.",
+        "confidence": "LOW"
+      },
+      "low": 244.5,
+      "expected": 452.5,
+      "high": 765,
+      "ticketIds": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.11",
+        "WF-MIG.12",
+        "WF-MIG.13",
+        "WF-MIG.14",
+        "WF-MIG.15",
+        "WF-MIG.16",
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19",
+        "WF-MIG.20",
+        "WF-MIG.21",
+        "WF-MIG.22",
+        "WF-MIG.23",
+        "WF-MIG.24",
+        "WF-MIG.25",
+        "WF-MIG.26",
+        "WF-MIG.27",
+        "WF-MIG.28"
+      ],
+      "workflowOverheadIncluded": {
+        "low": 21,
+        "expected": 31.5,
+        "high": 42
+      },
+      "ownership": {
+        "codexExecution": {
+          "low": 138,
+          "expected": 253,
+          "high": 428
+        },
+        "userReviewDecision": {
+          "low": 69.5,
+          "expected": 124.5,
+          "high": 199
+        },
+        "manualExternal": {
+          "low": 37,
+          "expected": 75,
+          "high": 138
+        }
+      },
+      "included": "Safe Webflow independence plus the current optional-cleanup allowance.",
+      "excluded": "Future redesign/features and destructive Webflow deletion.",
+      "confidence": "LOW"
+    },
+    "workflowOverhead": {
+      "low": 21,
+      "expected": 31.5,
+      "high": 42,
+      "basis": "Per included ticket: 1.0/1.5/2.0 hours for prompt refinement, branch/status continuity, commit handling, blocked-question resolution, and dependency handoff. Ticket-specific implementation, completion-report review, and fix passes remain in ticket estimates; passive machine time is excluded.",
+      "ownershipCategory": "USER REVIEW AND DECISION"
+    }
+  },
+  "phases": [
+    {
+      "phase": "Phase 1 — Baseline and freeze",
+      "ticketIds": [
+        "WF-MIG.8"
+      ],
+      "lowHours": 10,
+      "expectedHours": 17,
+      "highHours": 28,
+      "codexHours": {
+        "low": 6,
+        "expected": 10,
+        "high": 16
+      },
+      "userReviewHours": {
+        "low": 2,
+        "expected": 3,
+        "high": 5
+      },
+      "manualExternalHours": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "confidence": "MEDIUM",
+      "uncertaintyDrivers": [
+        "Published/browser access",
+        "Collection Utility and route-response capture"
+      ]
+    },
+    {
+      "phase": "Phase 2 — Asset and font ownership",
+      "ticketIds": [
+        "WF-MIG.9",
+        "WF-MIG.10"
+      ],
+      "lowHours": 20,
+      "expectedHours": 40,
+      "highHours": 69,
+      "codexHours": {
+        "low": 10,
+        "expected": 20,
+        "high": 34
+      },
+      "userReviewHours": {
+        "low": 3.5,
+        "expected": 7,
+        "high": 12
+      },
+      "manualExternalHours": {
+        "low": 6.5,
+        "expected": 13,
+        "high": 23
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "Asset authorization and equivalence",
+        "Font licensing and metric fidelity"
+      ]
+    },
+    {
+      "phase": "Phase 3 — Structured content",
+      "ticketIds": [
+        "WF-MIG.11",
+        "WF-MIG.12"
+      ],
+      "lowHours": 14.5,
+      "expectedHours": 26,
+      "highHours": 43,
+      "codexHours": {
+        "low": 11,
+        "expected": 19,
+        "high": 31
+      },
+      "userReviewHours": {
+        "low": 3.5,
+        "expected": 6,
+        "high": 10
+      },
+      "manualExternalHours": {
+        "low": 0,
+        "expected": 1,
+        "high": 2
+      },
+      "confidence": "HIGH",
+      "uncertaintyDrivers": [
+        "Freeze drift",
+        "HEN consumer boundary"
+      ]
+    },
+    {
+      "phase": "Phase 4 — Local presentation baseline",
+      "ticketIds": [
+        "WF-MIG.13",
+        "WF-MIG.14"
+      ],
+      "lowHours": 22,
+      "expectedHours": 42,
+      "highHours": 73,
+      "codexHours": {
+        "low": 15,
+        "expected": 28,
+        "high": 48
+      },
+      "userReviewHours": {
+        "low": 4.5,
+        "expected": 9,
+        "high": 15
+      },
+      "manualExternalHours": {
+        "low": 2.5,
+        "expected": 5,
+        "high": 10
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "CSS localization drift",
+        "Missing Collection Utility source/runtime"
+      ]
+    },
+    {
+      "phase": "Phase 5 — Page generation",
+      "ticketIds": [
+        "WF-MIG.15",
+        "WF-MIG.16"
+      ],
+      "lowHours": 20,
+      "expectedHours": 36,
+      "highHours": 60,
+      "codexHours": {
+        "low": 15,
+        "expected": 26,
+        "high": 43
+      },
+      "userReviewHours": {
+        "low": 4,
+        "expected": 8,
+        "high": 13
+      },
+      "manualExternalHours": {
+        "low": 1,
+        "expected": 2,
+        "high": 4
+      },
+      "confidence": "MEDIUM",
+      "uncertaintyDrivers": [
+        "Route-host semantics",
+        "DOM-contract sensitivity"
+      ]
+    },
+    {
+      "phase": "Phase 6 — Widget and initialization replacement",
+      "ticketIds": [
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19"
+      ],
+      "lowHours": 24,
+      "expectedHours": 45,
+      "highHours": 78,
+      "codexHours": {
+        "low": 16,
+        "expected": 29,
+        "high": 50
+      },
+      "userReviewHours": {
+        "low": 5,
+        "expected": 10,
+        "high": 17
+      },
+      "manualExternalHours": {
+        "low": 3,
+        "expected": 6,
+        "high": 11
+      },
+      "confidence": "MEDIUM",
+      "uncertaintyDrivers": [
+        "Browser timing and accessibility",
+        "Transaction-sensitive Tabs readiness",
+        "First-paint visual stability"
+      ]
+    },
+    {
+      "phase": "Phase 7 — Deployment pipeline",
+      "ticketIds": [
+        "WF-MIG.20"
+      ],
+      "lowHours": 11,
+      "expectedHours": 21,
+      "highHours": 37,
+      "codexHours": {
+        "low": 7,
+        "expected": 13,
+        "high": 22
+      },
+      "userReviewHours": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternalHours": {
+        "low": 2,
+        "expected": 4,
+        "high": 8
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "GitHub Pages capability",
+        "Cache/custom-domain/rollback behavior"
+      ]
+    },
+    {
+      "phase": "Phase 8 — Functional validation",
+      "ticketIds": [
+        "WF-MIG.21",
+        "WF-MIG.22"
+      ],
+      "lowHours": 25.5,
+      "expectedHours": 49,
+      "highHours": 83,
+      "codexHours": {
+        "low": 17,
+        "expected": 32,
+        "high": 53
+      },
+      "userReviewHours": {
+        "low": 5,
+        "expected": 10,
+        "high": 17
+      },
+      "manualExternalHours": {
+        "low": 3.5,
+        "expected": 7,
+        "high": 13
+      },
+      "confidence": "MEDIUM",
+      "uncertaintyDrivers": [
+        "Browser matrix and provider access",
+        "Transaction and wallet manual evidence"
+      ]
+    },
+    {
+      "phase": "Phase 9 — Visual and responsive validation",
+      "ticketIds": [
+        "WF-MIG.23",
+        "WF-MIG.24"
+      ],
+      "lowHours": 28,
+      "expectedHours": 56,
+      "highHours": 97,
+      "codexHours": {
+        "low": 16,
+        "expected": 31,
+        "high": 52
+      },
+      "userReviewHours": {
+        "low": 7,
+        "expected": 14,
+        "high": 24
+      },
+      "manualExternalHours": {
+        "low": 5,
+        "expected": 11,
+        "high": 21
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "Screenshot stabilization and exception review",
+        "Responsive correction volume",
+        "Residual Webflow dependency discovery"
+      ]
+    },
+    {
+      "phase": "Phase 10 — Staging cutover",
+      "ticketIds": [
+        "WF-MIG.25"
+      ],
+      "lowHours": 13,
+      "expectedHours": 24,
+      "highHours": 41,
+      "codexHours": {
+        "low": 6,
+        "expected": 10,
+        "high": 17
+      },
+      "userReviewHours": {
+        "low": 3,
+        "expected": 6,
+        "high": 10
+      },
+      "manualExternalHours": {
+        "low": 4,
+        "expected": 8,
+        "high": 14
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "Production-like hosting and credentials",
+        "Rollback rehearsal and live smoke"
+      ]
+    },
+    {
+      "phase": "Phase 11 — Production cutover",
+      "ticketIds": [
+        "WF-MIG.26"
+      ],
+      "lowHours": 12,
+      "expectedHours": 20,
+      "highHours": 35,
+      "codexHours": {
+        "low": 5,
+        "expected": 8,
+        "high": 14
+      },
+      "userReviewHours": {
+        "low": 3,
+        "expected": 5,
+        "high": 9
+      },
+      "manualExternalHours": {
+        "low": 4,
+        "expected": 7,
+        "high": 12
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "DNS/TLS/cache propagation",
+        "Production authorization and rollback triggers"
+      ]
+    },
+    {
+      "phase": "Phase 12 — Webflow rollback and decommission",
+      "ticketIds": [
+        "WF-MIG.27"
+      ],
+      "lowHours": 10,
+      "expectedHours": 18,
+      "highHours": 30,
+      "codexHours": {
+        "low": 4,
+        "expected": 7,
+        "high": 12
+      },
+      "userReviewHours": {
+        "low": 3,
+        "expected": 5,
+        "high": 8
+      },
+      "manualExternalHours": {
+        "low": 3,
+        "expected": 6,
+        "high": 10
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "Monitoring-window evidence",
+        "Explicit decommission authorization and retention"
+      ]
+    },
+    {
+      "phase": "Deferred cleanup",
+      "ticketIds": [
+        "WF-MIG.28"
+      ],
+      "lowHours": 13.5,
+      "expectedHours": 27,
+      "highHours": 49,
+      "codexHours": {
+        "low": 10,
+        "expected": 20,
+        "high": 36
+      },
+      "userReviewHours": {
+        "low": 3,
+        "expected": 6,
+        "high": 10
+      },
+      "manualExternalHours": {
+        "low": 0.5,
+        "expected": 1,
+        "high": 3
+      },
+      "confidence": "LOW",
+      "uncertaintyDrivers": [
+        "Optional scope breadth",
+        "Legacy selector/jQuery coupling"
+      ]
+    }
+  ],
+  "tickets": [
+    {
+      "id": "WF-MIG.8",
+      "originalId": "WF-MIG.7",
+      "title": "Capture and freeze the published baseline",
+      "phase": "Phase 1 — Baseline and freeze",
+      "profile": "AUDIT",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.6"
+      ],
+      "complexityDrivers": [
+        "Four static routes plus four CMS route families and unknown-path behavior",
+        "Published HTTP/DOM/CSS/runtime hashes and four responsive screenshot families",
+        "Collection Utility source gap",
+        "Read-only Webflow/browser access and fixture sanitization",
+        "Content-freeze and rollback-baseline judgment"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2.5,
+          "expected": 4.5,
+          "high": 7.5
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 2,
+          "expected": 5,
+          "high": 10
+        },
+        "passiveElapsedNotes": "Browser/screenshot capture and response waiting; access or content-freeze waiting is passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 6,
+        "expected": 10,
+        "high": 16
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 3,
+        "high": 5
+      },
+      "manualExternal": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "total": {
+        "low": 10,
+        "expected": 17,
+        "high": 28
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Published pages and authorized read-only/browser access are available",
+        "Capture can use existing audit route inventory and no new route family appears"
+      ],
+      "risks": [
+        "Published serialization differs materially from saved/checked evidence",
+        "Collection Utility or inaccessible IX2 behavior requires additional capture iterations"
+      ]
+    },
+    {
+      "id": "WF-MIG.9",
+      "originalId": "WF-MIG.8",
+      "title": "Acquire and verify Webflow-hosted assets",
+      "phase": "Phase 2 — Asset and font ownership",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.8"
+      ],
+      "complexityDrivers": [
+        "13 material site assets and 66 CMS media records plus responsive variants",
+        "Authorization, provenance, hashes, dimensions, MIME and animation checks",
+        "Decoded comparison against local thumbnail candidates",
+        "HEN main-token naming and deployment manifest design",
+        "High user judgment for equivalence and rights"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 4,
+          "expected": 7.5,
+          "high": 13
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 7,
+          "high": 14
+        },
+        "passiveElapsedNotes": "Asset transfer, hashing, decoding and comparison runs; authorization/source-access waiting is passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 6,
+        "expected": 12,
+        "high": 20
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternal": {
+        "low": 4,
+        "expected": 8,
+        "high": 14
+      },
+      "total": {
+        "low": 12,
+        "expected": 24,
+        "high": 41
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "LOW",
+      "assumptions": [
+        "Download and redistribution authorization is granted for required bytes",
+        "Source URLs/file IDs remain accessible and most local candidates compare cleanly"
+      ],
+      "risks": [
+        "Asset variants require manual acquisition or ambiguous provenance",
+        "Decoded content differs despite related filenames or CDN paths"
+      ]
+    },
+    {
+      "id": "WF-MIG.10",
+      "originalId": "WF-MIG.9",
+      "title": "Verify and implement independent font delivery",
+      "phase": "Phase 2 — Asset and font ownership",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.8"
+      ],
+      "complexityDrivers": [
+        "Four required font faces across two families",
+        "License/provenance and redistribution decision",
+        "Local font-face, preload, font-display and fallback delivery",
+        "Metric, layout-shift, loaded/failed-font and webflow-icons boundary checks"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 3,
+          "expected": 5,
+          "high": 9
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 2,
+          "expected": 4,
+          "high": 8
+        },
+        "passiveElapsedNotes": "Font downloads and browser metric/screenshot runs; licensing response or source-access waiting is passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 4,
+        "expected": 8,
+        "high": 14
+      },
+      "userReview": {
+        "low": 1.5,
+        "expected": 3,
+        "high": 5
+      },
+      "manualExternal": {
+        "low": 2.5,
+        "expected": 5,
+        "high": 9
+      },
+      "total": {
+        "low": 8,
+        "expected": 16,
+        "high": 28
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Authorized binaries for Changa One and Inconsolata are obtainable",
+        "No typography redesign is required"
+      ],
+      "risks": [
+        "License terms or exact binaries are unclear",
+        "Font metrics create responsive drift or visible layout shift"
+      ]
+    },
+    {
+      "id": "WF-MIG.11",
+      "originalId": "WF-MIG.10",
+      "title": "Create canonical CMS replacement data",
+      "phase": "Phase 3 — Structured content",
+      "profile": "COMPLEX",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.8",
+        "WF-MIG.9"
+      ],
+      "complexityDrivers": [
+        "Four collections, 66 items, 36 physical field occurrences and 66 exact slugs",
+        "66 Editions, 35 Mint Dates, 44 acidValue and 35 OBJKT derivations",
+        "Schema, provenance, explicit ordering and chain-registry references",
+        "Exact Unicode/case/punctuation preservation"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 1.5,
+          "expected": 3,
+          "high": 5.5
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 6,
+          "high": 12
+        },
+        "passiveElapsedNotes": "Schema/import validation and fixture comparison runtime; no material external wait assumed.",
+        "confidence": "MEDIUM"
+      },
+      "codexExecution": {
+        "low": 7,
+        "expected": 12,
+        "high": 19
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 3.5,
+        "high": 6
+      },
+      "manualExternal": {
+        "low": 0,
+        "expected": 0.5,
+        "high": 1
+      },
+      "total": {
+        "low": 9,
+        "expected": 16,
+        "high": 26
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "HIGH",
+      "assumptions": [
+        "WF-MIG.2/4 exports remain the frozen import source",
+        "Current derivation rules and registry mappings remain unchanged"
+      ],
+      "risks": [
+        "Freeze reconciliation discovers content drift",
+        "A semantic field assumed to be preserved needs a new ownership decision"
+      ]
+    },
+    {
+      "id": "WF-MIG.12",
+      "originalId": "WF-MIG.11",
+      "title": "Resolve HEN sparse-token thumbnail mapping",
+      "phase": "Phase 3 — Structured content",
+      "profile": "COMPLEX",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.9",
+        "WF-MIG.11"
+      ],
+      "complexityDrivers": [
+        "17 sparse mainnet IDs and 17 active Shadownet IDs",
+        "Shared mirror contract and public/admin consumer review",
+        "Bijective adapter, missing/duplicate/fallback tests",
+        "DOM and transaction identity sensitivity"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 1,
+          "expected": 2,
+          "high": 4
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 1.5,
+          "expected": 3,
+          "high": 6
+        },
+        "passiveElapsedNotes": "Adapter and contract-test runtime; external asset availability waiting remains passive.",
+        "confidence": "MEDIUM"
+      },
+      "codexExecution": {
+        "low": 4,
+        "expected": 7,
+        "high": 12
+      },
+      "userReview": {
+        "low": 1.5,
+        "expected": 2.5,
+        "high": 4
+      },
+      "manualExternal": {
+        "low": 0,
+        "expected": 0.5,
+        "high": 1
+      },
+      "total": {
+        "low": 5.5,
+        "expected": 10,
+        "high": 17
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Shared chain-registry mapping remains authoritative",
+        "Public migration can avoid changing admin-ui unless consumer evidence requires it"
+      ],
+      "risks": [
+        "A consumer relies on implicit 0–16 keys",
+        "Asset manifest and runtime identity boundaries require joint migration"
+      ]
+    },
+    {
+      "id": "WF-MIG.13",
+      "originalId": "WF-MIG.12",
+      "title": "Localize the Webflow CSS baseline",
+      "phase": "Phase 4 — Local presentation baseline",
+      "profile": "COMPLEX",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10"
+      ],
+      "complexityDrivers": [
+        "Complete generated stylesheet, inline page CSS, load order and remote URL localization",
+        "Four responsive families plus widget/form/state/first-paint selectors",
+        "Asset/font URL mapping and forbidden-remote scans",
+        "High visual-comparison burden without cleanup"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2,
+          "expected": 4,
+          "high": 7
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 7,
+          "high": 14
+        },
+        "passiveElapsedNotes": "Stylesheet scans, local serving and responsive screenshot runs; asset/font availability waiting is passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 7,
+        "expected": 13,
+        "high": 22
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternal": {
+        "low": 1,
+        "expected": 2,
+        "high": 4
+      },
+      "total": {
+        "low": 10,
+        "expected": 19,
+        "high": 33
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Exact frozen CSS is capturable and may be vendored lawfully",
+        "URL localization can be isolated without redesign or selector renaming"
+      ],
+      "risks": [
+        "URL rewrites or order changes alter computed presentation",
+        "Page-specific responsive drift requires contained overrides"
+      ]
+    },
+    {
+      "id": "WF-MIG.14",
+      "originalId": "WF-MIG.13",
+      "title": "Reconstruct Collection Utility locally",
+      "phase": "Phase 4 — Local presentation baseline",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.8",
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.13"
+      ],
+      "complexityDrivers": [
+        "Missing checked Git source for one of four static routes",
+        "Exact shared shell, metadata, selectors and responsive serialization reconstruction",
+        "Potential undiscovered feature runtime or IX2 interaction",
+        "Banner/logo/spinner/font integration and screenshot comparison"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 3,
+          "expected": 5.5,
+          "high": 10
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 4,
+          "expected": 9,
+          "high": 18
+        },
+        "passiveElapsedNotes": "Browser capture, reconstruction checks and screenshot comparison runtime; access waits are passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 8,
+        "expected": 15,
+        "high": 26
+      },
+      "userReview": {
+        "low": 2.5,
+        "expected": 5,
+        "high": 8
+      },
+      "manualExternal": {
+        "low": 1.5,
+        "expected": 3,
+        "high": 6
+      },
+      "total": {
+        "low": 12,
+        "expected": 23,
+        "high": 40
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 2,
+      "confidence": "LOW",
+      "assumptions": [
+        "WF-MIG.8 captures sufficient published DOM, screenshots and runtime evidence",
+        "Collection Utility is static/client-enhanced rather than server-rendered"
+      ],
+      "risks": [
+        "Capture is incomplete or behavior is not reconstructible from accessible evidence",
+        "Multiple visual/DOM fix passes are needed"
+      ]
+    },
+    {
+      "id": "WF-MIG.15",
+      "originalId": "WF-MIG.14",
+      "title": "Implement deterministic page and route generation",
+      "phase": "Phase 5 — Page generation",
+      "profile": "COMPLEX",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.11",
+        "WF-MIG.13",
+        "WF-MIG.14"
+      ],
+      "complexityDrivers": [
+        "Shared shell, four static routes, four CMS families and all 66 exact item paths",
+        "Directory-index routing, 404, internal links and deterministic double build",
+        "Generated-file policy, manifests and source/output drift",
+        "Existing DOM preservation while moving to templates"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 1.5,
+          "expected": 3,
+          "high": 5.5
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 4,
+          "expected": 8,
+          "high": 15
+        },
+        "passiveElapsedNotes": "Double builds, route generation and link/HTML probes; host queueing is not included.",
+        "confidence": "MEDIUM"
+      },
+      "codexExecution": {
+        "low": 8,
+        "expected": 14,
+        "high": 23
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternal": {
+        "low": 0.5,
+        "expected": 1,
+        "high": 2
+      },
+      "total": {
+        "low": 10.5,
+        "expected": 19,
+        "high": 32
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Captured item-route status/body behavior is simple static output",
+        "Small Node/HTML tooling fits current repository without framework adoption"
+      ],
+      "risks": [
+        "Static host route semantics force output-layout adjustment",
+        "Template extraction introduces page-specific structural drift"
+      ]
+    },
+    {
+      "id": "WF-MIG.16",
+      "originalId": "WF-MIG.15",
+      "title": "Generate CMS rows with DOM-contract parity",
+      "phase": "Phase 5 — Page generation",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.11",
+        "WF-MIG.12",
+        "WF-MIG.15"
+      ],
+      "complexityDrivers": [
+        "Five list-specific DOM contracts and 97 audited row occurrences",
+        "Selector ancestry, stamping levels, cloneability, pane/list membership and hidden IDs",
+        "Runtime transaction identity and explicit ordering sensitivity",
+        "Existing Git consumers must remain unchanged"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2,
+          "expected": 3.5,
+          "high": 6
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 7,
+          "high": 13
+        },
+        "passiveElapsedNotes": "Generated-row and DOM/runtime contract suites; provider waiting is outside this ticket.",
+        "confidence": "MEDIUM"
+      },
+      "codexExecution": {
+        "low": 7,
+        "expected": 12,
+        "high": 20
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 6
+      },
+      "manualExternal": {
+        "low": 0.5,
+        "expected": 1,
+        "high": 2
+      },
+      "total": {
+        "low": 9.5,
+        "expected": 17,
+        "high": 28
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "WF-MIG.3 DOM contracts are complete for current consumers",
+        "Canonical data and HEN adapter are stable before row generation"
+      ],
+      "risks": [
+        "A hidden selector/ancestry consumer is discovered",
+        "Generated controls expose repeated-ID or clone/filter edge cases"
+      ]
+    },
+    {
+      "id": "WF-MIG.17",
+      "originalId": "WF-MIG.16",
+      "title": "Replace the Webflow Navbar runtime",
+      "phase": "Phase 6 — Widget and initialization replacement",
+      "profile": "COMPLEX",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.13",
+        "WF-MIG.15"
+      ],
+      "complexityDrivers": [
+        "Four pages, desktop/collapsed breakpoint family and resize transitions",
+        "Pointer, keyboard, focus return, ARIA, overlay and current-route states",
+        "Wallet-control compatibility and no-JS fallback",
+        "Owned hamburger glyph replacing webflow-icons"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2,
+          "expected": 3.5,
+          "high": 6
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 2,
+          "expected": 5,
+          "high": 10
+        },
+        "passiveElapsedNotes": "Navbar browser, keyboard, accessibility and responsive runs.",
+        "confidence": "MEDIUM"
+      },
+      "codexExecution": {
+        "low": 5,
+        "expected": 9,
+        "high": 15
+      },
+      "userReview": {
+        "low": 1.5,
+        "expected": 3,
+        "high": 5
+      },
+      "manualExternal": {
+        "low": 1,
+        "expected": 2,
+        "high": 3
+      },
+      "total": {
+        "low": 7.5,
+        "expected": 14,
+        "high": 23
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Navbar behavior is fully observable in the frozen baseline",
+        "No Webflow IX2 dependency is hidden in navigation"
+      ],
+      "risks": [
+        "Mobile browser focus/overlay behavior needs extra iterations",
+        "Wallet state changes conflict with navigation state management"
+      ]
+    },
+    {
+      "id": "WF-MIG.18",
+      "originalId": "WF-MIG.17",
+      "title": "Replace Exchange Tabs and the 500 ms seam",
+      "phase": "Phase 6 — Widget and initialization replacement",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.15",
+        "WF-MIG.16"
+      ],
+      "complexityDrivers": [
+        "Accessible tab keyboard/focus/ARIA behavior",
+        "Exchange pane-to-contract identity and transaction-sensitive initialization",
+        "Removal of fixed 500 ms correctness seam through explicit readiness",
+        "Quantity/cart/identity regression matrix"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2,
+          "expected": 4,
+          "high": 7
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 7,
+          "high": 14
+        },
+        "passiveElapsedNotes": "Tabs/Exchange browser and integration suites; wallet/provider waits are passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 6,
+        "expected": 11,
+        "high": 19
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternal": {
+        "low": 1,
+        "expected": 2,
+        "high": 4
+      },
+      "total": {
+        "low": 9,
+        "expected": 17,
+        "high": 30
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 2,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Existing Exchange consumers can accept a narrow readiness API/event",
+        "No transaction pipeline rewrite is needed"
+      ],
+      "risks": [
+        "Initialization ordering has undocumented consumers",
+        "Browser timing exposes stale pane or contract identity"
+      ]
+    },
+    {
+      "id": "WF-MIG.19",
+      "originalId": "WF-MIG.18",
+      "title": "Harden first paint with visible-first enhancement",
+      "phase": "Phase 6 — Widget and initialization replacement",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.13",
+        "WF-MIG.15"
+      ],
+      "complexityDrivers": [
+        "Four pages with page-specific readiness states",
+        "No-JS, slow/offline/module-error and font/image failure modes",
+        "Bounded waits, fail-open, reduced motion and focusability",
+        "FOUC/layout-shift visual comparison"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2,
+          "expected": 3.5,
+          "high": 6.5
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 2.5,
+          "expected": 6,
+          "high": 12
+        },
+        "passiveElapsedNotes": "First-paint failure-mode and screenshot/browser runs.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 5,
+        "expected": 9,
+        "high": 16
+      },
+      "userReview": {
+        "low": 1.5,
+        "expected": 3,
+        "high": 5
+      },
+      "manualExternal": {
+        "low": 1,
+        "expected": 2,
+        "high": 4
+      },
+      "total": {
+        "low": 7.5,
+        "expected": 14,
+        "high": 25
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Visible-first can preserve current layout with narrow state CSS",
+        "Wallet and page modules expose sufficient readiness signals"
+      ],
+      "risks": [
+        "Fail-open timing causes visible layout instability",
+        "A page relies on hidden-first ordering for correctness"
+      ]
+    },
+    {
+      "id": "WF-MIG.20",
+      "originalId": "WF-MIG.19",
+      "title": "Build the reproducible static deployment pipeline",
+      "phase": "Phase 7 — Deployment pipeline",
+      "profile": "COMPLEX",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.9",
+        "WF-MIG.10",
+        "WF-MIG.15",
+        "WF-MIG.16",
+        "WF-MIG.17",
+        "WF-MIG.18",
+        "WF-MIG.19"
+      ],
+      "complexityDrivers": [
+        "Pinned clean CI, hashed same-origin artifact, route/404 behavior and fetched-byte verification",
+        "Staging/production separation, cache policy, retention and rollback",
+        "GitHub Pages capability gates and custom-domain behavior",
+        "Deployment authorization and environment uncertainty"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 3,
+          "expected": 5.5,
+          "high": 10
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 8,
+          "high": 18
+        },
+        "passiveElapsedNotes": "CI/build/deploy verification runtime; external queues, deploy propagation, TLS/cache waits are passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 7,
+        "expected": 13,
+        "high": 22
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternal": {
+        "low": 2,
+        "expected": 4,
+        "high": 8
+      },
+      "total": {
+        "low": 11,
+        "expected": 21,
+        "high": 37
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "LOW",
+      "assumptions": [
+        "GitHub Pages supports required route, staging, cache and rollback behavior",
+        "Configured CI/deployment access is available"
+      ],
+      "risks": [
+        "Static-host capability test requires a contained host adjustment/ADR",
+        "Cache, custom-domain or TLS semantics need deployment iterations"
+      ]
+    },
+    {
+      "id": "WF-MIG.21",
+      "originalId": "WF-MIG.20",
+      "title": "Enforce automated data, route, dependency, and DOM contracts",
+      "phase": "Phase 8 — Functional validation",
+      "profile": "VALIDATION",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.20"
+      ],
+      "complexityDrivers": [
+        "Data/schema/identity/slug/asset and 70-route output coverage",
+        "Five list DOM contracts, CSS/load order and forbidden Webflow dependency scans",
+        "Determinism, manifest/fetched-byte integrity and intentional negative fixtures",
+        "CI integration and stable machine-readable reporting"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2,
+          "expected": 3,
+          "high": 5.5
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 4,
+          "expected": 9,
+          "high": 18
+        },
+        "passiveElapsedNotes": "Automated data/route/dependency/DOM suites and negative fixtures; CI queueing is passive.",
+        "confidence": "MEDIUM"
+      },
+      "codexExecution": {
+        "low": 8,
+        "expected": 15,
+        "high": 25
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternal": {
+        "low": 0.5,
+        "expected": 1,
+        "high": 2
+      },
+      "total": {
+        "low": 10.5,
+        "expected": 20,
+        "high": 34
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Implementation tickets expose testable manifests and fixtures",
+        "Known WF-MIG.3/5 contracts are sufficient to define blocking gates"
+      ],
+      "risks": [
+        "Coverage work reveals implementation defects that return to prior tickets",
+        "Cross-platform determinism or generated-output noise complicates gates"
+      ]
+    },
+    {
+      "id": "WF-MIG.22",
+      "originalId": "WF-MIG.21",
+      "title": "Validate browser behavior, accessibility, wallet, and transactions",
+      "phase": "Phase 8 — Functional validation",
+      "profile": "VALIDATION",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.21"
+      ],
+      "complexityDrivers": [
+        "Navbar, Tabs, Drops, Exchange, wallet and network state matrices",
+        "Keyboard/focus/ARIA and no-JS/failure-mode accessibility checks",
+        "Transaction-sensitive identity, mirror mapping and approved Shadownet smoke",
+        "Browser automation plus manual wallet confirmation"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 4.5,
+          "expected": 8,
+          "high": 14
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 6,
+          "expected": 14,
+          "high": 28
+        },
+        "passiveElapsedNotes": "Browser/accessibility/wallet/transaction automation; provider or chain response waiting is passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 9,
+        "expected": 17,
+        "high": 28
+      },
+      "userReview": {
+        "low": 3,
+        "expected": 6,
+        "high": 10
+      },
+      "manualExternal": {
+        "low": 3,
+        "expected": 6,
+        "high": 11
+      },
+      "total": {
+        "low": 15,
+        "expected": 29,
+        "high": 49
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 2,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Controlled wallet/account/assets and Shadownet authorization are available",
+        "Existing transaction runtime works against generated DOM without rewrite"
+      ],
+      "risks": [
+        "Provider/chain friction obscures deterministic failures",
+        "Runtime or accessibility regressions require fixes in multiple owning tickets"
+      ]
+    },
+    {
+      "id": "WF-MIG.23",
+      "originalId": "WF-MIG.22",
+      "title": "Establish visual and responsive regression gates",
+      "phase": "Phase 9 — Visual and responsive validation",
+      "profile": "VALIDATION",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.21",
+        "WF-MIG.22"
+      ],
+      "complexityDrivers": [
+        "Four pages, material wallet/cart/modal/tab/list states and four responsive families",
+        "Boundary-adjacent widths, loaded/failed assets/fonts and first-paint timing",
+        "Automated screenshot stabilization and manual review of every exception",
+        "Accessibility, clipping, focus and animation/reduced-motion acceptance"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 6,
+          "expected": 11,
+          "high": 19
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 8,
+          "expected": 20,
+          "high": 40
+        },
+        "passiveElapsedNotes": "Screenshot capture, image-diff and responsive suites; browser queues and unstable-baseline waits are passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 10,
+        "expected": 20,
+        "high": 34
+      },
+      "userReview": {
+        "low": 5,
+        "expected": 10,
+        "high": 17
+      },
+      "manualExternal": {
+        "low": 4,
+        "expected": 8,
+        "high": 15
+      },
+      "total": {
+        "low": 19,
+        "expected": 38,
+        "high": 66
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 2,
+      "confidence": "LOW",
+      "assumptions": [
+        "Frozen baseline screenshots are stable and comparable",
+        "Ordinary CSS corrections achieve parity without redesign"
+      ],
+      "risks": [
+        "Animation, font rasterization or browser variance creates noisy diffs",
+        "Several page-specific responsive regressions require multiple passes"
+      ]
+    },
+    {
+      "id": "WF-MIG.24",
+      "originalId": "WF-MIG.23",
+      "title": "Close route and Webflow-independence validation",
+      "phase": "Phase 9 — Visual and responsive validation",
+      "profile": "CLOSURE",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.21",
+        "WF-MIG.22",
+        "WF-MIG.23"
+      ],
+      "complexityDrivers": [
+        "Four static plus all 66 exact-slug routes, 404 and direct/refresh/back behavior",
+        "Network traces for CSS/JS/CMS/assets/fonts/custom code",
+        "Source-to-deployed hash proof and external exception inventory",
+        "Residual-risk and all pre-cutover criterion reconciliation"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2.5,
+          "expected": 4.5,
+          "high": 8
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 7,
+          "high": 14
+        },
+        "passiveElapsedNotes": "Route/network scans and fetched-byte checks; deploy propagation and external service waiting are passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 6,
+        "expected": 11,
+        "high": 18
+      },
+      "userReview": {
+        "low": 2,
+        "expected": 4,
+        "high": 7
+      },
+      "manualExternal": {
+        "low": 1,
+        "expected": 3,
+        "high": 6
+      },
+      "total": {
+        "low": 9,
+        "expected": 18,
+        "high": 31
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "MEDIUM",
+      "assumptions": [
+        "Prior implementation and validation gates produce complete evidence",
+        "No required Webflow request remains in the candidate"
+      ],
+      "risks": [
+        "Closure uncovers a dependency or route gap owned by an earlier ticket",
+        "External-request exceptions require user decision"
+      ]
+    },
+    {
+      "id": "WF-MIG.25",
+      "originalId": "WF-MIG.24",
+      "title": "Execute and rehearse the staging cutover",
+      "phase": "Phase 10 — Staging cutover",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.24"
+      ],
+      "complexityDrivers": [
+        "Production-like staging deployment of exact immutable bytes",
+        "Full route/cache/TLS/network/dependency probes",
+        "Wallet/Shadownet transaction smoke and baseline comparison",
+        "Rollback rehearsal, monitoring setup and explicit user authorization"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 5,
+          "expected": 9,
+          "high": 15
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 4,
+          "expected": 10,
+          "high": 22
+        },
+        "passiveElapsedNotes": "Staging deploy and verification runs; TLS/cache/deploy propagation and provider waits are passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 6,
+        "expected": 10,
+        "high": 17
+      },
+      "userReview": {
+        "low": 3,
+        "expected": 6,
+        "high": 10
+      },
+      "manualExternal": {
+        "low": 4,
+        "expected": 8,
+        "high": 14
+      },
+      "total": {
+        "low": 13,
+        "expected": 24,
+        "high": 41
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "LOW",
+      "assumptions": [
+        "A suitable isolated staging origin and deployment credentials are available",
+        "The same artifact/config pattern can be promoted to production"
+      ],
+      "risks": [
+        "Host, TLS or cache behavior differs from local evidence",
+        "Rollback rehearsal or live provider checks expose operational gaps"
+      ]
+    },
+    {
+      "id": "WF-MIG.26",
+      "originalId": "WF-MIG.25",
+      "title": "Execute the approved production cutover",
+      "phase": "Phase 11 — Production cutover",
+      "profile": "HIGH-RISK",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.25"
+      ],
+      "complexityDrivers": [
+        "DNS/custom-domain, TLS, cache and exact-artifact promotion",
+        "Immediate exhaustive/representative probes and fetched-byte equality",
+        "Wallet/network/transaction-safety smoke and rollback-trigger monitoring",
+        "Explicit authorization and high consequence of error"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 4.5,
+          "expected": 8,
+          "high": 14
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 3,
+          "expected": 7,
+          "high": 16
+        },
+        "passiveElapsedNotes": "Production probes and immediate automated monitoring; DNS/TLS/cache/deploy propagation is passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 5,
+        "expected": 8,
+        "high": 14
+      },
+      "userReview": {
+        "low": 3,
+        "expected": 5,
+        "high": 9
+      },
+      "manualExternal": {
+        "low": 4,
+        "expected": 7,
+        "high": 12
+      },
+      "total": {
+        "low": 12,
+        "expected": 20,
+        "high": 35
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "LOW",
+      "assumptions": [
+        "Staging candidate and rollback rehearsal remain valid at promotion",
+        "DNS/deploy authority and monitoring access are available"
+      ],
+      "risks": [
+        "DNS/cache propagation produces mixed-release behavior",
+        "Production-only wallet/provider or hostname behavior triggers rollback"
+      ]
+    },
+    {
+      "id": "WF-MIG.27",
+      "originalId": "WF-MIG.26",
+      "title": "Close rollback window and decommission Webflow",
+      "phase": "Phase 12 — Webflow rollback and decommission",
+      "profile": "CLOSURE",
+      "criticalPath": true,
+      "dependencies": [
+        "WF-MIG.26"
+      ],
+      "complexityDrivers": [
+        "State-based monitoring-window closeout and source-of-truth handoff",
+        "Every required/conditional removal criterion and residual risk reconciliation",
+        "Rollback artifact/baseline archive and explicit decommission approval",
+        "Authorized domain detachment/unpublish without destructive deletion"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 4,
+          "expected": 7,
+          "high": 12
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 2,
+          "expected": 5,
+          "high": 12
+        },
+        "passiveElapsedNotes": "Closure probes and archive verification; monitoring-window duration and decommission propagation are passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 4,
+        "expected": 7,
+        "high": 12
+      },
+      "userReview": {
+        "low": 3,
+        "expected": 5,
+        "high": 8
+      },
+      "manualExternal": {
+        "low": 3,
+        "expected": 6,
+        "high": 10
+      },
+      "total": {
+        "low": 10,
+        "expected": 18,
+        "high": 30
+      },
+      "expectedPrimaryPasses": 1,
+      "expectedFixPasses": 1,
+      "confidence": "LOW",
+      "assumptions": [
+        "Production stability evidence satisfies the approved monitoring window",
+        "Webflow can be detached/unpublished through a separately authorized reversible operation"
+      ],
+      "risks": [
+        "Monitoring conditions remain open longer than expected",
+        "Retention, authorization or rollback evidence delays removal eligibility"
+      ]
+    },
+    {
+      "id": "WF-MIG.28",
+      "originalId": "WF-MIG.27",
+      "title": "Perform post-migration presentation and legacy cleanup",
+      "phase": "Deferred cleanup",
+      "profile": "ROUTINE",
+      "criticalPath": false,
+      "dependencies": [
+        "WF-MIG.27"
+      ],
+      "complexityDrivers": [
+        "Several independently scoped cleanup children across CSS, templates, runtime and tests",
+        "Vendored CSS extraction, `.w-*` removal, entrypoint rename, jQuery removal, IDs and asset optimization",
+        "Contract and screenshot gates for each behavior-preserving change",
+        "Optional scope breadth is not yet selected"
+      ],
+      "practicalTime": {
+        "userAttended": {
+          "low": 2.5,
+          "expected": 4.5,
+          "high": 9
+        },
+        "unattendedCodexToolWallClock": {
+          "low": 5,
+          "expected": 14,
+          "high": 30
+        },
+        "passiveElapsedNotes": "Repeated cleanup build/contract/browser/screenshot suites; CI/browser queueing is passive.",
+        "confidence": "LOW"
+      },
+      "codexExecution": {
+        "low": 10,
+        "expected": 20,
+        "high": 36
+      },
+      "userReview": {
+        "low": 3,
+        "expected": 6,
+        "high": 10
+      },
+      "manualExternal": {
+        "low": 0.5,
+        "expected": 1,
+        "high": 3
+      },
+      "total": {
+        "low": 13.5,
+        "expected": 27,
+        "high": 49
+      },
+      "expectedPrimaryPasses": 4,
+      "expectedFixPasses": 2,
+      "confidence": "LOW",
+      "assumptions": [
+        "Cleanup is split into small tickets after rollback closure",
+        "No redesign, route/content change or weakened parity gate is included"
+      ],
+      "risks": [
+        "Selected cleanup breadth expands beyond the allowance",
+        "Legacy selectors or jQuery consumers require larger isolated migrations"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "name": "BEST PRACTICAL CASE",
+      "classification": "NORMAL ESTIMATE",
+      "productionCutoverHours": 219,
+      "safeWebflowIndependenceHours": 230,
+      "completeProgramHours": 244.5,
+      "basis": [
+        "Local thumbnail candidates prove equivalent",
+        "Fonts self-host cleanly",
+        "Collection Utility capture is complete",
+        "GitHub Pages passes capability gates",
+        "Visual differences are minimal"
+      ]
+    },
+    {
+      "name": "EXPECTED CASE",
+      "classification": "NORMAL ESTIMATE",
+      "productionCutoverHours": 404.5,
+      "safeWebflowIndependenceHours": 424,
+      "completeProgramHours": 452.5,
+      "basis": [
+        "Ordinary asset/font verification and CSS localization",
+        "One or two widget/runtime fix passes",
+        "Ordinary responsive/visual corrections",
+        "GitHub Pages remains viable"
+      ]
+    },
+    {
+      "name": "DIFFICULT BUT CONTAINED CASE",
+      "classification": "NORMAL ESTIMATE",
+      "productionCutoverHours": 682,
+      "safeWebflowIndependenceHours": 714,
+      "completeProgramHours": 765,
+      "basis": [
+        "Additional asset acquisition and font metric adjustment",
+        "Collection Utility reconstruction iteration",
+        "Page-specific CSS drift and multiple Tabs/first-paint fixes",
+        "Several responsive/browser regressions",
+        "Contained static-host adjustment without architecture replacement"
+      ]
+    },
+    {
+      "name": "ARCHITECTURE-INVALIDATING CASE",
+      "classification": "RE-ESTIMATION REQUIRED",
+      "productionCutoverHours": null,
+      "safeWebflowIndependenceHours": null,
+      "completeProgramHours": null,
+      "basis": [
+        "Undiscovered server-side behavior",
+        "Required live CMS authoring",
+        "Transaction runtime requires rewrite against generated DOM",
+        "Required assets cannot be hosted legally or technically",
+        "Static hosting cannot meet route behavior",
+        "Critical inaccessible IX2 interaction"
+      ]
+    }
+  ],
+  "alternatives": [
+    {
+      "name": "FULL RECOMMENDED MIGRATION",
+      "practicalUserAttended": {
+        "low": 68,
+        "expected": 125,
+        "high": 214.5,
+        "confidence": "LOW",
+        "interpretation": "Same practical safe-independence clock as the selected program."
+      },
+      "lowHours": 230,
+      "expectedHours": 424,
+      "highHours": 714,
+      "scopePoint": "Through safe Webflow independence; optional cleanup is separate.",
+      "benefits": [
+        "Git-owned deterministic data/templates/assets/fonts/runtime/deployment",
+        "No required Webflow request",
+        "Strong validation and rollback evidence"
+      ],
+      "retainedWebflowDependencies": "Baseline and rollback only until closure; none operational after approved decommission.",
+      "maintenanceImpact": "Lowest long-term source duplication; generated HTML remains reproducible.",
+      "risk": "Medium implementation risk, concentrated in assets/fonts, CSS/visual parity, runtime seams and cutover.",
+      "recommendation": "RECOMMENDED; proceed with conditions."
+    },
+    {
+      "name": "MINIMAL DEPENDENCY REDUCTION",
+      "practicalUserAttended": {
+        "low": 14,
+        "expected": 27,
+        "high": 50,
+        "confidence": "LOW",
+        "interpretation": "Fewer tickets and external cutover gates, but active review of selected runtime/first-paint changes remains."
+      },
+      "lowHours": 45,
+      "expectedHours": 75,
+      "highHours": 130,
+      "scopePoint": "Selective Git bundle and first-paint hardening while Webflow hosting/HTML/CMS/presentation remain.",
+      "benefits": [
+        "Reduces selected runtime fragility",
+        "Smallest near-term labor"
+      ],
+      "retainedWebflowDependencies": "Hosting, HTML, CMS, CSS, assets/fonts, widgets and deployment remain.",
+      "maintenanceImpact": "Continues split ownership and Webflow publishing dependence; does not deliver independence.",
+      "risk": "Low-to-medium change risk but high retained platform/ownership risk.",
+      "recommendation": "Use only if the independence objective is deferred; not a substitute for the accepted architecture."
+    },
+    {
+      "name": "SNAPSHOT-BASED PARTIAL MIGRATION",
+      "practicalUserAttended": {
+        "low": 45,
+        "expected": 82,
+        "high": 145,
+        "confidence": "LOW",
+        "interpretation": "Lower implementation breadth than full generation but substantial manual HTML, visual, asset/font, hosting and cutover review remains."
+      },
+      "lowHours": 170,
+      "expectedHours": 300,
+      "highHours": 500,
+      "scopePoint": "Use checked HTML as long-term source, reconstruct Collection Utility, and localize CSS/assets/fonts without canonical template/data generation.",
+      "benefits": [
+        "Faster path to static hosting than full generation",
+        "High immediate DOM compatibility"
+      ],
+      "retainedWebflowDependencies": "Can remove runtime fetching, but preserves Webflow-derived duplicated HTML as the authoring model and baseline provenance.",
+      "maintenanceImpact": "Manual edits across duplicated rows/shells and weak content-source consistency; 66 item-route maintenance remains awkward.",
+      "risk": "Medium-to-high long-term drift and regression risk despite lower expected initial labor.",
+      "recommendation": "Viable fallback only if structured generation proves disproportionately difficult; current evidence does not justify overriding WF-MIG.6."
+    }
+  ],
+  "invalidatingConditions": [
+    "Current published behavior depends on undiscovered server-side functionality.",
+    "Live CMS authoring is a post-migration requirement rather than Git-based content updates.",
+    "Existing wallet/transaction runtime cannot operate against generated contract-preserving DOM without a material rewrite.",
+    "Required assets or fonts cannot legally or technically be independently hosted and no approved equivalent exists.",
+    "No static host can reproduce required direct, nested-item, unknown-path, TLS, cache and rollback behavior.",
+    "A critical inaccessible IX2 interaction or other Webflow-only runtime behavior is discovered.",
+    "The route, CMS item, asset, responsive-state or browser matrix is materially larger than the committed audit evidence.",
+    "The accepted no-redesign/no-mainnet/no-runtime-rewrite boundaries change."
+  ]
+}
