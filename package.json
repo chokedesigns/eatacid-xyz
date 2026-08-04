@@ -16,6 +16,9 @@
     "clean:prod": "rimraf dist/prod",
     "clean:staging": "rimraf dist/staging",
     "test:public-trade-ops": "node shared/public-trade-ops.fixtures.mjs",
+    "thumbs:input": "node assets/thumbs/scripts/thumbs.mjs input",
+    "thumbs:backfill": "node assets/thumbs/scripts/thumbs.mjs backfill",
+    "test:thumbs": "node assets/thumbs/scripts/thumbs.test.mjs",
     "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
     "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
     "pages:sanity": "npm run build:pages:staging && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs",
@@ -35,6 +38,7 @@
     "parcel": "2.16.4",
     "process": "^0.11.10",
     "rimraf": "^6.1.2",
+    "sharp": "^0.35.3",
     "stream-browserify": "^3.0.0",
     "util": "^0.12.5",
     "vm-browserify": "^1.1.2"

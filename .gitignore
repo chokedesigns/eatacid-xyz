@@ -51,3 +51,38 @@ test/
 # Project guide notes
 # ----------------------------------------
 readme/
+
+# ----------------------------------------
+# Local thumbnail workflow contents
+# ----------------------------------------
+assets/thumbs/input/*
+!assets/thumbs/input/canaan/
+!assets/thumbs/input/the_419_script/
+assets/thumbs/input/canaan/*
+!assets/thumbs/input/canaan/.gitkeep
+assets/thumbs/input/the_419_script/*
+!assets/thumbs/input/the_419_script/.gitkeep
+
+assets/thumbs/processed/*
+!assets/thumbs/processed/canaan/
+!assets/thumbs/processed/the_419_script/
+assets/thumbs/processed/canaan/*
+!assets/thumbs/processed/canaan/.gitkeep
+assets/thumbs/processed/the_419_script/*
+!assets/thumbs/processed/the_419_script/.gitkeep
+
+assets/thumbs/review/*
+!assets/thumbs/review/canaan/
+!assets/thumbs/review/hen/
+!assets/thumbs/review/introductions/
+!assets/thumbs/review/the_419_script/
+assets/thumbs/review/canaan/*
+assets/thumbs/review/hen/*
+assets/thumbs/review/introductions/*
+assets/thumbs/review/the_419_script/*
+!assets/thumbs/review/canaan/.gitkeep
+!assets/thumbs/review/hen/.gitkeep
+!assets/thumbs/review/introductions/.gitkeep
+!assets/thumbs/review/the_419_script/.gitkeep
+
+assets/thumbs/backfill-report.json
