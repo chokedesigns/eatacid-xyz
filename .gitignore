@@ -86,3 +86,6 @@ assets/thumbs/review/the_419_script/*
 !assets/thumbs/review/the_419_script/.gitkeep
 
 assets/thumbs/backfill-report.json
+
+# CMS-IMG-2 controlled Webflow pilot runtime (snapshots, image bytes, journal)
+assets/webflow-cms-image-pilot/runtime/
