@@ -1,0 +1,17 @@
+{
+  "ticket": "CMS-IMG-2",
+  "purpose": "Durable migration-completion authority used by later rollout planning after ignored runtime journals are removed.",
+  "items": [
+    {
+      "collection": "CANAAN",
+      "cmsTokenId": 1,
+      "cmsItemId": "65a1bf3dc64d193880da0093",
+      "cmsSlug": "i-am-bicycle",
+      "status": "published-verified",
+      "evidence": [
+        "assets/webflow-cms-image-pilot/README.md",
+        "ticket.ticket-CMS-IMG-2-pilot-one-canaan-image.diff"
+      ]
+    }
+  ]
+}

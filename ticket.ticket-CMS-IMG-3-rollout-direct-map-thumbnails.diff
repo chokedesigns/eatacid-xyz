@@ -1,0 +1,3432 @@
+﻿diff --git a/.gitignore b/.gitignore
+index 22a4faa..988d89c 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -89,3 +89,6 @@ assets/thumbs/backfill-report.json
+ 
+ # CMS-IMG-2 controlled Webflow pilot runtime (snapshots, image bytes, journal)
+ assets/webflow-cms-image-pilot/runtime/
++
++# CMS-IMG-3 multi-item rollout runtime (snapshots, comparisons, journals, image bytes)
++assets/webflow-cms-image-rollout/runtime/
+diff --git a/assets/webflow-cms-image-rollout/README.md b/assets/webflow-cms-image-rollout/README.md
+new file mode 100644
+index 0000000..36af8b5
+--- /dev/null
++++ b/assets/webflow-cms-image-rollout/README.md
+@@ -0,0 +1,61 @@
++# CMS-IMG-3 direct-map rollout tooling
++
++This package generalizes the CMS-IMG-2 content-verification and durable-journal
++patterns for collection-local multi-item batches. It consumes the CMS-IMG-1
++mapping authority and the tracked CMS-IMG-2 completion record; it never embeds
++the 48 rollout mappings in source.
++
++Offline/read-only local commands:
++
++```powershell
++npm run cms:image-rollout -- plan
++npm run cms:image-rollout -- status
++```
++
++`plan` reads repository files and writes only the tracked deterministic
++Markdown/JSON plan. `status` reads the plan and ignored local journals. Neither
++constructs a Webflow client or reads `WEBFLOW_API_TOKEN`.
++
++Later execution commands are deliberately separate:
++
++```powershell
++npm run cms:image-rollout -- stage-batch --batch B1
++npm run cms:image-rollout -- verify-staged --batch B1
++npm run cms:image-rollout -- reconcile-published --batch B1
++```
++
++`stage-batch` is write-capable. It processes one item at a time, verifies each
++result by retrievable image content, reconciles the full staged batch, and
++stops before publication. `verify-staged` and `reconcile-published` use GETs
++only. No execution command may proceed through a reconciliation-required item.
++Every `stage-batch` invocation rereads current drop parameters and current
++staged/live CMS state before another write is possible. The original pre-write
++batch baseline is immutable once created. A resumed invocation must prove that
++current state equals that original baseline plus journaled, content-verified
++rollout progress. The tool blocks unexplained Image, non-image, live, identity,
++locale, or unrelated-item drift instead of refreshing the baseline to absorb
++it. A newly protected active redeem token therefore blocks a resumed batch
++before any upload or CMS mutation.
++
++Publishing is a distinct write-capable command. It rereads and verifies the
++whole staged batch, then requires the exact process-local confirmation emitted
++by `publishConfirmation(batchId, itemIds)`:
++
++```powershell
++$env:CMS_IMG_3_PUBLISH_CONFIRM='<exact generated value>'
++npm run cms:image-rollout -- publish-batch --batch B1
++```
++
++Only the explicit verified item IDs are sent. Staging never cascades into
++publishing. A failed or uncertain write preserves the last successful phase,
++appends a blocked attempt, and requires reconciliation before another write.
++
++Webflow may normalize a submitted CMS Image into a different `fileId`, URL, or
++JPEG encoding. Identity equality is therefore not a success condition. The
++tool reuses the CMS-IMG-2 verifier: it downloads the resulting image and checks
++format, dimensions, strict decoded/perceptual equivalence, expected `alt`, all
++non-image fields, and unrelated collection items.
++
++All runtime snapshots, comparisons, uploads, and journals stay beneath the
++ignored `runtime/` directory. Structured state and errors are redacted before
++writing. `WEBFLOW_API_TOKEN` is never logged or persisted.
+diff --git a/assets/webflow-cms-image-rollout/cms-image-rollout.mjs b/assets/webflow-cms-image-rollout/cms-image-rollout.mjs
+new file mode 100644
+index 0000000..20e5486
+--- /dev/null
++++ b/assets/webflow-cms-image-rollout/cms-image-rollout.mjs
+@@ -0,0 +1,1290 @@
++import crypto from 'node:crypto';
++import fs from 'node:fs/promises';
++import path from 'node:path';
++import { fileURLToPath, pathToFileURL } from 'node:url';
++
++import sharp from 'sharp';
++
++import {
++  compareTarget,
++  diffPaths,
++  digest,
++  publicError,
++  stable,
++  verifyCmsImage,
++  withoutImage,
++} from '../webflow-cms-image-pilot/cms-image-pilot.mjs';
++
++export const TICKET = 'CMS-IMG-3';
++export const ELIGIBLE_COLLECTIONS = Object.freeze([
++  'CANAAN',
++  'THE 419 SCRIPT',
++  'INTRODUCTIONS',
++]);
++export const EXCLUDED_COLLECTIONS = Object.freeze(['HEN']);
++export const COLLECTION_POLICY = Object.freeze({
++  CANAAN: Object.freeze({ eligible: true, order: 0, expectedCount: 31 }),
++  'THE 419 SCRIPT': Object.freeze({ eligible: true, order: 1, expectedCount: 13 }),
++  INTRODUCTIONS: Object.freeze({ eligible: true, order: 2, expectedCount: 5 }),
++  HEN: Object.freeze({ eligible: false, order: 3, expectedCount: 17, reason: 'explicit sparse mirror belongs to CMS-IMG-4' }),
++});
++export const MODES = Object.freeze([
++  'plan',
++  'status',
++  'stage-batch',
++  'verify-staged',
++  'publish-batch',
++  'reconcile-published',
++]);
++export const WRITE_CAPABLE_MODES = Object.freeze(['stage-batch', 'publish-batch']);
++export const EXPECTED_COUNTS = Object.freeze({ audited: 66, eligible: 49, excluded: 17, completed: 1, rollout: 48 });
++
++const moduleDir = path.dirname(fileURLToPath(import.meta.url));
++export const DEFAULT_PATHS = Object.freeze({
++  repoRoot: path.resolve(moduleDir, '..', '..'),
++  mapping: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-1.mapping.json'),
++  completions: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-2.completion.json'),
++  dropParams: path.resolve(moduleDir, '..', '..', 'shared', 'drop-params', 'drop-params.js'),
++  planJson: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-3.rollout-plan.json'),
++  planMarkdown: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-3.rollout-plan.md'),
++  runtime: path.join(moduleDir, 'runtime'),
++});
++
++const REQUIRED_STRING_FIELDS = Object.freeze([
++  'collection', 'collectionId', 'cmsItemId', 'cmsItemName', 'cmsSlug',
++  'cmsLocaleId', 'localApprovedJpegPath', 'mappingAuthority', 'mappingConfidence',
++]);
++const RETAINED_METADATA = Object.freeze(['exif', 'icc', 'iptc', 'xmp', 'tifftagPhotoshop', 'comments']);
++const SYSTEM_TIMESTAMPS = new Set(['lastUpdated', 'lastPublished']);
++const SUCCESS_PHASES = new Set([
++  'pending', 'upload-ready', 'uploaded', 'staged', 'staged-verified',
++  'publish-approved', 'published', 'published-verified',
++]);
++const TRANSITIONS = Object.freeze({
++  pending: new Set(['upload-ready', 'uploaded', 'staged', 'staged-verified', 'published-verified']),
++  'upload-ready': new Set(['uploaded', 'staged', 'staged-verified', 'published-verified']),
++  uploaded: new Set(['staged', 'staged-verified', 'published-verified']),
++  staged: new Set(['staged-verified', 'published-verified']),
++  'staged-verified': new Set(['publish-approved', 'published', 'published-verified']),
++  'publish-approved': new Set(['published', 'published-verified']),
++  published: new Set(['published-verified']),
++  'published-verified': new Set(['published-verified']),
++});
++
++export class RolloutError extends Error {
++  constructor(message, { code = 'BLOCKED', details, writeOutcome = 'not-attempted' } = {}) {
++    super(message);
++    this.name = 'RolloutError';
++    this.code = code;
++    this.details = details;
++    this.writeOutcome = writeOutcome;
++  }
++}
++
++const ROLLOUT_SECRET_KEY = /authorization|^token$|api[-_]?token|secret|signature|credential|policy|x-amz-|uploadurl/i;
++
++export function redactRollout(value, key = '') {
++  if (ROLLOUT_SECRET_KEY.test(key)) return '[REDACTED]';
++  if (Array.isArray(value)) return value.map((item) => redactRollout(item));
++  if (value && typeof value === 'object') {
++    return Object.fromEntries(Object.entries(value).map(([childKey, child]) => [childKey, redactRollout(child, childKey)]));
++  }
++  if (typeof value === 'string') {
++    return value
++      .replace(/Bearer\s+[A-Za-z0-9._~+\/-]+=*/gi, 'Bearer [REDACTED]')
++      .replace(/([?&](?:X-Amz-[^=]+|Policy|Signature|Credential)=)[^&\s]+/gi, '$1[REDACTED]');
++  }
++  return value;
++}
++
++const readJson = async (filePath) => JSON.parse(await fs.readFile(filePath, 'utf8'));
++
++async function atomicWrite(filePath, contents) {
++  await fs.mkdir(path.dirname(filePath), { recursive: true });
++  const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
++  await fs.writeFile(temporary, contents);
++  await fs.rename(temporary, filePath);
++}
++
++export async function writeJson(filePath, value) {
++  await atomicWrite(filePath, `${JSON.stringify(redactRollout(value), null, 2)}\n`);
++}
++
++function assertNonEmptyString(value, label) {
++  if (typeof value !== 'string' || value.trim() === '') throw new RolloutError(`${label} must be a non-empty string.`);
++}
++
++function itemKey(item) {
++  return `${item.collection}|${Number(item.cmsTokenId)}`;
++}
++
++function compareItems(left, right) {
++  const collectionDifference = COLLECTION_POLICY[left.collection].order - COLLECTION_POLICY[right.collection].order;
++  if (collectionDifference !== 0) return collectionDifference;
++  const tokenDifference = Number(left.cmsTokenId) - Number(right.cmsTokenId);
++  return tokenDifference || left.cmsItemId.localeCompare(right.cmsItemId);
++}
++
++export function validateMapping(mapping) {
++  if (!mapping || !Array.isArray(mapping.items)) throw new RolloutError('Mapping authority must contain an items array.');
++  if (mapping.mappingSummary?.total !== EXPECTED_COUNTS.audited || mapping.items.length !== EXPECTED_COUNTS.audited) {
++    throw new RolloutError(`Mapping total is ${mapping.items.length}/${mapping.mappingSummary?.total}; expected ${EXPECTED_COUNTS.audited}.`);
++  }
++  const itemIds = new Set();
++  const tokens = new Set();
++  const localPaths = new Set();
++  const counts = {};
++  for (const [index, item] of mapping.items.entries()) {
++    for (const field of REQUIRED_STRING_FIELDS) assertNonEmptyString(item[field], `items[${index}].${field}`);
++    if (!Object.hasOwn(COLLECTION_POLICY, item.collection)) throw new RolloutError(`Unsupported collection ${item.collection}.`);
++    if (!Number.isSafeInteger(item.cmsTokenId) || item.cmsTokenId < 0) throw new RolloutError(`${itemKey(item)} has an invalid token ID.`);
++    if (!Number.isSafeInteger(item.localNumericBasename) ||
++        (COLLECTION_POLICY[item.collection].eligible && item.localNumericBasename !== item.cmsTokenId)) {
++      throw new RolloutError(`${itemKey(item)} does not directly match its authoritative numeric basename.`);
++    }
++    if (!Number.isSafeInteger(item.localFileBytes) || item.localFileBytes <= 0) throw new RolloutError(`${itemKey(item)} has invalid local byte metadata.`);
++    if (!Number.isSafeInteger(item.localDimensions?.width) || !Number.isSafeInteger(item.localDimensions?.height)) {
++      throw new RolloutError(`${itemKey(item)} has invalid local dimensions.`);
++    }
++    if (item.mappingConfidence !== 'HIGH' || item.ambiguityOrDiscrepancy !== null) {
++      throw new RolloutError(`${itemKey(item)} is not an unambiguous HIGH-confidence mapping.`);
++    }
++    if (item.isDraft !== false || item.isArchived !== false) throw new RolloutError(`${itemKey(item)} is draft or archived.`);
++    if (itemIds.has(item.cmsItemId)) throw new RolloutError(`Duplicate CMS item ID ${item.cmsItemId}.`);
++    if (tokens.has(itemKey(item))) throw new RolloutError(`Duplicate collection/token ${itemKey(item)}.`);
++    if (localPaths.has(item.localApprovedJpegPath)) throw new RolloutError(`Duplicate local path ${item.localApprovedJpegPath}.`);
++    itemIds.add(item.cmsItemId);
++    tokens.add(itemKey(item));
++    localPaths.add(item.localApprovedJpegPath);
++    counts[item.collection] = (counts[item.collection] ?? 0) + 1;
++  }
++  for (const [collection, policy] of Object.entries(COLLECTION_POLICY)) {
++    if (counts[collection] !== policy.expectedCount) {
++      throw new RolloutError(`${collection} mapping count is ${counts[collection] ?? 0}; expected ${policy.expectedCount}.`);
++    }
++  }
++  return { counts, itemIds, tokens, localPaths };
++}
++
++export function validateCompletions(completions, mapping) {
++  if (!completions || !Array.isArray(completions.items)) throw new RolloutError('Completion authority must contain an items array.');
++  assertNonEmptyString(completions.ticket, 'completion authority ticket');
++  const known = new Map(mapping.items.map((item) => [item.cmsItemId, item]));
++  const completed = new Map();
++  for (const completion of completions.items) {
++    assertNonEmptyString(completion.cmsItemId, 'completion.cmsItemId');
++    assertNonEmptyString(completion.status, 'completion.status');
++    const item = known.get(completion.cmsItemId);
++    if (!item) throw new RolloutError(`Completion ${completion.cmsItemId} is absent from the mapping authority.`);
++    if (completion.status !== 'published-verified') throw new RolloutError(`Completion ${completion.cmsItemId} is not published-verified.`);
++    if (completion.collection !== item.collection || Number(completion.cmsTokenId) !== item.cmsTokenId) {
++      throw new RolloutError(`Completion ${completion.cmsItemId} identity disagrees with the mapping authority.`);
++    }
++    if (!Array.isArray(completion.evidence) || completion.evidence.length === 0) {
++      throw new RolloutError(`Completion ${completion.cmsItemId} lacks durable evidence references.`);
++    }
++    if (completed.has(completion.cmsItemId)) throw new RolloutError(`Duplicate completion ${completion.cmsItemId}.`);
++    completed.set(completion.cmsItemId, { ...completion, ticket: completion.ticket ?? completions.ticket });
++  }
++  return completed;
++}
++
++export async function inspectLocalImage(repoRoot, item) {
++  const localPath = path.resolve(repoRoot, item.localApprovedJpegPath);
++  const relative = path.relative(repoRoot, localPath);
++  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new RolloutError(`Local image escapes the repository: ${item.localApprovedJpegPath}.`);
++  let bytes;
++  try { bytes = await fs.readFile(localPath); }
++  catch (error) { throw new RolloutError(`Missing local image ${item.localApprovedJpegPath}: ${error.message}`); }
++  let metadata;
++  try { metadata = await sharp(bytes, { failOn: 'error' }).metadata(); }
++  catch (error) { throw new RolloutError(`Undecodable local image ${item.localApprovedJpegPath}: ${error.message}`); }
++  const retainedMetadata = RETAINED_METADATA.filter((field) => {
++    const value = metadata[field];
++    return Array.isArray(value) ? value.length > 0 : value != null;
++  });
++  const failures = [];
++  if (metadata.format !== 'jpeg') failures.push(`format=${metadata.format}`);
++  if (metadata.width !== item.localDimensions.width || metadata.height !== item.localDimensions.height) {
++    failures.push(`dimensions=${metadata.width}x${metadata.height}`);
++  }
++  if (metadata.width !== 300) failures.push(`width=${metadata.width}`);
++  if (metadata.isProgressive !== true) failures.push('not progressive');
++  if (metadata.space?.toLowerCase() !== 'srgb') failures.push(`colourspace=${metadata.space}`);
++  if (metadata.hasProfile) failures.push('embedded profile present');
++  if (retainedMetadata.length) failures.push(`metadata present: ${retainedMetadata.join(', ')}`);
++  if (bytes.length !== item.localFileBytes) failures.push(`bytes=${bytes.length}, mapped=${item.localFileBytes}`);
++  if (failures.length) throw new RolloutError(`${itemKey(item)} local image mismatch (${failures.join('; ')}).`);
++  return {
++    bytes,
++    sha256: digest(bytes, 'sha256'),
++    md5: digest(bytes, 'md5'),
++    bytesLength: bytes.length,
++    dimensions: { width: metadata.width, height: metadata.height },
++    format: metadata.format,
++    progressive: metadata.isProgressive,
++  };
++}
++
++function batchItems(items) {
++  const byCollection = new Map(ELIGIBLE_COLLECTIONS.map((collection) => [collection, items.filter((item) => item.collection === collection)]));
++  const batches = [];
++  const add = (collection, members) => {
++    if (!members.length) return;
++    batches.push({
++      batchId: `B${batches.length + 1}`,
++      batchNumber: batches.length + 1,
++      collection,
++      itemIds: members.map((item) => item.cmsItemId),
++      count: members.length,
++    });
++  };
++  const canaan = byCollection.get('CANAAN');
++  add('CANAAN', canaan.slice(0, 5));
++  for (let index = 5; index < canaan.length; index += 13) add('CANAAN', canaan.slice(index, index + 13));
++  for (const collection of ['THE 419 SCRIPT', 'INTRODUCTIONS']) {
++    const members = byCollection.get(collection);
++    for (let index = 0; index < members.length; index += 13) add(collection, members.slice(index, index + 13));
++  }
++  if (batches[0]?.count !== 5) throw new RolloutError(`Batch 1 contains ${batches[0]?.count ?? 0} items; expected exactly 5.`);
++  return batches;
++}
++
++export async function buildRolloutPlan({ mapping, completions, repoRoot = DEFAULT_PATHS.repoRoot }) {
++  const mappingValidation = validateMapping(mapping);
++  const completed = validateCompletions(completions, mapping);
++  const eligible = mapping.items.filter((item) => COLLECTION_POLICY[item.collection].eligible).sort(compareItems);
++  const excluded = mapping.items.filter((item) => !COLLECTION_POLICY[item.collection].eligible).sort(compareItems);
++  const rollout = eligible.filter((item) => !completed.has(item.cmsItemId));
++  if (eligible.length !== EXPECTED_COUNTS.eligible || excluded.length !== EXPECTED_COUNTS.excluded ||
++      completed.size !== EXPECTED_COUNTS.completed || rollout.length !== EXPECTED_COUNTS.rollout) {
++    throw new RolloutError(`Population mismatch: eligible=${eligible.length}, excluded=${excluded.length}, completed=${completed.size}, rollout=${rollout.length}.`);
++  }
++  const batches = batchItems(rollout);
++  const batchByItem = new Map(batches.flatMap((batch) => batch.itemIds.map((id) => [id, batch])));
++  const inspected = new Map();
++  for (const item of eligible) inspected.set(item.cmsItemId, await inspectLocalImage(repoRoot, item));
++  const items = eligible.map((item) => {
++    const completion = completed.get(item.cmsItemId);
++    const batch = batchByItem.get(item.cmsItemId);
++    const local = inspected.get(item.cmsItemId);
++    return {
++      batchNumber: batch?.batchNumber ?? null,
++      batchId: batch?.batchId ?? null,
++      collection: item.collection,
++      collectionId: item.collectionId,
++      tokenId: item.cmsTokenId,
++      title: item.cmsItemName,
++      cmsItemId: item.cmsItemId,
++      localeId: item.cmsLocaleId,
++      slug: item.cmsSlug,
++      localSourceImage: item.localApprovedJpegPath,
++      localSha256: local.sha256,
++      localMd5: local.md5,
++      localBytes: local.bytesLength,
++      expectedDimensions: local.dimensions,
++      migrationStatus: completion ? 'already-migrated' : 'pending',
++      skipReason: completion ? `${completion.ticket} durable completion record: ${completion.status}` : null,
++    };
++  });
++  return {
++    ticket: TICKET,
++    sourceTicket: mapping.ticket,
++    sourceGeneratedAt: mapping.generatedAt,
++    sources: {
++      mapping: 'docs/webflow-cms-image-audit/CMS-IMG-1.mapping.json',
++      completion: 'docs/webflow-cms-image-audit/CMS-IMG-2.completion.json',
++      pilotImplementation: 'assets/webflow-cms-image-pilot/cms-image-pilot.mjs',
++      pilotEvidence: 'assets/webflow-cms-image-pilot/README.md',
++    },
++    site: { siteId: mapping.site?.siteId, displayName: mapping.site?.displayName },
++    orderingRule: 'collection policy order, then numeric CMS token ID ascending, then CMS item ID',
++    batchingRule: 'CANAAN starts with exactly 5, then collection-local chunks of at most 13; later collections use collection-local chunks of at most 13',
++    counts: {
++      totalAuditedMappings: mapping.items.length,
++      eligibleDirectMapMappings: eligible.length,
++      excludedHenMappings: excluded.length,
++      alreadyMigratedMappings: completed.size,
++      remainingRolloutMappings: rollout.length,
++      byCollection: mappingValidation.counts,
++      rolloutByCollection: Object.fromEntries(ELIGIBLE_COLLECTIONS.map((collection) => [collection, rollout.filter((item) => item.collection === collection).length])),
++    },
++    policy: Object.fromEntries(Object.entries(COLLECTION_POLICY).map(([name, value]) => [name, { eligible: value.eligible, reason: value.reason ?? null }])),
++    completedItems: [...completed.values()].map((completion) => redactRollout(completion)),
++    batches,
++    items,
++    hardStops: [
++      'mapping ambiguity or unsupported collection',
++      'duplicate CMS item, collection/token, or local path',
++      'unexpected CMS identity or missing item',
++      'a planned item is the currently configured active redeem token',
++      'missing, undecodable, or metadata-mismatched local image',
++      'content hash/dimension mismatch',
++      'non-image field or unrelated-item drift',
++      'stale or uncertain journal state requiring reconciliation',
++      'failed content-based staged/live verification',
++      'unknown upload, patch, or publish outcome',
++      'publication response or live-state ambiguity',
++    ],
++    publicationBoundary: 'Staging never cascades to publishing. publish-batch requires a named batch, an exact verified item-ID set, an exact confirmation string, and no blocked or reconciliation-required item.',
++    externalWritesPerformed: 0,
++    statement: 'Generated entirely from repository mapping, local image bytes, and durable pilot evidence. No Webflow request or write was performed.',
++  };
++}
++
++function stripSystemTimestamps(value) {
++  if (Array.isArray(value)) return value.map(stripSystemTimestamps);
++  if (value && typeof value === 'object') {
++    return Object.fromEntries(Object.entries(value)
++      .filter(([key]) => !SYSTEM_TIMESTAMPS.has(key))
++      .map(([key, child]) => [key, stripSystemTimestamps(child)]));
++  }
++  return value;
++}
++
++function sortCmsItems(items) {
++  return [...items].sort((left, right) => `${left.id}:${left.cmsLocaleId}`.localeCompare(`${right.id}:${right.cmsLocaleId}`));
++}
++
++export function compareUnrelatedItems(beforeItems, afterItems, targetItemIds) {
++  const targets = new Set(targetItemIds);
++  const before = sortCmsItems(beforeItems.filter((item) => !targets.has(item.id))).map(stripSystemTimestamps);
++  const after = sortCmsItems(afterItems.filter((item) => !targets.has(item.id))).map(stripSystemTimestamps);
++  return { ok: stable(before) === stable(after), differences: diffPaths(before, after) };
++}
++
++export function assertCmsIdentity(cmsItem, plannedItem) {
++  const failures = [];
++  if (cmsItem?.id !== plannedItem.cmsItemId) failures.push(`id=${cmsItem?.id}`);
++  if (cmsItem?.cmsLocaleId !== plannedItem.localeId) failures.push(`cmsLocaleId=${cmsItem?.cmsLocaleId}`);
++  if (Number(cmsItem?.fieldData?.['token-id']) !== plannedItem.tokenId) failures.push(`token-id=${cmsItem?.fieldData?.['token-id']}`);
++  if (cmsItem?.fieldData?.name !== plannedItem.title) failures.push(`name=${cmsItem?.fieldData?.name}`);
++  if (cmsItem?.fieldData?.slug !== plannedItem.slug) failures.push(`slug=${cmsItem?.fieldData?.slug}`);
++  if (cmsItem?.isDraft !== false) failures.push(`isDraft=${cmsItem?.isDraft}`);
++  if (cmsItem?.isArchived !== false) failures.push(`isArchived=${cmsItem?.isArchived}`);
++  if (failures.length) throw new RolloutError(`${plannedItem.collection}|${plannedItem.tokenId} CMS identity mismatch (${failures.join('; ')}).`, {
++    code: 'CMS_IDENTITY_MISMATCH', details: { itemId: plannedItem.cmsItemId, failures },
++  });
++}
++
++export function assertNoActiveRedeemTarget(plannedItems, dropParams) {
++  const activeCollection = dropParams?.redeemToken?.collection;
++  const activeTokenId = Number(dropParams?.redeemToken?.tokenId);
++  const conflict = plannedItems.find((item) => item.collection === activeCollection && item.tokenId === activeTokenId);
++  if (conflict) {
++    throw new RolloutError(`${conflict.collection}|${conflict.tokenId} is the configured active redeem token.`, {
++      code: 'ACTIVE_REDEEM_TOKEN_CONFLICT', details: { itemId: conflict.cmsItemId },
++    });
++  }
++}
++
++function exactlyOneCmsItem(items, plannedItem, label) {
++  const matches = items.filter((item) => item.id === plannedItem.cmsItemId);
++  if (matches.length !== 1) throw new RolloutError(`${label} match count for ${plannedItem.cmsItemId} is ${matches.length}; expected 1.`, {
++    code: 'CMS_ITEM_MATCH_COUNT', details: { itemId: plannedItem.cmsItemId, label, matches: matches.length },
++  });
++  assertCmsIdentity(matches[0], plannedItem);
++  return matches[0];
++}
++
++export async function verifyPlannedCmsImage(cmsImage, local, fetchImpl = fetch, submittedImage = null) {
++  return verifyCmsImage(cmsImage, { bytes: local.bytes, sha256: local.sha256,
++    metadata: { format: local.format, ...local.dimensions } }, fetchImpl, submittedImage);
++}
++
++export function initialItemState(plannedItem) {
++  return {
++    cmsItemId: plannedItem.cmsItemId,
++    collection: plannedItem.collection,
++    tokenId: plannedItem.tokenId,
++    localSourceImage: plannedItem.localSourceImage,
++    localSha256: plannedItem.localSha256,
++    currentPhase: 'pending',
++    lastSuccessfulPhase: 'pending',
++    reconciliationRequired: false,
++    lastAttempt: null,
++    lastAttemptStatus: null,
++    attempts: [],
++    blockedAttempts: [],
++    uploadedAsset: null,
++    submittedImage: null,
++    resultingStagedImage: null,
++    publishedImage: null,
++    errors: [],
++  };
++}
++
++export function initialBatchJournal(plan, batchId, now = new Date().toISOString()) {
++  const batch = requireBatch(plan, batchId);
++  const plannedItems = batch.itemIds.map((id) => requirePlanItem(plan, id));
++  return {
++    schemaVersion: 1,
++    ticket: TICKET,
++    batchId,
++    collection: batch.collection,
++    plannedItemIds: [...batch.itemIds],
++    planFingerprint: digest(Buffer.from(stable(plannedItems)), 'sha256'),
++    createdAt: now,
++    updatedAt: now,
++    attempts: [],
++    publishApproval: null,
++    items: Object.fromEntries(plannedItems.map((item) => [item.cmsItemId, initialItemState(item)])),
++  };
++}
++
++export function recordItemAttempt(journal, itemId, attempt, now = new Date().toISOString()) {
++  const prior = journal.items?.[itemId];
++  if (!prior) throw new RolloutError(`Journal has no planned item ${itemId}.`);
++  const status = attempt.status;
++  if (!['succeeded', 'blocked', 'reconciliation-required'].includes(status)) throw new RolloutError(`Invalid attempt status ${status}.`);
++  const record = redactRollout({ id: attempt.id ?? crypto.randomUUID(), phase: attempt.phase, status,
++    at: attempt.at ?? now, writeOutcome: attempt.writeOutcome ?? 'not-attempted', error: attempt.error ?? null,
++    details: attempt.details ?? null });
++  let nextItem = { ...prior, lastAttempt: record, lastAttemptStatus: status, attempts: [...prior.attempts, record] };
++  if (status === 'succeeded') {
++    if (!SUCCESS_PHASES.has(attempt.phase)) throw new RolloutError(`Unknown successful phase ${attempt.phase}.`);
++    const allowed = TRANSITIONS[prior.currentPhase];
++    if (!allowed?.has(attempt.phase) && prior.currentPhase !== attempt.phase) {
++      throw new RolloutError(`Invalid state transition ${prior.currentPhase} -> ${attempt.phase} for ${itemId}.`);
++    }
++    nextItem = {
++      ...nextItem,
++      currentPhase: attempt.phase,
++      lastSuccessfulPhase: attempt.phase,
++      reconciliationRequired: false,
++      ...(attempt.patch ?? {}),
++    };
++  } else {
++    const reconciliationRequired = prior.reconciliationRequired || status === 'reconciliation-required' ||
++      ['unknown', 'applied-unverified'].includes(record.writeOutcome);
++    nextItem = {
++      ...nextItem,
++      currentPhase: prior.lastSuccessfulPhase,
++      lastSuccessfulPhase: prior.lastSuccessfulPhase,
++      reconciliationRequired,
++      blockedAttempts: [...prior.blockedAttempts, record],
++      errors: record.error ? [...prior.errors, record.error] : prior.errors,
++    };
++  }
++  return {
++    ...journal,
++    updatedAt: now,
++    attempts: [...journal.attempts, { itemId, ...record }],
++    items: { ...journal.items, [itemId]: nextItem },
++  };
++}
++
++export function determineIdempotentAction({ itemState, localMatchesStaged, localMatchesLive, reusableUploadedAsset }) {
++  if (itemState.reconciliationRequired) return 'reconcile-required';
++  if (localMatchesLive) return 'reconcile-published';
++  if (localMatchesStaged) return 'verify-staged-noop';
++  if (reusableUploadedAsset?.verifiedSha256 === itemState.localSha256) return 'reuse-upload';
++  return 'upload-and-stage';
++}
++
++export function requireBatch(plan, batchId) {
++  const batch = plan.batches.find((candidate) => candidate.batchId === batchId);
++  if (!batch) throw new RolloutError(`Unknown batch ${batchId}.`);
++  if (batch.count !== batch.itemIds.length || batch.count === 0) throw new RolloutError(`Batch ${batchId} is malformed.`);
++  if (new Set(batch.itemIds).size !== batch.itemIds.length) throw new RolloutError(`Batch ${batchId} contains duplicate item IDs.`);
++  return batch;
++}
++
++export function requirePlanItem(plan, itemId) {
++  const matches = plan.items.filter((item) => item.cmsItemId === itemId && item.migrationStatus === 'pending');
++  if (matches.length !== 1) throw new RolloutError(`Pending plan item ${itemId} match count is ${matches.length}; expected 1.`);
++  return matches[0];
++}
++
++export function exactPublishItemIds(plan, batchId, journal) {
++  const batch = requireBatch(plan, batchId);
++  if (journal.batchId !== batchId || stable(journal.plannedItemIds) !== stable(batch.itemIds)) {
++    throw new RolloutError(`Journal identity does not match batch ${batchId}.`);
++  }
++  for (const itemId of batch.itemIds) {
++    const state = journal.items[itemId];
++    if (state?.currentPhase !== 'staged-verified' || state.lastSuccessfulPhase !== 'staged-verified' ||
++        state.reconciliationRequired || state.lastAttemptStatus !== 'succeeded') {
++      throw new RolloutError(`Item ${itemId} is not publish eligible.`);
++    }
++  }
++  return [...batch.itemIds];
++}
++
++export function publishConfirmation(batchId, itemIds) {
++  return `${TICKET}:PUBLISH:${batchId}:${itemIds.join(',')}`;
++}
++
++export function approvePublish(plan, batchId, journal, confirmation, now = new Date().toISOString()) {
++  const itemIds = exactPublishItemIds(plan, batchId, journal);
++  const expected = publishConfirmation(batchId, itemIds);
++  if (confirmation !== expected) throw new RolloutError('Exact batch publish confirmation is missing.');
++  let next = { ...journal, publishApproval: { approvedAt: now, batchId, itemIds, confirmationSha256: digest(Buffer.from(confirmation), 'sha256') } };
++  for (const itemId of itemIds) next = recordItemAttempt(next, itemId, { phase: 'publish-approved', status: 'succeeded' }, now);
++  return next;
++}
++
++function planFingerprint(plan, batchId) {
++  const batch = requireBatch(plan, batchId);
++  return digest(Buffer.from(stable(batch.itemIds.map((id) => requirePlanItem(plan, id)))), 'sha256');
++}
++
++export async function loadBatchJournal(plan, batchId, runtime = DEFAULT_PATHS.runtime) {
++  const filePath = path.join(runtime, batchId, 'journal.json');
++  let journal;
++  try { journal = await readJson(filePath); }
++  catch (error) {
++    if (error?.code === 'ENOENT') return initialBatchJournal(plan, batchId);
++    throw error;
++  }
++  if (journal.ticket !== TICKET || journal.batchId !== batchId || journal.planFingerprint !== planFingerprint(plan, batchId)) {
++    throw new RolloutError(`Stale or foreign journal for ${batchId}.`);
++  }
++  return journal;
++}
++
++export async function saveBatchJournal(journal, runtime = DEFAULT_PATHS.runtime) {
++  await writeJson(path.join(runtime, journal.batchId, 'journal.json'), journal);
++}
++
++export class WebflowRolloutClient {
++  constructor({ token, siteId, fetchImpl = fetch, sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)) }) {
++    if (!token) throw new RolloutError('WEBFLOW_API_TOKEN is not set.');
++    assertNonEmptyString(siteId, 'siteId');
++    this.token = token;
++    this.siteId = siteId;
++    this.fetch = fetchImpl;
++    this.sleep = sleep;
++    this.base = 'https://api.webflow.com/v2';
++  }
++
++  async request(method, endpoint, { body } = {}) {
++    for (let attempt = 0; attempt < 3; attempt += 1) {
++      let response;
++      try {
++        response = await this.fetch(`${this.base}${endpoint}`, {
++          method,
++          headers: { Authorization: `Bearer ${this.token}`, Accept: 'application/json',
++            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
++          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
++        });
++      } catch (error) {
++        if (method !== 'GET' || attempt === 2) throw error;
++        await this.sleep(500);
++        continue;
++      }
++      const text = await response.text();
++      let parsed = null;
++      try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
++      if (response.status === 429 && attempt < 2) {
++        await this.sleep(500 * (attempt + 1));
++        continue;
++      }
++      if (!response.ok) throw new RolloutError(`Webflow ${method} ${endpoint} failed with HTTP ${response.status}.`, { details: redactRollout(parsed) });
++      return parsed;
++    }
++    throw new RolloutError(`Webflow ${method} ${endpoint} exhausted retries.`);
++  }
++
++  getCollection(collectionId) { return this.request('GET', `/collections/${collectionId}`); }
++
++  async listItems(collectionId, type) {
++    const items = [];
++    const suffix = type === 'live' ? '/live' : '';
++    let total = Infinity;
++    while (items.length < total) {
++      const page = await this.request('GET', `/collections/${collectionId}/items${suffix}?limit=100&offset=${items.length}`);
++      if (!Array.isArray(page?.items)) throw new RolloutError(`Invalid ${type} item-list response.`);
++      items.push(...page.items);
++      total = page.pagination?.total ?? items.length;
++      if (page.items.length === 0) break;
++    }
++    return { items, pagination: { total, limit: 100, offset: 0 } };
++  }
++
++  async listAssets() {
++    const assets = [];
++    let total = Infinity;
++    while (assets.length < total) {
++      const page = await this.request('GET', `/sites/${this.siteId}/assets?limit=100&offset=${assets.length}`);
++      if (!Array.isArray(page?.assets)) throw new RolloutError('Invalid asset-list response.');
++      assets.push(...page.assets);
++      total = page.pagination?.total ?? assets.length;
++      if (page.assets.length === 0) break;
++    }
++    return assets;
++  }
++
++  getAsset(assetId) { return this.request('GET', `/assets/${assetId}`); }
++  createAsset(fileName, fileHash) { return this.request('POST', `/sites/${this.siteId}/assets`, { body: { fileName, fileHash } }); }
++  patchImage(collectionId, itemId, localeId, image) {
++    return this.request('PATCH', `/collections/${collectionId}/items?skipInvalidFiles=false`, {
++      body: { items: [{ id: itemId, cmsLocaleId: localeId, fieldData: { image } }] },
++    });
++  }
++  publishItems(collectionId, itemIds) {
++    return this.request('POST', `/collections/${collectionId}/items/publish`, { body: { itemIds } });
++  }
++}
++
++export function assetFilename(plannedItem) {
++  const collection = plannedItem.collection.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
++  const slug = plannedItem.slug.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
++  return `${collection}-${plannedItem.tokenId}-${slug}-300w-${plannedItem.localSha256.slice(0, 12)}.jpg`;
++}
++
++function assetNameMatches(asset, filename) {
++  return asset?.originalFileName === filename || asset?.displayName === filename || asset?.displayName?.endsWith(`_${filename}`);
++}
++
++async function downloadBytes(url, fetchImpl = fetch) {
++  let response;
++  try { response = await fetchImpl(url, { method: 'GET', headers: { Accept: 'image/*' } }); }
++  catch (error) { throw new RolloutError(`Image download failed before an HTTP response: ${error.message}`); }
++  if (!response.ok) throw new RolloutError(`Image download failed with HTTP ${response.status}.`);
++  const bytes = Buffer.from(await response.arrayBuffer());
++  if (!bytes.length) throw new RolloutError('Image download returned empty bytes.');
++  return bytes;
++}
++
++async function verifyReusableAsset({ api, asset, plannedItem, local, fetchImpl }) {
++  const current = await api.getAsset(asset.id);
++  const filename = assetFilename(plannedItem);
++  if (!assetNameMatches(current, filename)) throw new RolloutError(`Asset ${asset.id} filename mismatch.`);
++  const url = current.hostedUrl ?? asset.hostedUrl ?? asset.assetUrl;
++  if (!url) throw new RolloutError(`Asset ${asset.id} lacks a hosted URL.`);
++  const sha256 = digest(await downloadBytes(url, fetchImpl), 'sha256');
++  if (sha256 !== local.sha256) throw new RolloutError(`Asset ${asset.id} content hash mismatch.`);
++  return redactRollout({ ...current, hostedUrl: url, verifiedSha256: sha256 });
++}
++
++async function uploadBinary(metadata, local, fetchImpl = fetch) {
++  if (!metadata?.uploadUrl || !metadata?.uploadDetails) throw new RolloutError('Asset metadata lacks presigned upload details.');
++  const form = new FormData();
++  for (const [key, value] of Object.entries(metadata.uploadDetails)) form.append(key, String(value));
++  form.append('file', new Blob([local.bytes], { type: metadata.contentType ?? 'image/jpeg' }), metadata.originalFileName);
++  let response;
++  try { response = await fetchImpl(metadata.uploadUrl, { method: 'POST', body: form }); }
++  catch (error) {
++    throw new RolloutError(`Asset byte upload outcome is unknown: ${error.message}`, {
++      code: 'UNKNOWN_UPLOAD_OUTCOME', writeOutcome: 'unknown',
++    });
++  }
++  if (response.status !== 201) throw new RolloutError(`Asset byte upload failed with HTTP ${response.status}.`, { writeOutcome: 'not-applied' });
++}
++
++async function ensureAsset({ api, plannedItem, local, itemState, assets, fetchImpl }) {
++  const filename = assetFilename(plannedItem);
++  const candidates = [];
++  if (itemState.uploadedAsset?.id) candidates.push(itemState.uploadedAsset);
++  for (const asset of assets.filter((candidate) => assetNameMatches(candidate, filename))) {
++    if (!candidates.some((candidate) => candidate.id === asset.id)) candidates.push(asset);
++  }
++  for (const candidate of candidates) {
++    try { return await verifyReusableAsset({ api, asset: candidate, plannedItem, local, fetchImpl }); }
++    catch (error) {
++      if (candidate.id === itemState.uploadedAsset?.id) {
++        throw new RolloutError(`Journaled asset ${candidate.id} cannot be safely reused.`, { details: publicError(error) });
++      }
++    }
++  }
++  if (candidates.length) throw new RolloutError(`A deterministic-name asset exists for ${plannedItem.cmsItemId} but cannot be verified; duplicate upload refused.`);
++  let metadata;
++  try { metadata = await api.createAsset(filename, local.md5); }
++  catch (error) {
++    throw new RolloutError(`Asset-create outcome is unknown for ${plannedItem.cmsItemId}.`, {
++      code: 'UNKNOWN_ASSET_CREATE_OUTCOME', details: publicError(error), writeOutcome: 'unknown',
++    });
++  }
++  await uploadBinary(metadata, local, fetchImpl);
++  return verifyReusableAsset({ api, asset: metadata, plannedItem, local, fetchImpl });
++}
++
++async function readCollectionStates(api, collectionId) {
++  const [staged, live] = await Promise.all([
++    api.listItems(collectionId, 'staged'),
++    api.listItems(collectionId, 'live'),
++  ]);
++  return { staged, live };
++}
++
++function expectedCollectionId(plan, batch) {
++  const ids = new Set(batch.itemIds.map((id) => requirePlanItem(plan, id).collectionId).filter(Boolean));
++  if (ids.size === 1) return [...ids][0];
++  const original = plan.items.filter((item) => batch.itemIds.includes(item.cmsItemId));
++  const inferred = new Set(original.map((item) => item.collectionId).filter(Boolean));
++  if (inferred.size !== 1) throw new RolloutError(`Batch ${batch.batchId} lacks one collection ID.`);
++  return [...inferred][0];
++}
++
++function verifyBatchCollectionState({ plan, batch, baseline, current, imageChecks, requireLiveReplacement = false }) {
++  const targetIds = batch.itemIds;
++  const targetResults = [];
++  for (const itemId of targetIds) {
++    const plannedItem = requirePlanItem(plan, itemId);
++    const beforeStaged = exactlyOneCmsItem(baseline.staged.items, plannedItem, 'Baseline staged');
++    const beforeLive = exactlyOneCmsItem(baseline.live.items, plannedItem, 'Baseline live');
++    const staged = exactlyOneCmsItem(current.staged.items, plannedItem, 'Current staged');
++    const live = exactlyOneCmsItem(current.live.items, plannedItem, 'Current live');
++    const stagedCheck = compareTarget(beforeStaged, staged, imageChecks[itemId]?.staged);
++    const liveCheck = requireLiveReplacement ? compareTarget(beforeLive, live, imageChecks[itemId]?.live) : {
++      ok: stable(stripSystemTimestamps(beforeLive)) === stable(stripSystemTimestamps(live)),
++      differences: diffPaths(stripSystemTimestamps(beforeLive), stripSystemTimestamps(live)),
++    };
++    targetResults.push({ itemId, staged: stagedCheck, live: liveCheck,
++      stagedLiveNonImageMatch: stable(withoutImage(staged)) === stable(withoutImage(live)) });
++  }
++  const unrelatedStaged = compareUnrelatedItems(baseline.staged.items, current.staged.items, targetIds);
++  const unrelatedLive = compareUnrelatedItems(baseline.live.items, current.live.items, targetIds);
++  const ok = targetResults.every((result) => result.staged.ok && result.live.ok &&
++    (!requireLiveReplacement || result.stagedLiveNonImageMatch)) && unrelatedStaged.ok && unrelatedLive.ok;
++  return { ok, targetResults, unrelatedStaged, unrelatedLive };
++}
++
++async function localForPlanItem(paths, plannedItem) {
++  return inspectLocalImage(paths.repoRoot, {
++    collection: plannedItem.collection,
++    cmsTokenId: plannedItem.tokenId,
++    localApprovedJpegPath: plannedItem.localSourceImage,
++    localFileBytes: plannedItem.localBytes,
++    localDimensions: plannedItem.expectedDimensions,
++  });
++}
++
++function baselineFile(paths, batchId) {
++  return path.join(paths.runtime, batchId, 'baseline.json');
++}
++
++async function loadBaseline(paths, batchId) {
++  const baseline = await loadBaselineIfPresent(paths, batchId);
++  if (!baseline) throw new RolloutError(`Batch ${batchId} has no durable pre-stage baseline.`);
++  return baseline;
++}
++
++async function loadBaselineIfPresent(paths, batchId) {
++  try { return await readJson(baselineFile(paths, batchId)); }
++  catch (error) { if (error?.code === 'ENOENT') return null; throw error; }
++}
++
++async function saveBaseline(paths, batchId, baseline) {
++  if (await loadBaselineIfPresent(paths, batchId)) {
++    throw new RolloutError(`Batch ${batchId} baseline already exists and is immutable.`, { code: 'BASELINE_IMMUTABLE' });
++  }
++  await writeJson(baselineFile(paths, batchId), baseline);
++}
++
++export async function loadCurrentDropParams(paths = DEFAULT_PATHS) {
++  return (await import(`${pathToFileURL(paths.dropParams).href}?rollout=${Date.now()}-${crypto.randomUUID()}`)).default;
++}
++
++function collectionStateEqual(left, right) {
++  return stable(sortCmsItems(left.items).map(stripSystemTimestamps)) ===
++    stable(sortCmsItems(right.items).map(stripSystemTimestamps));
++}
++
++function baselineItemEqual(baselineItem, currentItem) {
++  return stable(stripSystemTimestamps(baselineItem)) === stable(stripSystemTimestamps(currentItem));
++}
++
++async function readFreshBatchSafetyState({ plan, batchId, api, paths, dropParamsLoader }) {
++  const batch = requireBatch(plan, batchId);
++  if (batch.collection === 'HEN' || !ELIGIBLE_COLLECTIONS.includes(batch.collection)) throw new RolloutError(`${batch.collection} is not CMS-IMG-3 eligible.`);
++  const plannedItems = batch.itemIds.map((id) => requirePlanItem(plan, id));
++  const dropParams = await dropParamsLoader(paths);
++  assertNoActiveRedeemTarget(plannedItems, dropParams);
++  const collectionId = expectedCollectionId(plan, batch);
++  const [collection, states] = await Promise.all([api.getCollection(collectionId), readCollectionStates(api, collectionId)]);
++  if (collection?.id !== collectionId) throw new RolloutError(`Collection ID mismatch for ${batchId}.`, {
++    code: 'COLLECTION_IDENTITY_MISMATCH', details: { itemId: batch.itemIds[0], expected: collectionId, actual: collection?.id },
++  });
++  const locals = {};
++  for (const itemId of batch.itemIds) {
++    const plannedItem = requirePlanItem(plan, itemId);
++    exactlyOneCmsItem(states.staged.items, plannedItem, 'Staged preflight');
++    exactlyOneCmsItem(states.live.items, plannedItem, 'Live preflight');
++    locals[itemId] = await localForPlanItem(paths, plannedItem);
++  }
++  return { batch, plannedItems, dropParams, collectionId, collection, locals, ...states };
++}
++
++function assertPristinePreflight(fresh, batchId) {
++  if (!collectionStateEqual(fresh.staged, fresh.live)) {
++    throw new RolloutError(`Staged/live collection drift exists before ${batchId}.`);
++  }
++}
++
++export async function preflightBatch({ plan, batchId, api, paths = DEFAULT_PATHS,
++  dropParamsLoader = loadCurrentDropParams }) {
++  const fresh = await readFreshBatchSafetyState({ plan, batchId, api, paths, dropParamsLoader });
++  assertPristinePreflight(fresh, batchId);
++  return fresh;
++}
++
++function assertJournalResumeShape(plan, batch, journal) {
++  if (journal.batchId !== batch.batchId || stable(journal.plannedItemIds) !== stable(batch.itemIds)) {
++    throw new RolloutError(`Journal identity does not match ${batch.batchId}.`, { code: 'INVALID_RESUME_JOURNAL' });
++  }
++  const phases = [];
++  for (const itemId of batch.itemIds) {
++    const plannedItem = requirePlanItem(plan, itemId);
++    const state = journal.items?.[itemId];
++    if (!state || !SUCCESS_PHASES.has(state.currentPhase) || state.lastSuccessfulPhase !== state.currentPhase) {
++      throw new RolloutError(`Unknown or inconsistent journal state for ${itemId}.`, {
++        code: 'INVALID_RESUME_JOURNAL', details: { itemId, currentPhase: state?.currentPhase,
++          lastSuccessfulPhase: state?.lastSuccessfulPhase },
++      });
++    }
++    if (state.cmsItemId !== itemId || state.collection !== plannedItem.collection || state.tokenId !== plannedItem.tokenId ||
++        state.localSourceImage !== plannedItem.localSourceImage || state.localSha256 !== plannedItem.localSha256) {
++      throw new RolloutError(`Journal item identity mismatch for ${itemId}.`, {
++        code: 'INVALID_RESUME_JOURNAL', details: { itemId },
++      });
++    }
++    if (state.currentPhase === 'uploaded' && !state.uploadedAsset?.id) {
++      throw new RolloutError(`Uploaded journal state for ${itemId} lacks an asset ID.`, {
++        code: 'INVALID_RESUME_JOURNAL', details: { itemId },
++      });
++    }
++    if (['staged', 'staged-verified', 'publish-approved', 'published', 'published-verified'].includes(state.currentPhase) &&
++        !state.submittedImage && !state.resultingStagedImage) {
++      throw new RolloutError(`Journal state ${state.currentPhase} for ${itemId} lacks a known replacement Image.`, {
++        code: 'INVALID_RESUME_JOURNAL', details: { itemId },
++      });
++    }
++    if (state.currentPhase === 'published-verified' && !state.publishedImage) {
++      throw new RolloutError(`Published-verified journal state for ${itemId} lacks a published Image.`, {
++        code: 'INVALID_RESUME_JOURNAL', details: { itemId },
++      });
++    }
++    phases.push(state.currentPhase);
++  }
++  const publicationProgress = phases.filter((phase) => ['publish-approved', 'published', 'published-verified'].includes(phase));
++  if (publicationProgress.length > 0 && publicationProgress.length !== phases.length) {
++    throw new RolloutError(`Partial publication journal state for ${batch.batchId} requires reconciliation.`, {
++      code: 'INVALID_RESUME_JOURNAL', details: { itemId: batch.itemIds[0], phases },
++    });
++  }
++}
++
++function resumeDrift(message, itemId, phase, details) {
++  return new RolloutError(message, {
++    code: 'RESUME_STATE_DRIFT', details: { itemId, phase, ...details }, writeOutcome: 'not-attempted',
++  });
++}
++
++export async function validateResumeState({ plan, batch, journal, baseline, current, locals, fetchImpl = fetch }) {
++  assertJournalResumeShape(plan, batch, journal);
++  if (baseline.collection?.id !== expectedCollectionId(plan, batch)) {
++    throw resumeDrift(`Original baseline collection identity is invalid for ${batch.batchId}.`, batch.itemIds[0], null, {});
++  }
++  const unrelatedStaged = compareUnrelatedItems(baseline.staged.items, current.staged.items, batch.itemIds);
++  const unrelatedLive = compareUnrelatedItems(baseline.live.items, current.live.items, batch.itemIds);
++  if (!unrelatedStaged.ok || !unrelatedLive.ok) {
++    throw resumeDrift(`Unrelated collection state drifted since the original ${batch.batchId} baseline.`, batch.itemIds[0], null,
++      { unrelatedStaged, unrelatedLive });
++  }
++  const items = {};
++  for (const itemId of batch.itemIds) {
++    const plannedItem = requirePlanItem(plan, itemId);
++    const state = journal.items[itemId];
++    const baselineStaged = exactlyOneCmsItem(baseline.staged.items, plannedItem, 'Baseline staged');
++    const baselineLive = exactlyOneCmsItem(baseline.live.items, plannedItem, 'Baseline live');
++    const staged = exactlyOneCmsItem(current.staged.items, plannedItem, 'Current staged');
++    const live = exactlyOneCmsItem(current.live.items, plannedItem, 'Current live');
++    const phase = state.currentPhase;
++    if (state.reconciliationRequired) {
++      throw resumeDrift(`${itemId} already requires reconciliation.`, itemId, phase, { reconciliationRequired: true });
++    }
++    if (['pending', 'upload-ready', 'uploaded'].includes(phase)) {
++      const stagedAtBaseline = baselineItemEqual(baselineStaged, staged);
++      const liveAtBaseline = baselineItemEqual(baselineLive, live);
++      if (!stagedAtBaseline || !liveAtBaseline) {
++        throw resumeDrift(`${phase} item ${itemId} no longer matches its original CMS baseline.`, itemId, phase,
++          { stagedAtBaseline, liveAtBaseline,
++            stagedDifferences: diffPaths(stripSystemTimestamps(baselineStaged), stripSystemTimestamps(staged)),
++            liveDifferences: diffPaths(stripSystemTimestamps(baselineLive), stripSystemTimestamps(live)) });
++      }
++      items[itemId] = { phase, stagedAtBaseline, liveAtBaseline };
++      continue;
++    }
++    const submitted = state.resultingStagedImage ?? state.submittedImage;
++    const stagedImage = await verifyPlannedCmsImage(staged.fieldData?.image, locals[itemId], fetchImpl, submitted);
++    const stagedCheck = compareTarget(baselineStaged, staged, stagedImage);
++    if (!stagedCheck.ok) {
++      throw resumeDrift(`Known staged replacement for ${itemId} cannot be verified.`, itemId, phase, { stagedCheck });
++    }
++    if (['staged', 'staged-verified', 'publish-approved'].includes(phase)) {
++      const liveAtBaseline = baselineItemEqual(baselineLive, live);
++      if (!liveAtBaseline) {
++        throw resumeDrift(`Live state changed before journaled publication for ${itemId}.`, itemId, phase,
++          { liveAtBaseline, liveDifferences: diffPaths(stripSystemTimestamps(baselineLive), stripSystemTimestamps(live)) });
++      }
++      items[itemId] = { phase, stagedCheck, liveAtBaseline };
++      continue;
++    }
++    if (!['published', 'published-verified'].includes(phase)) {
++      throw new RolloutError(`Unsupported resume phase ${phase} for ${itemId}.`, {
++        code: 'INVALID_RESUME_JOURNAL', details: { itemId, phase },
++      });
++    }
++    const liveImage = await verifyPlannedCmsImage(live.fieldData?.image, locals[itemId], fetchImpl,
++      state.publishedImage ?? submitted);
++    const liveCheck = compareTarget(baselineLive, live, liveImage);
++    const stagedLiveNonImageMatch = stable(withoutImage(staged)) === stable(withoutImage(live));
++    if (!liveCheck.ok || !stagedLiveNonImageMatch) {
++      throw resumeDrift(`Published replacement for ${itemId} cannot be reconciled.`, itemId, phase,
++        { liveCheck, stagedLiveNonImageMatch });
++    }
++    items[itemId] = { phase, stagedCheck, liveCheck, stagedLiveNonImageMatch };
++  }
++  return { ok: true, items, unrelatedStaged, unrelatedLive };
++}
++
++export async function preflightStageInvocation({ plan, batchId, journal, baseline, api, paths = DEFAULT_PATHS,
++  fetchImpl = fetch, dropParamsLoader = loadCurrentDropParams }) {
++  let fresh;
++  try {
++    fresh = await readFreshBatchSafetyState({ plan, batchId, api, paths, dropParamsLoader });
++  } catch (error) {
++    if (!baseline || error?.code === 'ACTIVE_REDEEM_TOKEN_CONFLICT') throw error;
++    throw resumeDrift(`Fresh resume safety read failed for ${batchId}: ${error.message}`,
++      error?.details?.itemId ?? requireBatch(plan, batchId).itemIds[0], null, { cause: publicError(error) });
++  }
++  if (!baseline) {
++    assertJournalResumeShape(plan, fresh.batch, journal);
++    if (Object.values(journal.items).some((item) => item.currentPhase !== 'pending' || item.reconciliationRequired)) {
++      throw new RolloutError(`${batchId} has journaled progress but no original baseline.`, {
++        code: 'INVALID_RESUME_JOURNAL', details: { itemId: fresh.batch.itemIds[0] },
++      });
++    }
++    assertPristinePreflight(fresh, batchId);
++    return { kind: 'first-run', fresh, baseline: { collection: fresh.collection, staged: fresh.staged, live: fresh.live },
++      validation: { ok: true, pristine: true } };
++  }
++  const validation = await validateResumeState({ plan, batch: fresh.batch, journal, baseline,
++    current: { staged: fresh.staged, live: fresh.live }, locals: fresh.locals, fetchImpl });
++  return { kind: 'resume', fresh, baseline, validation };
++}
++
++async function itemImageChecks({ plan, batch, current, paths, journal, fetchImpl, includeLive }) {
++  const checks = {};
++  for (const itemId of batch.itemIds) {
++    const plannedItem = requirePlanItem(plan, itemId);
++    const local = await localForPlanItem(paths, plannedItem);
++    const staged = exactlyOneCmsItem(current.staged.items, plannedItem, 'Current staged');
++    const live = exactlyOneCmsItem(current.live.items, plannedItem, 'Current live');
++    const submitted = journal.items[itemId]?.submittedImage ?? journal.items[itemId]?.resultingStagedImage;
++    checks[itemId] = {
++      staged: await verifyPlannedCmsImage(staged.fieldData?.image, local, fetchImpl, submitted),
++      live: includeLive ? await verifyPlannedCmsImage(live.fieldData?.image, local, fetchImpl, submitted) : null,
++    };
++  }
++  return checks;
++}
++
++function errorAttempt(phase, error, writeAttempted) {
++  const writeOutcome = error?.writeOutcome && error.writeOutcome !== 'not-attempted' ? error.writeOutcome :
++    (writeAttempted ? 'unknown' : 'not-attempted');
++  return {
++    phase,
++    status: ['unknown', 'applied-unverified'].includes(writeOutcome) ? 'reconciliation-required' : 'blocked',
++    writeOutcome,
++    error: publicError(error),
++  };
++}
++
++function preflightErrorAttempt(error, hadBaseline) {
++  const reconciliationRequired = hadBaseline && error?.code !== 'ACTIVE_REDEEM_TOKEN_CONFLICT';
++  return {
++    phase: 'stage-batch-preflight',
++    status: reconciliationRequired ? 'reconciliation-required' : 'blocked',
++    writeOutcome: 'not-attempted',
++    error: publicError(error),
++    details: { freshSafetyGate: true, baselineExisted: hadBaseline },
++  };
++}
++
++function preflightFailureItemId(batch, journal, error) {
++  const reported = error?.details?.itemId;
++  if (reported && journal.items?.[reported]) return reported;
++  return batch.itemIds.find((itemId) => journal.items?.[itemId]?.reconciliationRequired) ?? batch.itemIds[0];
++}
++
++export async function stageBatch({ plan, batchId, api, paths = DEFAULT_PATHS, fetchImpl = fetch,
++  dropParamsLoader = loadCurrentDropParams }) {
++  const batch = requireBatch(plan, batchId);
++  let journal = await loadBatchJournal(plan, batchId, paths.runtime);
++  const existingBaseline = await loadBaselineIfPresent(paths, batchId);
++  let invocationGate;
++  try {
++    invocationGate = await preflightStageInvocation({ plan, batchId, journal, baseline: existingBaseline,
++      api, paths, fetchImpl, dropParamsLoader });
++  } catch (error) {
++    if (error?.code !== 'INVALID_RESUME_JOURNAL') {
++      const itemId = preflightFailureItemId(batch, journal, error);
++      journal = recordItemAttempt(journal, itemId, preflightErrorAttempt(error, existingBaseline !== null));
++      await saveBatchJournal(journal, paths.runtime);
++    }
++    throw error;
++  }
++  const baseline = invocationGate.baseline;
++  if (!existingBaseline) await saveBaseline(paths, batchId, baseline);
++  const noStagePhases = new Set(['staged-verified', 'publish-approved', 'published', 'published-verified']);
++  const mutableItemIds = batch.itemIds.filter((itemId) => !noStagePhases.has(journal.items[itemId].currentPhase));
++  if (mutableItemIds.length === 0) {
++    return { result: { ok: true, idempotentNoop: true, freshSafetyGate: invocationGate.validation }, journal,
++      preflight: { kind: invocationGate.kind, cmsWritesPerformed: 0, baselineCreated: !existingBaseline } };
++  }
++  const collectionId = expectedCollectionId(plan, batch);
++  const assets = await api.listAssets();
++  for (const itemId of batch.itemIds) {
++    const plannedItem = requirePlanItem(plan, itemId);
++    if (noStagePhases.has(journal.items[itemId].currentPhase)) continue;
++    const local = await localForPlanItem(paths, plannedItem);
++    let writeAttempted = false;
++    try {
++      const before = await readCollectionStates(api, collectionId);
++      const stagedItem = exactlyOneCmsItem(before.staged.items, plannedItem, 'Current staged');
++      const liveItem = exactlyOneCmsItem(before.live.items, plannedItem, 'Current live');
++      const [stagedImage, liveImage] = await Promise.all([
++        verifyPlannedCmsImage(stagedItem.fieldData?.image, local, fetchImpl, journal.items[itemId].submittedImage),
++        verifyPlannedCmsImage(liveItem.fieldData?.image, local, fetchImpl, journal.items[itemId].submittedImage),
++      ]);
++      const action = determineIdempotentAction({ itemState: journal.items[itemId], localMatchesStaged: stagedImage.ok,
++        localMatchesLive: liveImage.ok, reusableUploadedAsset: journal.items[itemId].uploadedAsset });
++      if (action === 'reconcile-published') {
++        journal = recordItemAttempt(journal, itemId, { phase: 'published-verified', status: 'succeeded',
++          details: { idempotentAction: action }, patch: { publishedImage: liveItem.fieldData.image } });
++        await saveBatchJournal(journal, paths.runtime);
++        continue;
++      }
++      if (action !== 'verify-staged-noop') {
++        writeAttempted = true;
++        const asset = await ensureAsset({ api, plannedItem, local, itemState: journal.items[itemId], assets, fetchImpl });
++        journal = recordItemAttempt(journal, itemId, { phase: 'uploaded', status: 'succeeded', writeOutcome: 'applied-verified', patch: { uploadedAsset: asset } });
++        await saveBatchJournal(journal, paths.runtime);
++        const submittedImage = { fileId: asset.id, url: asset.hostedUrl, alt: null };
++        try { await api.patchImage(collectionId, itemId, plannedItem.localeId, submittedImage); }
++        catch (error) {
++          error.writeOutcome = 'unknown';
++          throw error;
++        }
++        journal = recordItemAttempt(journal, itemId, { phase: 'staged', status: 'succeeded', writeOutcome: 'applied-verified', patch: { submittedImage } });
++        await saveBatchJournal(journal, paths.runtime);
++      }
++      const current = await readCollectionStates(api, collectionId);
++      const resulting = exactlyOneCmsItem(current.staged.items, plannedItem, 'Resulting staged');
++      const verification = await verifyPlannedCmsImage(resulting.fieldData?.image, local, fetchImpl, journal.items[itemId].submittedImage);
++      const target = compareTarget(exactlyOneCmsItem(baseline.staged.items, plannedItem, 'Baseline staged'), resulting, verification);
++      const liveUnchanged = stable(stripSystemTimestamps(exactlyOneCmsItem(baseline.live.items, plannedItem, 'Baseline live'))) ===
++        stable(stripSystemTimestamps(exactlyOneCmsItem(current.live.items, plannedItem, 'Current live')));
++      const unrelatedLive = compareUnrelatedItems(baseline.live.items, current.live.items, batch.itemIds);
++      if (!target.ok || !liveUnchanged || !unrelatedLive.ok) {
++        throw new RolloutError(`Staged verification failed for ${itemId}.`, {
++          code: 'STAGED_VERIFICATION_FAILED', details: { target, liveUnchanged, unrelatedLive }, writeOutcome: 'applied-unverified',
++        });
++      }
++      journal = recordItemAttempt(journal, itemId, { phase: 'staged-verified', status: 'succeeded',
++        writeOutcome: writeAttempted ? 'applied-verified' : 'not-attempted',
++        details: { idempotentAction: action, normalization: verification.normalization },
++        patch: { resultingStagedImage: resulting.fieldData.image } });
++      await saveBatchJournal(journal, paths.runtime);
++    } catch (error) {
++      journal = recordItemAttempt(journal, itemId, errorAttempt('stage-batch', error, writeAttempted));
++      await saveBatchJournal(journal, paths.runtime);
++      throw error;
++    }
++  }
++  return verifyStagedBatch({ plan, batchId, api, paths, fetchImpl, journal });
++}
++
++export async function verifyStagedBatch({ plan, batchId, api, paths = DEFAULT_PATHS, fetchImpl = fetch, journal: suppliedJournal }) {
++  const batch = requireBatch(plan, batchId);
++  let journal = suppliedJournal ?? await loadBatchJournal(plan, batchId, paths.runtime);
++  const baseline = await loadBaseline(paths, batchId);
++  const current = await readCollectionStates(api, expectedCollectionId(plan, batch));
++  const checks = await itemImageChecks({ plan, batch, current, paths, journal, fetchImpl, includeLive: false });
++  const result = verifyBatchCollectionState({ plan, batch, baseline, current, imageChecks: checks });
++  if (!result.ok) throw new RolloutError(`Full staged batch verification failed for ${batchId}.`, { details: result });
++  for (const itemId of batch.itemIds) {
++    if (journal.items[itemId].currentPhase === 'published-verified') continue;
++    const currentItem = exactlyOneCmsItem(current.staged.items, requirePlanItem(plan, itemId), 'Verified staged');
++    journal = recordItemAttempt(journal, itemId, { phase: 'staged-verified', status: 'succeeded',
++      patch: { resultingStagedImage: currentItem.fieldData.image }, details: { batchReconciled: true } });
++  }
++  await saveBatchJournal(journal, paths.runtime);
++  await writeJson(path.join(paths.runtime, batchId, 'comparison.staged.json'), result);
++  return { result, journal };
++}
++
++export async function publishBatch({ plan, batchId, api, confirmation, paths = DEFAULT_PATHS, fetchImpl = fetch }) {
++  let journal = await loadBatchJournal(plan, batchId, paths.runtime);
++  const gate = await verifyStagedBatch({ plan, batchId, api, paths, fetchImpl, journal });
++  journal = approvePublish(plan, batchId, gate.journal, confirmation);
++  await saveBatchJournal(journal, paths.runtime);
++  const itemIds = journal.publishApproval.itemIds;
++  const batch = requireBatch(plan, batchId);
++  const collectionId = expectedCollectionId(plan, batch);
++  try { await api.publishItems(collectionId, itemIds); }
++  catch (error) {
++    for (const itemId of itemIds) journal = recordItemAttempt(journal, itemId, errorAttempt('publish-batch',
++      new RolloutError(`Publish outcome is unknown for ${batchId}.`, { details: publicError(error), writeOutcome: 'unknown' }), true));
++    await saveBatchJournal(journal, paths.runtime);
++    throw error;
++  }
++  for (const itemId of itemIds) journal = recordItemAttempt(journal, itemId, { phase: 'published', status: 'succeeded', writeOutcome: 'applied-verified' });
++  await saveBatchJournal(journal, paths.runtime);
++  return reconcilePublishedBatch({ plan, batchId, api, paths, fetchImpl, journal });
++}
++
++export async function reconcilePublishedBatch({ plan, batchId, api, paths = DEFAULT_PATHS, fetchImpl = fetch, journal: suppliedJournal }) {
++  const batch = requireBatch(plan, batchId);
++  let journal = suppliedJournal ?? await loadBatchJournal(plan, batchId, paths.runtime);
++  const baseline = await loadBaseline(paths, batchId);
++  const current = await readCollectionStates(api, expectedCollectionId(plan, batch));
++  const checks = await itemImageChecks({ plan, batch, current, paths, journal, fetchImpl, includeLive: true });
++  const result = verifyBatchCollectionState({ plan, batch, baseline, current, imageChecks: checks, requireLiveReplacement: true });
++  if (!result.ok) throw new RolloutError(`Published reconciliation failed for ${batchId}.`, {
++    code: 'PUBLISHED_RECONCILIATION_FAILED', details: result,
++  });
++  for (const itemId of batch.itemIds) {
++    const live = exactlyOneCmsItem(current.live.items, requirePlanItem(plan, itemId), 'Verified live');
++    journal = recordItemAttempt(journal, itemId, { phase: 'published-verified', status: 'succeeded',
++      details: { proof: 'fresh-authenticated-staged-and-live-cms-state', publishRequestPerformedByThisMode: false },
++      patch: { publishedImage: live.fieldData.image } });
++  }
++  await saveBatchJournal(journal, paths.runtime);
++  await writeJson(path.join(paths.runtime, batchId, 'comparison.published.json'), result);
++  return { result, journal, cmsWritesPerformed: 0, publishRequestsPerformed: 0 };
++}
++
++function markdownTable(items) {
++  const lines = [
++    '| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |',
++    '|---:|---|---:|---|---|---|---|---|---|---|',
++  ];
++  for (const item of items) {
++    lines.push(`| ${item.batchNumber ?? '—'} | ${item.collection} | ${item.tokenId} | ${item.title.replaceAll('|', '\\|')} | \`${item.cmsItemId}\` | \`${item.slug}\` | \`${item.localSourceImage}\` | \`${item.localSha256}\` | ${item.expectedDimensions.width}×${item.expectedDimensions.height} | ${item.migrationStatus}${item.skipReason ? ` — ${item.skipReason}` : ''} |`);
++  }
++  return lines.join('\n');
++}
++
++export function renderPlanMarkdown(plan) {
++  const batchSections = plan.batches.map((batch) => {
++    const members = batch.itemIds.map((id) => plan.items.find((item) => item.cmsItemId === id));
++    return `### ${batch.batchId} — ${batch.collection} (${batch.count})\n\n${markdownTable(members)}`;
++  }).join('\n\n');
++  const skipped = plan.items.filter((item) => item.migrationStatus === 'already-migrated');
++  return `# CMS-IMG-3 direct-map thumbnail rollout plan
++
++This deterministic plan was generated from \`${plan.sources.mapping}\`, current local image bytes, and \`${plan.sources.completion}\`. Content verification reuses \`${plan.sources.pilotImplementation}\`; pilot completion evidence is retained at \`${plan.sources.pilotEvidence}\`. The ordering rule is: ${plan.orderingRule}. The batching rule is: ${plan.batchingRule}.
++
++## Population
++
++- Total audited mappings: ${plan.counts.totalAuditedMappings}
++- Eligible direct-map mappings (including the completed pilot): ${plan.counts.eligibleDirectMapMappings}
++- Excluded HEN mappings: ${plan.counts.excludedHenMappings}
++- Already migrated: ${plan.counts.alreadyMigratedMappings}
++- Remaining CMS-IMG-3 rollout population: ${plan.counts.remainingRolloutMappings}
++- Remaining by collection: CANAAN ${plan.counts.rolloutByCollection.CANAAN}; THE 419 SCRIPT ${plan.counts.rolloutByCollection['THE 419 SCRIPT']}; INTRODUCTIONS ${plan.counts.rolloutByCollection.INTRODUCTIONS}
++
++HEN is explicitly ineligible for this rollout because its sparse mirror mapping belongs to CMS-IMG-4.
++
++## Already complete / skipped
++
++${markdownTable(skipped)}
++
++## Exact batches
++
++${batchSections}
++
++## Safety and publication boundary
++
++Every \`stage-batch\` invocation rereads current drop parameters and staged/live CMS state before another write is possible. The first invocation saves an immutable pre-write baseline; a resumed invocation must reconcile current state to that original baseline plus known journaled progress. Unexplained drift blocks execution and is never absorbed by refreshing the baseline.
++
++The lifecycle is fresh invocation safety gate → sequential stage and per-item verification → full staged-batch reconciliation → explicit human publish approval → exact-ID batch publish → fresh live CMS reconciliation. Staging never cascades into publication. The future \`publish-batch\` command requires the named batch, the exact staged-verified item IDs, an exact confirmation string, and no blocked or reconciliation-required item.
++
++Hard stops:
++
++${plan.hardStops.map((condition) => `- ${condition}`).join('\n')}
++
++## Execution boundary
++
++${plan.statement}
++`;
++}
++
++export async function generatePlan(paths = DEFAULT_PATHS) {
++  const [mapping, completions] = await Promise.all([readJson(paths.mapping), readJson(paths.completions)]);
++  const plan = await buildRolloutPlan({ mapping, completions, repoRoot: paths.repoRoot });
++  await Promise.all([
++    writeJson(paths.planJson, plan),
++    atomicWrite(paths.planMarkdown, `${renderPlanMarkdown(plan).trimEnd()}\n`),
++  ]);
++  return plan;
++}
++
++export async function rolloutStatus(plan, paths = DEFAULT_PATHS) {
++  const batches = [];
++  for (const batch of plan.batches) {
++    let journal = null;
++    try { journal = await loadBatchJournal(plan, batch.batchId, paths.runtime); }
++    catch (error) {
++      if (error?.code !== 'ENOENT') throw error;
++    }
++    const phases = journal ? Object.fromEntries(Object.entries(journal.items).map(([id, item]) => [id, {
++      phase: item.currentPhase,
++      lastSuccessfulPhase: item.lastSuccessfulPhase,
++      lastAttemptStatus: item.lastAttemptStatus,
++      reconciliationRequired: item.reconciliationRequired,
++    }])) : Object.fromEntries(batch.itemIds.map((id) => [id, { phase: 'pending', lastSuccessfulPhase: 'pending',
++      lastAttemptStatus: null, reconciliationRequired: false }]));
++    batches.push({ batchId: batch.batchId, collection: batch.collection, phases });
++  }
++  return { ticket: TICKET, batches };
++}
++
++function parseArguments(argv) {
++  const [mode, ...rest] = argv;
++  if (!MODES.includes(mode)) throw new RolloutError(`Usage: npm run cms:image-rollout -- <${MODES.join('|')}> [--batch B1]`);
++  let batchId = null;
++  for (let index = 0; index < rest.length; index += 1) {
++    if (rest[index] !== '--batch' || !rest[index + 1] || batchId !== null) throw new RolloutError('Only one --batch <batch-id> argument is supported.');
++    batchId = rest[index + 1];
++    index += 1;
++  }
++  if (mode !== 'plan' && mode !== 'status' && !batchId) throw new RolloutError(`${mode} requires --batch <batch-id>.`);
++  if ((mode === 'plan' || mode === 'status') && batchId) throw new RolloutError(`${mode} does not accept --batch.`);
++  return { mode, batchId };
++}
++
++export async function main({ argv = process.argv.slice(2), env = process.env, paths = DEFAULT_PATHS, fetchImpl = fetch } = {}) {
++  const { mode, batchId } = parseArguments(argv);
++  if (mode === 'plan') {
++    const plan = await generatePlan(paths);
++    console.log(JSON.stringify({ mode, counts: plan.counts, batches: plan.batches, externalWritesPerformed: 0 }, null, 2));
++    return { mode, plan, externalWritesPerformed: 0 };
++  }
++  const plan = await readJson(paths.planJson);
++  if (mode === 'status') {
++    const status = await rolloutStatus(plan, paths);
++    console.log(JSON.stringify(status, null, 2));
++    return { mode, status, externalWritesPerformed: 0 };
++  }
++  const api = new WebflowRolloutClient({ token: env.WEBFLOW_API_TOKEN, siteId: plan.site.siteId, fetchImpl });
++  let result;
++  if (mode === 'stage-batch') result = await stageBatch({ plan, batchId, api, paths, fetchImpl });
++  else if (mode === 'verify-staged') result = await verifyStagedBatch({ plan, batchId, api, paths, fetchImpl });
++  else if (mode === 'publish-batch') result = await publishBatch({ plan, batchId, api,
++    confirmation: env.CMS_IMG_3_PUBLISH_CONFIRM, paths, fetchImpl });
++  else result = await reconcilePublishedBatch({ plan, batchId, api, paths, fetchImpl });
++  console.log(JSON.stringify(redactRollout({ mode, batchId, result }), null, 2));
++  return { mode, batchId, result };
++}
++
++if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
++  main().catch((error) => {
++    console.error(redactRollout(error.message));
++    process.exitCode = 1;
++  });
++}
+diff --git a/assets/webflow-cms-image-rollout/cms-image-rollout.test.mjs b/assets/webflow-cms-image-rollout/cms-image-rollout.test.mjs
+new file mode 100644
+index 0000000..020da31
+--- /dev/null
++++ b/assets/webflow-cms-image-rollout/cms-image-rollout.test.mjs
+@@ -0,0 +1,698 @@
++import assert from 'node:assert/strict';
++import fs from 'node:fs/promises';
++import os from 'node:os';
++import path from 'node:path';
++import test from 'node:test';
++import { fileURLToPath } from 'node:url';
++
++import sharp from 'sharp';
++
++import { compareTarget, redact } from '../webflow-cms-image-pilot/cms-image-pilot.mjs';
++import {
++  COLLECTION_POLICY,
++  DEFAULT_PATHS,
++  ELIGIBLE_COLLECTIONS,
++  EXPECTED_COUNTS,
++  WRITE_CAPABLE_MODES,
++  WebflowRolloutClient,
++  approvePublish,
++  assertNoActiveRedeemTarget,
++  buildRolloutPlan,
++  compareUnrelatedItems,
++  determineIdempotentAction,
++  exactPublishItemIds,
++  generatePlan,
++  initialBatchJournal,
++  inspectLocalImage,
++  main,
++  publishConfirmation,
++  publishBatch,
++  redactRollout,
++  recordItemAttempt,
++  renderPlanMarkdown,
++  stageBatch,
++  validateCompletions,
++  validateMapping,
++  verifyPlannedCmsImage,
++  writeJson,
++} from './cms-image-rollout.mjs';
++
++const moduleDir = path.dirname(fileURLToPath(import.meta.url));
++const repoRoot = path.resolve(moduleDir, '..', '..');
++const mappingPath = path.join(repoRoot, 'docs', 'webflow-cms-image-audit', 'CMS-IMG-1.mapping.json');
++const completionsPath = path.join(repoRoot, 'docs', 'webflow-cms-image-audit', 'CMS-IMG-2.completion.json');
++const mapping = JSON.parse(await fs.readFile(mappingPath, 'utf8'));
++const completions = JSON.parse(await fs.readFile(completionsPath, 'utf8'));
++const plan = await buildRolloutPlan({ mapping, completions, repoRoot });
++
++function clone(value) {
++  return structuredClone(value);
++}
++
++function fakeCmsItem(plannedItem, image = { fileId: 'old-id', url: 'https://example.test/old.jpg', alt: null }) {
++  return {
++    id: plannedItem.cmsItemId,
++    cmsLocaleId: plannedItem.localeId,
++    isDraft: false,
++    isArchived: false,
++    lastUpdated: 'before',
++    fieldData: {
++      name: plannedItem.title,
++      slug: plannedItem.slug,
++      'token-id': plannedItem.tokenId,
++      image,
++      reference: 'preserve-me',
++    },
++  };
++}
++
++test('collection policy explicitly includes only direct-map collections and excludes HEN', () => {
++  assert.deepEqual(ELIGIBLE_COLLECTIONS, ['CANAAN', 'THE 419 SCRIPT', 'INTRODUCTIONS']);
++  assert.equal(COLLECTION_POLICY.HEN.eligible, false);
++  assert.match(COLLECTION_POLICY.HEN.reason, /CMS-IMG-4/);
++  assert.deepEqual(WRITE_CAPABLE_MODES, ['stage-batch', 'publish-batch']);
++});
++
++test('authoritative mapping validates expected collection counts and uniqueness', () => {
++  const result = validateMapping(mapping);
++  assert.deepEqual(result.counts, { CANAAN: 31, 'THE 419 SCRIPT': 13, HEN: 17, INTRODUCTIONS: 5 });
++  assert.equal(result.itemIds.size, 66);
++  assert.equal(result.tokens.size, 66);
++  assert.equal(result.localPaths.size, 66);
++});
++
++test('mapping validation rejects duplicate item IDs, duplicate tokens, duplicate paths, and unsupported collections', () => {
++  const duplicateItem = clone(mapping);
++  duplicateItem.items[1].cmsItemId = duplicateItem.items[0].cmsItemId;
++  assert.throws(() => validateMapping(duplicateItem), /Duplicate CMS item ID/);
++
++  const duplicateToken = clone(mapping);
++  const sameCollection = duplicateToken.items.find((item, index) => index > 0 && item.collection === duplicateToken.items[0].collection);
++  sameCollection.cmsTokenId = duplicateToken.items[0].cmsTokenId;
++  sameCollection.localNumericBasename = duplicateToken.items[0].cmsTokenId;
++  assert.throws(() => validateMapping(duplicateToken), /Duplicate collection\/token/);
++
++  const duplicatePath = clone(mapping);
++  duplicatePath.items[1].localApprovedJpegPath = duplicatePath.items[0].localApprovedJpegPath;
++  assert.throws(() => validateMapping(duplicatePath), /Duplicate local path/);
++
++  const unsupported = clone(mapping);
++  unsupported.items[0].collection = 'UNKNOWN';
++  assert.throws(() => validateMapping(unsupported), /Unsupported collection/);
++});
++
++test('mapping validation rejects non-direct basename identity and ambiguity', () => {
++  const offByOne = clone(mapping);
++  offByOne.items[0].localNumericBasename += 1;
++  assert.throws(() => validateMapping(offByOne), /numeric basename/);
++  const ambiguous = clone(mapping);
++  ambiguous.items[0].mappingConfidence = 'MEDIUM';
++  assert.throws(() => validateMapping(ambiguous), /not an unambiguous HIGH-confidence mapping/);
++});
++
++test('completion authority identifies exactly CANAAN token 1 as published-verified', () => {
++  const completed = validateCompletions(completions, mapping);
++  assert.equal(completed.size, 1);
++  const pilot = completed.get('65a1bf3dc64d193880da0093');
++  assert.equal(pilot.collection, 'CANAAN');
++  assert.equal(pilot.cmsTokenId, 1);
++  assert.equal(pilot.status, 'published-verified');
++  assert.ok(pilot.evidence.length >= 1);
++});
++
++test('completion validation rejects unknown, duplicate, or non-verified records', () => {
++  const unknown = clone(completions);
++  unknown.items[0].cmsItemId = 'unknown';
++  assert.throws(() => validateCompletions(unknown, mapping), /absent from the mapping/);
++  const duplicate = clone(completions);
++  duplicate.items.push(clone(duplicate.items[0]));
++  assert.throws(() => validateCompletions(duplicate, mapping), /Duplicate completion/);
++  const incomplete = clone(completions);
++  incomplete.items[0].status = 'published';
++  assert.throws(() => validateCompletions(incomplete, mapping), /not published-verified/);
++});
++
++test('planner produces exactly 48 remaining items and excludes all HEN items', () => {
++  assert.equal(plan.counts.totalAuditedMappings, EXPECTED_COUNTS.audited);
++  assert.equal(plan.counts.eligibleDirectMapMappings, EXPECTED_COUNTS.eligible);
++  assert.equal(plan.counts.excludedHenMappings, EXPECTED_COUNTS.excluded);
++  assert.equal(plan.counts.alreadyMigratedMappings, EXPECTED_COUNTS.completed);
++  assert.equal(plan.counts.remainingRolloutMappings, EXPECTED_COUNTS.rollout);
++  assert.deepEqual(plan.counts.rolloutByCollection, { CANAAN: 30, 'THE 419 SCRIPT': 13, INTRODUCTIONS: 5 });
++  assert.equal(plan.items.some((item) => item.collection === 'HEN'), false);
++});
++
++test('planner shows CANAAN token 1 as an explained skip rather than silently omitting it', () => {
++  const pilot = plan.items.find((item) => item.collection === 'CANAAN' && item.tokenId === 1);
++  assert.equal(pilot.cmsItemId, '65a1bf3dc64d193880da0093');
++  assert.equal(pilot.batchId, null);
++  assert.equal(pilot.migrationStatus, 'already-migrated');
++  assert.match(pilot.skipReason, /CMS-IMG-2/);
++});
++
++test('batching is deterministic, collection-local, and starts with exactly five derived CANAAN items', async () => {
++  const second = await buildRolloutPlan({ mapping, completions, repoRoot });
++  assert.deepEqual(second.batches, plan.batches);
++  assert.deepEqual(plan.batches.map((batch) => [batch.batchId, batch.collection, batch.count]), [
++    ['B1', 'CANAAN', 5],
++    ['B2', 'CANAAN', 13],
++    ['B3', 'CANAAN', 12],
++    ['B4', 'THE 419 SCRIPT', 13],
++    ['B5', 'INTRODUCTIONS', 5],
++  ]);
++  const first = plan.batches[0].itemIds.map((id) => plan.items.find((item) => item.cmsItemId === id));
++  assert.deepEqual(first.map((item) => item.tokenId), [0, 2, 3, 4, 5]);
++  assert.equal(new Set(plan.batches.flatMap((batch) => batch.itemIds)).size, 48);
++});
++
++test('all planned local paths are unique, valid, hashed, and dimension checked', () => {
++  const rolloutItems = plan.items.filter((item) => item.migrationStatus === 'pending');
++  assert.equal(new Set(rolloutItems.map((item) => item.localSourceImage)).size, 48);
++  for (const item of rolloutItems) {
++    assert.match(item.localSha256, /^[a-f0-9]{64}$/);
++    assert.equal(item.expectedDimensions.width, 300);
++    assert.ok([375, 386].includes(item.expectedDimensions.height));
++  }
++});
++
++test('local inspection rejects a missing path and path traversal', async () => {
++  const item = mapping.items.find((candidate) => candidate.collection === 'CANAAN');
++  await assert.rejects(inspectLocalImage(repoRoot, { ...item, localApprovedJpegPath: 'missing.jpg' }), /Missing local image/);
++  await assert.rejects(inspectLocalImage(repoRoot, { ...item, localApprovedJpegPath: '../outside.jpg' }), /escapes the repository/);
++});
++
++test('journal success transitions and blocked attempts preserve the last successful phase', () => {
++  let journal = initialBatchJournal(plan, 'B1', '2026-08-17T00:00:00.000Z');
++  const itemId = plan.batches[0].itemIds[0];
++  journal = recordItemAttempt(journal, itemId, { phase: 'uploaded', status: 'succeeded',
++    writeOutcome: 'applied-verified', patch: { uploadedAsset: { id: 'asset', verifiedSha256: journal.items[itemId].localSha256 } } }, '2026-08-17T00:01:00.000Z');
++  journal = recordItemAttempt(journal, itemId, { phase: 'stage-batch', status: 'blocked',
++    error: { message: 'pre-write rejection' } }, '2026-08-17T00:02:00.000Z');
++  const state = journal.items[itemId];
++  assert.equal(state.currentPhase, 'uploaded');
++  assert.equal(state.lastSuccessfulPhase, 'uploaded');
++  assert.equal(state.lastAttemptStatus, 'blocked');
++  assert.equal(state.attempts.length, 2);
++  assert.equal(state.blockedAttempts.length, 1);
++  assert.equal(state.reconciliationRequired, false);
++});
++
++test('unknown write outcome preserves durable phase and requires reconciliation', () => {
++  let journal = initialBatchJournal(plan, 'B1');
++  const itemId = plan.batches[0].itemIds[0];
++  journal = recordItemAttempt(journal, itemId, { phase: 'uploaded', status: 'succeeded' });
++  journal = recordItemAttempt(journal, itemId, { phase: 'stage-batch', status: 'reconciliation-required',
++    writeOutcome: 'unknown', error: { message: 'connection lost' } });
++  assert.equal(journal.items[itemId].currentPhase, 'uploaded');
++  assert.equal(journal.items[itemId].lastSuccessfulPhase, 'uploaded');
++  assert.equal(journal.items[itemId].reconciliationRequired, true);
++});
++
++test('invalid per-item state transitions are rejected', () => {
++  const journal = initialBatchJournal(plan, 'B1');
++  const itemId = plan.batches[0].itemIds[0];
++  assert.throws(() => recordItemAttempt(journal, itemId, { phase: 'published', status: 'succeeded' }), /Invalid state transition/);
++});
++
++test('idempotency chooses reconciliation, no-op stage verification, asset reuse, then upload', () => {
++  const state = { localSha256: 'expected', reconciliationRequired: false };
++  assert.equal(determineIdempotentAction({ itemState: { ...state, reconciliationRequired: true } }), 'reconcile-required');
++  assert.equal(determineIdempotentAction({ itemState: state, localMatchesLive: true }), 'reconcile-published');
++  assert.equal(determineIdempotentAction({ itemState: state, localMatchesStaged: true }), 'verify-staged-noop');
++  assert.equal(determineIdempotentAction({ itemState: state, reusableUploadedAsset: { verifiedSha256: 'expected' } }), 'reuse-upload');
++  assert.equal(determineIdempotentAction({ itemState: state }), 'upload-and-stage');
++});
++
++test('preflight policy rejects the configured active redeem token', () => {
++  const active = plan.items.find((item) => item.collection === 'CANAAN' && item.tokenId === 29);
++  assert.throws(() => assertNoActiveRedeemTarget([active], { redeemToken: { collection: 'CANAAN', tokenId: '29' } }),
++    /configured active redeem token/);
++  assert.doesNotThrow(() => assertNoActiveRedeemTarget(
++    plan.batches[0].itemIds.map((id) => plan.items.find((item) => item.cmsItemId === id)),
++    { redeemToken: { collection: 'CANAAN', tokenId: '29' } },
++  ));
++});
++
++test('normalized Webflow image identity is accepted through content verification', async () => {
++  const plannedItem = plan.items.find((item) => item.collection === 'CANAAN' && item.tokenId === 0);
++  const local = await inspectLocalImage(repoRoot, mapping.items.find((item) => item.cmsItemId === plannedItem.cmsItemId));
++  const normalized = await sharp(local.bytes).jpeg({ quality: 91, progressive: true }).toBuffer();
++  const image = { fileId: 'cms-normalized-id', url: 'https://example.test/normalized.jpeg', alt: null };
++  const submitted = { fileId: 'submitted-asset-id', url: 'https://example.test/original.jpg', alt: null };
++  const verification = await verifyPlannedCmsImage(image, local, async () => new Response(normalized, {
++    status: 200, headers: { 'content-type': 'image/jpeg' },
++  }), submitted);
++  assert.equal(verification.ok, true);
++  assert.equal(verification.normalization.fileIdChanged, true);
++  assert.equal(verification.normalization.urlChanged, true);
++});
++
++test('content verification rejects changed dimensions', async () => {
++  const plannedItem = plan.items.find((item) => item.collection === 'CANAAN' && item.tokenId === 0);
++  const local = await inspectLocalImage(repoRoot, mapping.items.find((item) => item.cmsItemId === plannedItem.cmsItemId));
++  const resized = await sharp(local.bytes).resize(299, 375, { fit: 'fill' }).jpeg().toBuffer();
++  const verification = await verifyPlannedCmsImage({ fileId: 'id', url: 'https://example.test/image.jpeg', alt: null }, local,
++    async () => new Response(resized, { status: 200, headers: { 'content-type': 'image/jpeg' } }));
++  assert.equal(verification.ok, false);
++  assert.equal(verification.content.dimensionsMatch, false);
++});
++
++test('non-image and unrelated-item drift are hard failures', () => {
++  const first = plan.items.find((item) => item.cmsItemId === plan.batches[0].itemIds[0]);
++  const second = plan.items.find((item) => item.cmsItemId === plan.batches[0].itemIds[1]);
++  const before = fakeCmsItem(first);
++  const after = clone(before);
++  after.fieldData.reference = 'drifted';
++  const target = compareTarget(before, after, { ok: true, image: after.fieldData.image });
++  assert.equal(target.ok, false);
++  assert.deepEqual(target.nonImageDifferences, ['fieldData.reference']);
++
++  const beforeItems = [before, fakeCmsItem(second)];
++  const afterItems = clone(beforeItems);
++  afterItems[1].fieldData.name = 'UNRELATED DRIFT';
++  const unrelated = compareUnrelatedItems(beforeItems, afterItems, [first.cmsItemId]);
++  assert.equal(unrelated.ok, false);
++});
++
++function stagedVerifiedJournal() {
++  let journal = initialBatchJournal(plan, 'B1', '2026-08-17T00:00:00.000Z');
++  for (const itemId of plan.batches[0].itemIds) {
++    journal = recordItemAttempt(journal, itemId, { phase: 'staged-verified', status: 'succeeded',
++      patch: { resultingStagedImage: { fileId: `cms-${itemId}`, url: `https://example.test/${itemId}.jpeg`, alt: null } } });
++  }
++  return journal;
++}
++
++test('publish gating constructs the exact ordered batch ID set and requires exact confirmation', () => {
++  const journal = stagedVerifiedJournal();
++  const expectedIds = plan.batches[0].itemIds;
++  assert.deepEqual(exactPublishItemIds(plan, 'B1', journal), expectedIds);
++  const confirmation = publishConfirmation('B1', expectedIds);
++  const approved = approvePublish(plan, 'B1', journal, confirmation, '2026-08-17T01:00:00.000Z');
++  assert.deepEqual(approved.publishApproval.itemIds, expectedIds);
++  assert.ok(Object.values(approved.items).every((item) => item.currentPhase === 'publish-approved'));
++  assert.throws(() => approvePublish(plan, 'B1', journal, `${confirmation}-wrong`), /confirmation is missing/);
++});
++
++test('publish gating rejects blocked and reconciliation-required items', () => {
++  let journal = stagedVerifiedJournal();
++  const itemId = plan.batches[0].itemIds[0];
++  journal = recordItemAttempt(journal, itemId, { phase: 'publish-batch', status: 'blocked', error: { message: 'blocked' } });
++  assert.throws(() => exactPublishItemIds(plan, 'B1', journal), /not publish eligible/);
++  journal.items[itemId].reconciliationRequired = true;
++  assert.throws(() => exactPublishItemIds(plan, 'B1', journal), /not publish eligible/);
++});
++
++test('generalized Webflow client patches only Image and publishes only exact item IDs through mocks', async () => {
++  const requests = [];
++  const client = new WebflowRolloutClient({ token: 'mock-token', siteId: plan.site.siteId, fetchImpl: async (url, options) => {
++    requests.push({ url, options });
++    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
++  } });
++  const item = plan.items.find((candidate) => candidate.cmsItemId === plan.batches[0].itemIds[0]);
++  const image = { fileId: 'asset-id', url: 'https://example.test/asset.jpg', alt: null };
++  await client.patchImage(item.collectionId, item.cmsItemId, item.localeId, image);
++  await client.publishItems(item.collectionId, plan.batches[0].itemIds);
++  assert.equal(requests[0].options.method, 'PATCH');
++  assert.match(requests[0].url, /skipInvalidFiles=false$/);
++  assert.deepEqual(JSON.parse(requests[0].options.body), {
++    items: [{ id: item.cmsItemId, cmsLocaleId: item.localeId, fieldData: { image } }],
++  });
++  assert.equal(requests[1].options.method, 'POST');
++  assert.deepEqual(JSON.parse(requests[1].options.body), { itemIds: plan.batches[0].itemIds });
++});
++
++test('mocked batch stages five sequentially without publishing, then exact publish reconciles live state', async (t) => {
++  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-3-stage-mock-'));
++  t.after(() => fs.rm(temp, { recursive: true, force: true }));
++  const paths = { ...DEFAULT_PATHS, runtime: path.join(temp, 'runtime') };
++  const members = plan.batches[0].itemIds.map((id) => plan.items.find((item) => item.cmsItemId === id));
++  const oldBytes = await sharp({ create: { width: 300, height: 375, channels: 3, background: '#000000' } })
++    .jpeg({ progressive: true }).toBuffer();
++  let stagedItems = members.map((item) => fakeCmsItem(item, { fileId: `old-${item.cmsItemId}`,
++    url: `https://old.example.test/${item.cmsItemId}.jpg`, alt: null }));
++  let liveItems = clone(stagedItems);
++  const uploaded = new Map();
++  const patchCalls = [];
++  let publishCalls = 0;
++  let collectionReads = 0;
++  let itemReads = 0;
++  const api = {
++    getCollection: async (collectionId) => { collectionReads += 1; return { id: collectionId }; },
++    listItems: async (_collectionId, type) => {
++      itemReads += 1;
++      return { items: clone(type === 'live' ? liveItems : stagedItems), pagination: { total: members.length } };
++    },
++    listAssets: async () => [],
++    createAsset: async (fileName) => {
++      const item = members.find((candidate) => fileName.includes(`-${candidate.tokenId}-`));
++      const metadata = { id: `asset-${item.cmsItemId}`, originalFileName: fileName,
++        hostedUrl: `https://assets.example.test/${item.cmsItemId}.jpg`,
++        uploadUrl: `https://upload.example.test/${item.cmsItemId}`, uploadDetails: { key: item.cmsItemId } };
++      uploaded.set(metadata.id, { metadata, item });
++      return metadata;
++    },
++    getAsset: async (assetId) => uploaded.get(assetId).metadata,
++    patchImage: async (_collectionId, itemId, localeId, image) => {
++      patchCalls.push({ itemId, localeId, image });
++      stagedItems = stagedItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
++      return { items: [{ id: itemId }] };
++    },
++    publishItems: async (_collectionId, itemIds) => {
++      assert.deepEqual(itemIds, plan.batches[0].itemIds);
++      publishCalls += 1;
++      liveItems = clone(stagedItems);
++    },
++  };
++  const localBytes = new Map();
++  for (const item of members) localBytes.set(item.cmsItemId, await fs.readFile(path.join(repoRoot, item.localSourceImage)));
++  const fetchImpl = async (url, options = {}) => {
++    if (options.method === 'POST') return new Response('', { status: 201 });
++    const oldMatch = /old\.example\.test\/([a-f0-9]+)\.jpg/.exec(url);
++    if (oldMatch) return new Response(oldBytes, { status: 200, headers: { 'content-type': 'image/jpeg' } });
++    const assetMatch = /assets\.example\.test\/([a-f0-9]+)\.jpg/.exec(url);
++    if (assetMatch) return new Response(localBytes.get(assetMatch[1]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
++    throw new Error(`Unexpected mocked URL ${url}`);
++  };
++  const result = await stageBatch({ plan, batchId: 'B1', api, paths, fetchImpl });
++  const originalBaseline = JSON.parse(await fs.readFile(path.join(paths.runtime, 'B1', 'baseline.json'), 'utf8'));
++  assert.equal(originalBaseline.collection.id, members[0].collectionId);
++  assert.ok(collectionReads >= 1);
++  assert.ok(itemReads >= 2);
++  assert.equal(patchCalls.length, 5);
++  assert.equal(publishCalls, 0);
++  assert.equal(result.result.ok, true);
++  assert.ok(Object.values(result.journal.items).every((item) => item.currentPhase === 'staged-verified'));
++  assert.ok(Object.values(result.journal.items).every((item) => item.reconciliationRequired === false));
++
++  const confirmation = publishConfirmation('B1', plan.batches[0].itemIds);
++  const published = await publishBatch({ plan, batchId: 'B1', api, confirmation, paths, fetchImpl });
++  assert.equal(publishCalls, 1);
++  assert.equal(published.result.ok, true);
++  assert.ok(Object.values(published.journal.items).every((item) => item.currentPhase === 'published-verified'));
++});
++
++async function createResumeFixture(t) {
++  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-3-resume-'));
++  t.after(() => fs.rm(temp, { recursive: true, force: true }));
++  const paths = { ...DEFAULT_PATHS, runtime: path.join(temp, 'runtime') };
++  const batch = plan.batches[0];
++  const members = batch.itemIds.map((id) => plan.items.find((item) => item.cmsItemId === id));
++  const originalItems = members.map((item) => fakeCmsItem(item, { fileId: `old-${item.cmsItemId}`,
++    url: `https://old.example.test/${item.cmsItemId}.jpg`, alt: null }));
++  let stagedItems = clone(originalItems);
++  let liveItems = clone(originalItems);
++  let dropParams = { redeemToken: { collection: 'CANAAN', tokenId: '29' } };
++  const oldBytes = await sharp({ create: { width: 300, height: 375, channels: 3, background: '#000000' } })
++    .jpeg({ progressive: true }).toBuffer();
++  const localBytes = new Map();
++  for (const item of members) localBytes.set(item.cmsItemId, await fs.readFile(path.join(repoRoot, item.localSourceImage)));
++  const assets = new Map();
++  const calls = { dropParams: 0, collectionReads: 0, itemReads: 0, listAssets: 0,
++    createAsset: 0, upload: 0, patchImage: 0, publishItems: 0 };
++  const api = {
++    getCollection: async (collectionId) => { calls.collectionReads += 1; return { id: collectionId }; },
++    listItems: async (_collectionId, type) => {
++      calls.itemReads += 1;
++      return { items: clone(type === 'live' ? liveItems : stagedItems), pagination: { total: members.length } };
++    },
++    listAssets: async () => { calls.listAssets += 1; return []; },
++    createAsset: async (fileName) => {
++      calls.createAsset += 1;
++      const item = members.find((candidate) => fileName.includes(`-${candidate.tokenId}-`));
++      const metadata = { id: `asset-${item.cmsItemId}`, originalFileName: fileName,
++        hostedUrl: `https://assets.example.test/${item.cmsItemId}.jpg`,
++        uploadUrl: `https://upload.example.test/${item.cmsItemId}`, uploadDetails: { key: item.cmsItemId } };
++      assets.set(metadata.id, metadata);
++      return metadata;
++    },
++    getAsset: async (assetId) => assets.get(assetId),
++    patchImage: async (_collectionId, itemId, _localeId, image) => {
++      calls.patchImage += 1;
++      stagedItems = stagedItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
++      return { items: [{ id: itemId }] };
++    },
++    publishItems: async () => { calls.publishItems += 1; liveItems = clone(stagedItems); },
++  };
++  const fetchImpl = async (url, options = {}) => {
++    if (options.method === 'POST') { calls.upload += 1; return new Response('', { status: 201 }); }
++    const oldMatch = /old\.example\.test\/([a-f0-9]+)\.jpg/.exec(url);
++    if (oldMatch) return new Response(oldBytes, { status: 200, headers: { 'content-type': 'image/jpeg' } });
++    const assetMatch = /(?:assets|cms)\.example\.test\/([a-f0-9]+)\.jpg/.exec(url);
++    if (assetMatch) return new Response(localBytes.get(assetMatch[1]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
++    throw new Error(`Unexpected mocked URL ${url}`);
++  };
++  const dropParamsLoader = async () => { calls.dropParams += 1; return clone(dropParams); };
++  const baseline = { collection: { id: members[0].collectionId },
++    staged: { items: clone(originalItems), pagination: { total: members.length } },
++    live: { items: clone(originalItems), pagination: { total: members.length } } };
++  let journal = initialBatchJournal(plan, 'B1', '2026-08-17T00:00:00.000Z');
++  const persist = async () => {
++    await writeJson(path.join(paths.runtime, 'B1', 'baseline.json'), baseline);
++    await writeJson(path.join(paths.runtime, 'B1', 'journal.json'), journal);
++  };
++  const setStagedVerified = (itemId) => {
++    const image = { fileId: `cms-${itemId}`, url: `https://cms.example.test/${itemId}.jpg`, alt: null };
++    stagedItems = stagedItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
++    journal = recordItemAttempt(journal, itemId, { phase: 'staged-verified', status: 'succeeded',
++      patch: { submittedImage: image, resultingStagedImage: image } }, '2026-08-17T00:01:00.000Z');
++  };
++  const setPublishedVerified = (itemId) => {
++    const image = { fileId: `cms-${itemId}`, url: `https://cms.example.test/${itemId}.jpg`, alt: null };
++    stagedItems = stagedItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
++    liveItems = liveItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
++    journal = recordItemAttempt(journal, itemId, { phase: 'published-verified', status: 'succeeded',
++      patch: { submittedImage: image, resultingStagedImage: image, publishedImage: image } }, '2026-08-17T00:02:00.000Z');
++  };
++  const mutationCount = () => calls.createAsset + calls.upload + calls.patchImage + calls.publishItems;
++  return {
++    paths, batch, members, baseline, api, fetchImpl, dropParamsLoader, calls, mutationCount,
++    get journal() { return journal; },
++    set journal(value) { journal = value; },
++    get stagedItems() { return stagedItems; },
++    set stagedItems(value) { stagedItems = value; },
++    get liveItems() { return liveItems; },
++    set liveItems(value) { liveItems = value; },
++    setDropParams(value) { dropParams = value; },
++    persist, setStagedVerified, setPublishedVerified,
++  };
++}
++
++test('clean resume freshly validates staged progress and permits the next pending item', async (t) => {
++  const fixture = await createResumeFixture(t);
++  fixture.setStagedVerified(fixture.batch.itemIds[0]);
++  await fixture.persist();
++  const result = await stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
++  assert.equal(result.result.ok, true);
++  assert.equal(fixture.calls.dropParams, 1);
++  assert.ok(fixture.calls.itemReads >= 2);
++  assert.equal(fixture.calls.patchImage, 4);
++  assert.ok(Object.values(result.journal.items).every((item) => item.currentPhase === 'staged-verified'));
++});
++
++test('resume rereads drop params and blocks a newly active target before any mutation', async (t) => {
++  const fixture = await createResumeFixture(t);
++  await fixture.persist();
++  fixture.setDropParams({ redeemToken: { collection: 'CANAAN', tokenId: '0' } });
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /configured active redeem token/);
++  assert.equal(fixture.calls.dropParams, 1);
++  assert.equal(fixture.mutationCount(), 0);
++  const journal = JSON.parse(await fs.readFile(path.join(fixture.paths.runtime, 'B1', 'journal.json'), 'utf8'));
++  assert.equal(journal.items[fixture.batch.itemIds[0]].lastAttemptStatus, 'blocked');
++  assert.equal(journal.items[fixture.batch.itemIds[0]].reconciliationRequired, false);
++});
++
++test('pending staged-image drift blocks resume before any mutation', async (t) => {
++  const fixture = await createResumeFixture(t);
++  const itemId = fixture.batch.itemIds[1];
++  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === itemId ?
++    { ...item, fieldData: { ...item.fieldData, image: { fileId: 'external', url: 'https://old.example.test/external.jpg', alt: null } } } : item);
++  await fixture.persist();
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /no longer matches its original CMS baseline/);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('unexpected live Image drift blocks resume before any mutation', async (t) => {
++  const fixture = await createResumeFixture(t);
++  const itemId = fixture.batch.itemIds[2];
++  fixture.liveItems = fixture.liveItems.map((item) => item.id === itemId ?
++    { ...item, fieldData: { ...item.fieldData, image: { fileId: 'external', url: 'https://old.example.test/external.jpg', alt: null } } } : item);
++  await fixture.persist();
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /no longer matches its original CMS baseline/);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('unexpected non-image drift blocks resume before any mutation', async (t) => {
++  const fixture = await createResumeFixture(t);
++  const itemId = fixture.batch.itemIds[3];
++  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === itemId ?
++    { ...item, fieldData: { ...item.fieldData, reference: 'external-drift' } } : item);
++  await fixture.persist();
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /no longer matches its original CMS baseline/);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('unrelated-item drift blocks resume before any mutation', async (t) => {
++  const fixture = await createResumeFixture(t);
++  const unrelated = { id: 'unrelated-item', cmsLocaleId: fixture.members[0].localeId,
++    isDraft: false, isArchived: false, fieldData: { name: 'UNRELATED', slug: 'unrelated', image: null, note: 'baseline' } };
++  fixture.baseline.staged.items.push(clone(unrelated));
++  fixture.baseline.live.items.push(clone(unrelated));
++  fixture.stagedItems = [...fixture.stagedItems, { ...clone(unrelated), fieldData: { ...unrelated.fieldData, note: 'external-drift' } }];
++  fixture.liveItems = [...fixture.liveItems, clone(unrelated)];
++  await fixture.persist();
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /Unrelated collection state drifted/);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('fully staged-verified resume passes fresh safety gate as a no-op', async (t) => {
++  const fixture = await createResumeFixture(t);
++  for (const itemId of fixture.batch.itemIds) fixture.setStagedVerified(itemId);
++  await fixture.persist();
++  const result = await stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
++  assert.equal(result.result.idempotentNoop, true);
++  assert.equal(fixture.calls.dropParams, 1);
++  assert.ok(fixture.calls.itemReads >= 2);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('disappeared staged-verified content blocks and preserves the successful phase', async (t) => {
++  const fixture = await createResumeFixture(t);
++  for (const itemId of fixture.batch.itemIds) fixture.setStagedVerified(itemId);
++  await fixture.persist();
++  const itemId = fixture.batch.itemIds[0];
++  fixture.stagedItems = fixture.stagedItems.map((item, index) => index === 0 ? clone(fixture.baseline.staged.items[0]) : item);
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /cannot be verified/);
++  assert.equal(fixture.mutationCount(), 0);
++  const journal = JSON.parse(await fs.readFile(path.join(fixture.paths.runtime, 'B1', 'journal.json'), 'utf8'));
++  assert.equal(journal.items[itemId].currentPhase, 'staged-verified');
++  assert.equal(journal.items[itemId].lastSuccessfulPhase, 'staged-verified');
++  assert.equal(journal.items[itemId].lastAttemptStatus, 'reconciliation-required');
++  assert.equal(journal.items[itemId].blockedAttempts.length, 1);
++  assert.equal(journal.items[itemId].errors.length, 1);
++});
++
++test('published-verified resume reconciles staged/live content and introduces no publication', async (t) => {
++  const fixture = await createResumeFixture(t);
++  for (const itemId of fixture.batch.itemIds) fixture.setPublishedVerified(itemId);
++  await fixture.persist();
++  const result = await stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
++  assert.equal(result.result.idempotentNoop, true);
++  assert.equal(fixture.calls.publishItems, 0);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('existing reconciliation-required state refuses another stage mutation', async (t) => {
++  const fixture = await createResumeFixture(t);
++  const itemId = fixture.batch.itemIds[0];
++  fixture.journal = recordItemAttempt(fixture.journal, itemId, { phase: 'stage-batch',
++    status: 'reconciliation-required', writeOutcome: 'unknown', error: { message: 'uncertain outcome' } });
++  await fixture.persist();
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /already requires reconciliation/);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('unknown journal phase hard-stops without rewriting journal state', async (t) => {
++  const fixture = await createResumeFixture(t);
++  const itemId = fixture.batch.itemIds[0];
++  fixture.journal.items[itemId].currentPhase = 'unknown-phase';
++  await fixture.persist();
++  const journalPath = path.join(fixture.paths.runtime, 'B1', 'journal.json');
++  const before = await fs.readFile(journalPath);
++  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /Unknown or inconsistent journal state/);
++  const after = await fs.readFile(journalPath);
++  assert.deepEqual(after, before);
++  assert.equal(fixture.mutationCount(), 0);
++});
++
++test('resume preflight never overwrites the original durable baseline', async (t) => {
++  const fixture = await createResumeFixture(t);
++  for (const itemId of fixture.batch.itemIds) fixture.setStagedVerified(itemId);
++  await fixture.persist();
++  const baselinePath = path.join(fixture.paths.runtime, 'B1', 'baseline.json');
++  const before = await fs.readFile(baselinePath);
++  await stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
++    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
++  const after = await fs.readFile(baselinePath);
++  assert.deepEqual(after, before);
++});
++
++test('plan Markdown contains counts, exact batch 1, hard stops, publication boundary, and no-write statement', () => {
++  const markdown = renderPlanMarkdown(plan);
++  assert.match(markdown, /docs\/webflow-cms-image-audit\/CMS-IMG-1\.mapping\.json/);
++  assert.match(markdown, /assets\/webflow-cms-image-pilot\/cms-image-pilot\.mjs/);
++  assert.match(markdown, /Total audited mappings: 66/);
++  assert.match(markdown, /Remaining CMS-IMG-3 rollout population: 48/);
++  assert.match(markdown, /B1 — CANAAN \(5\)/);
++  assert.match(markdown, /HEN is explicitly ineligible/);
++  assert.match(markdown, /saves an immutable pre-write baseline/);
++  assert.match(markdown, /resumed invocation must reconcile current state/);
++  assert.match(markdown, /Staging never cascades into publication/);
++  assert.match(markdown, /No Webflow request or write was performed/);
++});
++
++test('runtime path is ignored and tracked plans contain no secrets or signed URLs', async () => {
++  const ignore = await fs.readFile(path.join(repoRoot, '.gitignore'), 'utf8');
++  assert.match(ignore, /assets\/webflow-cms-image-rollout\/runtime\//);
++  const serialized = JSON.stringify(plan);
++  assert.doesNotMatch(serialized, /WEBFLOW_API_TOKEN|Bearer\s|X-Amz-|Signature=|Credential=/i);
++  assert.equal(plan.externalWritesPerformed, 0);
++  assert.equal(plan.items.find((item) => item.collection === 'CANAAN' && item.cmsItemId === '65a1bef667f967865601b215').tokenId, 0);
++});
++
++test('structured writes redact secrets and signed query values', async (t) => {
++  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-3-redact-'));
++  t.after(() => fs.rm(temp, { recursive: true, force: true }));
++  const file = path.join(temp, 'journal.json');
++  await writeJson(file, { token: 'secret-token', authorization: 'Bearer abc',
++    url: 'https://example.test/file?X-Amz-Signature=abc&Credential=def', safe: 'value' });
++  const written = await fs.readFile(file, 'utf8');
++  assert.doesNotMatch(written, /secret-token|Bearer abc|Signature=abc|Credential=def/);
++  assert.match(written, /\[REDACTED\]/);
++  assert.equal(redact({ token: 'secret' }).token, '[REDACTED]');
++  assert.equal(redactRollout({ cmsTokenId: 5, tokenId: 5 }).cmsTokenId, 5);
++  assert.equal(redactRollout({ cmsTokenId: 5, tokenId: 5 }).tokenId, 5);
++});
++
++test('offline plan mode performs no fetch and writes only deterministic plan targets', async (t) => {
++  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-3-plan-'));
++  t.after(() => fs.rm(temp, { recursive: true, force: true }));
++  const paths = {
++    ...DEFAULT_PATHS,
++    planJson: path.join(temp, 'plan.json'),
++    planMarkdown: path.join(temp, 'plan.md'),
++    runtime: path.join(temp, 'runtime'),
++  };
++  let fetchCalls = 0;
++  const result = await main({ argv: ['plan'], paths, env: { WEBFLOW_API_TOKEN: 'must-not-be-read' }, fetchImpl: async () => {
++    fetchCalls += 1;
++    throw new Error('fetch must not run');
++  } });
++  assert.equal(result.externalWritesPerformed, 0);
++  assert.equal(fetchCalls, 0);
++  assert.equal((await fs.stat(paths.planJson)).isFile(), true);
++  assert.equal((await fs.stat(paths.planMarkdown)).isFile(), true);
++  await assert.rejects(fs.stat(paths.runtime), /ENOENT/);
++});
++
++test('generated plan is deterministic across repeated offline generations', async (t) => {
++  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-3-deterministic-'));
++  t.after(() => fs.rm(temp, { recursive: true, force: true }));
++  const paths = { ...DEFAULT_PATHS, planJson: path.join(temp, 'plan.json'), planMarkdown: path.join(temp, 'plan.md') };
++  await generatePlan(paths);
++  const first = [await fs.readFile(paths.planJson, 'utf8'), await fs.readFile(paths.planMarkdown, 'utf8')];
++  await generatePlan(paths);
++  const second = [await fs.readFile(paths.planJson, 'utf8'), await fs.readFile(paths.planMarkdown, 'utf8')];
++  assert.deepEqual(second, first);
++});
+diff --git a/docs/webflow-cms-image-audit/CMS-IMG-2.completion.json b/docs/webflow-cms-image-audit/CMS-IMG-2.completion.json
+new file mode 100644
+index 0000000..91966c9
+--- /dev/null
++++ b/docs/webflow-cms-image-audit/CMS-IMG-2.completion.json
+@@ -0,0 +1,17 @@
++{
++  "ticket": "CMS-IMG-2",
++  "purpose": "Durable migration-completion authority used by later rollout planning after ignored runtime journals are removed.",
++  "items": [
++    {
++      "collection": "CANAAN",
++      "cmsTokenId": 1,
++      "cmsItemId": "65a1bf3dc64d193880da0093",
++      "cmsSlug": "i-am-bicycle",
++      "status": "published-verified",
++      "evidence": [
++        "assets/webflow-cms-image-pilot/README.md",
++        "ticket.ticket-CMS-IMG-2-pilot-one-canaan-image.diff"
++      ]
++    }
++  ]
++}
+diff --git a/docs/webflow-cms-image-audit/CMS-IMG-3.rollout-plan.json b/docs/webflow-cms-image-audit/CMS-IMG-3.rollout-plan.json
+new file mode 100644
+index 0000000..100f13e
+--- /dev/null
++++ b/docs/webflow-cms-image-audit/CMS-IMG-3.rollout-plan.json
+@@ -0,0 +1,1187 @@
++{
++  "ticket": "CMS-IMG-3",
++  "sourceTicket": "CMS-IMG-1",
++  "sourceGeneratedAt": "2026-08-05T00:08:43.668Z",
++  "sources": {
++    "mapping": "docs/webflow-cms-image-audit/CMS-IMG-1.mapping.json",
++    "completion": "docs/webflow-cms-image-audit/CMS-IMG-2.completion.json",
++    "pilotImplementation": "assets/webflow-cms-image-pilot/cms-image-pilot.mjs",
++    "pilotEvidence": "assets/webflow-cms-image-pilot/README.md"
++  },
++  "site": {
++    "siteId": "656cf42faa2b1a7a1582d9d2",
++    "displayName": "EATACID.xyz"
++  },
++  "orderingRule": "collection policy order, then numeric CMS token ID ascending, then CMS item ID",
++  "batchingRule": "CANAAN starts with exactly 5, then collection-local chunks of at most 13; later collections use collection-local chunks of at most 13",
++  "counts": {
++    "totalAuditedMappings": 66,
++    "eligibleDirectMapMappings": 49,
++    "excludedHenMappings": 17,
++    "alreadyMigratedMappings": 1,
++    "remainingRolloutMappings": 48,
++    "byCollection": {
++      "CANAAN": 31,
++      "THE 419 SCRIPT": 13,
++      "HEN": 17,
++      "INTRODUCTIONS": 5
++    },
++    "rolloutByCollection": {
++      "CANAAN": 30,
++      "THE 419 SCRIPT": 13,
++      "INTRODUCTIONS": 5
++    }
++  },
++  "policy": "[REDACTED]",
++  "completedItems": [
++    {
++      "collection": "CANAAN",
++      "cmsTokenId": 1,
++      "cmsItemId": "65a1bf3dc64d193880da0093",
++      "cmsSlug": "i-am-bicycle",
++      "status": "published-verified",
++      "evidence": [
++        "assets/webflow-cms-image-pilot/README.md",
++        "ticket.ticket-CMS-IMG-2-pilot-one-canaan-image.diff"
++      ],
++      "ticket": "CMS-IMG-2"
++    }
++  ],
++  "batches": [
++    {
++      "batchId": "B1",
++      "batchNumber": 1,
++      "collection": "CANAAN",
++      "itemIds": [
++        "65a1bef667f967865601b215",
++        "65a1bf5b7d17dc5aea534acf",
++        "65a1bf85612e9792b512811e",
++        "65a1bfa583784c8c84d01982",
++        "65a1bfc87dbe94da28b7a98c"
++      ],
++      "count": 5
++    },
++    {
++      "batchId": "B2",
++      "batchNumber": 2,
++      "collection": "CANAAN",
++      "itemIds": [
++        "65a1bfe8e5760e9cf81a65ec",
++        "65a1c119847caa5268e2bf38",
++        "65a1c15d83784c8c84d104cc",
++        "65a1c18507efc2af8049a607",
++        "65a1c1ae7dbe94da28b89e36",
++        "65a1c2b93a064c4ad4db3d68",
++        "65a1c2e6fc7fdb5d377b41c6",
++        "65a1c314e5760e9cf81c2935",
++        "65a1c33d8c1ee331dbe5ea19",
++        "65a1c382b6ff8e5ea08a3db9",
++        "65a1c3b567f9678656043651",
++        "65a1c3d5cae2314a8ac83fb1",
++        "65dcff4ce6ba60dec918f46a"
++      ],
++      "count": 13
++    },
++    {
++      "batchId": "B3",
++      "batchNumber": 3,
++      "collection": "CANAAN",
++      "itemIds": [
++        "65dcff9e27226dc26e8b1130",
++        "65dcffe577389bbb31da21ba",
++        "65dd0025addade1b7c9e8c32",
++        "65dd005654c63a120e5649b9",
++        "65dd0082eedbb748322e33c1",
++        "65dd00eed55f0c8789540c86",
++        "65dd029bf32f19961dfb353f",
++        "65dd02d613a6d26ad46296ca",
++        "65dd03455b33e6a25317985c",
++        "65dd0373b8e24ee5a59d2956",
++        "6a1a0af1a5e9ac44f04c94d3",
++        "6a1a0c033b962bc5f194b9b8"
++      ],
++      "count": 12
++    },
++    {
++      "batchId": "B4",
++      "batchNumber": 4,
++      "collection": "THE 419 SCRIPT",
++      "itemIds": [
++        "656f8042fafe53839534f2c9",
++        "656f80a3a2351dad65454831",
++        "656f80efbed80d5266244eb4",
++        "656f811bf98f1971052ae289",
++        "656f815be9e0f0b55fda6ea2",
++        "656f81c424f6ae7a9375f0d6",
++        "656f81df76153a9b5cee63e8",
++        "656f81f5c2c1d5213bcfe411",
++        "656f820cecafff42f8b004dc",
++        "656f82465d651729c6ef6612",
++        "656f828d47349dc899a2ff83",
++        "656f82a28c2e746cf88890a0",
++        "69543cc3e0451cddbf1ffdda"
++      ],
++      "count": 13
++    },
++    {
++      "batchId": "B5",
++      "batchNumber": 5,
++      "collection": "INTRODUCTIONS",
++      "itemIds": [
++        "67be340849f25c380c089452",
++        "67be33ddc98a0659bcb2b379",
++        "67be339fd239775b2a77f4d4",
++        "67be3361cc3b2ab001a7e073",
++        "67be332491b516d49aba0ef0"
++      ],
++      "count": 5
++    }
++  ],
++  "items": [
++    {
++      "batchNumber": 1,
++      "batchId": "B1",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 0,
++      "title": "SERIOUSLY STONED",
++      "cmsItemId": "65a1bef667f967865601b215",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "seriously-stoned",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/0.jpg",
++      "localSha256": "f75371caa1a0e6d726ce4201464178f6c334877c90d91523c1195b84533735ea",
++      "localMd5": "ab648d2f3266020b73468f7036ca1041",
++      "localBytes": 31022,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": null,
++      "batchId": null,
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 1,
++      "title": "I AM BICYCLE",
++      "cmsItemId": "65a1bf3dc64d193880da0093",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "i-am-bicycle",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/1.jpg",
++      "localSha256": "bdc5527224ff0926202ddbd8696f756bfc9289ade76d577754a9651933a948f9",
++      "localMd5": "8e86a64c9488d1f6e9f959639755b08b",
++      "localBytes": 43729,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "already-migrated",
++      "skipReason": "CMS-IMG-2 durable completion record: published-verified"
++    },
++    {
++      "batchNumber": 1,
++      "batchId": "B1",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 2,
++      "title": "THIS VERY MOMENT",
++      "cmsItemId": "65a1bf5b7d17dc5aea534acf",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "this-very-moment",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/2.jpg",
++      "localSha256": "9c97496b281d4bb5a91119e85995289e3dfb12f8c906b68bb7e733479eb6bf91",
++      "localMd5": "99b34ae4288c67858f352c1b74adf03e",
++      "localBytes": 26958,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 1,
++      "batchId": "B1",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 3,
++      "title": "THE HERO'S JOURNEY",
++      "cmsItemId": "65a1bf85612e9792b512811e",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "the-heros-journey",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/3.jpg",
++      "localSha256": "94443ef9b2f7b8bce58200281215c6886e0d26af65e70e6edae558fa96d683b7",
++      "localMd5": "024b3d1de7f31e1c70c8de0c5bd29c69",
++      "localBytes": 34733,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 1,
++      "batchId": "B1",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 4,
++      "title": "ALIGNMENT PERFECTUS",
++      "cmsItemId": "65a1bfa583784c8c84d01982",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "alignment-perfectus",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/4.jpg",
++      "localSha256": "0930256cdb61e104013e58ed84edae36c3b54ba5ee75969b16ace2ff937e5117",
++      "localMd5": "f45ec99adfa7ce442f2d84a6835edba9",
++      "localBytes": 36766,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 1,
++      "batchId": "B1",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 5,
++      "title": "GOOD TIMES",
++      "cmsItemId": "65a1bfc87dbe94da28b7a98c",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "good-times",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/5.jpg",
++      "localSha256": "14e46ed4d599850dcb523d1278b5cdf17712a87829436e140012963e7adcf7c7",
++      "localMd5": "95158506b9a92cec6bcf9f11d70a2627",
++      "localBytes": 26212,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 6,
++      "title": "ROYALS",
++      "cmsItemId": "65a1bfe8e5760e9cf81a65ec",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "royals",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/6.jpg",
++      "localSha256": "290dcc03e743b180aa728e63dd12dfeb6299415e06cb46dfe7cb59ebd4ec22d2",
++      "localMd5": "4d44e1f9a883a4e64993f6ecb32f525f",
++      "localBytes": 29238,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 7,
++      "title": "ALL UP IN IT",
++      "cmsItemId": "65a1c119847caa5268e2bf38",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "all-up-in-it",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/7.jpg",
++      "localSha256": "4e5d58c166f0f9940f15a61ae97ff808fce3ee988f1b9659093bc8b5aff031e0",
++      "localMd5": "8e376e9a5081fea813ba60c8e1d79661",
++      "localBytes": 44184,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 8,
++      "title": "THE EXPLORER",
++      "cmsItemId": "65a1c15d83784c8c84d104cc",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "the-explorer",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/8.jpg",
++      "localSha256": "8d4f9623aeeb90fe9d97362ceabb4cee6b969573fcf6574183aad8e988367ea5",
++      "localMd5": "8969d388a581fbea55ef9b4a38b98cf6",
++      "localBytes": 38663,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 9,
++      "title": "DENSITY",
++      "cmsItemId": "65a1c18507efc2af8049a607",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "density",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/9.jpg",
++      "localSha256": "4f3c74f0648d70ed156bc876d2f21de5b6921b569d31fc9af58cbbc47fe66cb9",
++      "localMd5": "9563314cae936e991b15130b01387bdb",
++      "localBytes": 32502,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 10,
++      "title": "THE PAGE",
++      "cmsItemId": "65a1c1ae7dbe94da28b89e36",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "the-page",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/10.jpg",
++      "localSha256": "6e77902a1ee09ca28fd54fa30d86bf4d47869124b3f84202531bac7d8754452a",
++      "localMd5": "3e45a2f79868d28c640721c0669bda14",
++      "localBytes": 25392,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 11,
++      "title": "YELLOW JACKETS",
++      "cmsItemId": "65a1c2b93a064c4ad4db3d68",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "yellow-jackets",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/11.jpg",
++      "localSha256": "a51d24643957d57c579f23bf5f40874261a34c3d4f2172e6e0ebb354dd04eafe",
++      "localMd5": "5f8bd1c8eba2f8268b82b149ecda6d9f",
++      "localBytes": 40804,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 12,
++      "title": "THE CLASSIC",
++      "cmsItemId": "65a1c2e6fc7fdb5d377b41c6",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "the-classic",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/12.jpg",
++      "localSha256": "fcf2b2a0d1e7d0fb78534b5bd9c2e107c17318cf3d1f71a1037342d218ed5bb3",
++      "localMd5": "251edec270d6bac379239affd467a4a4",
++      "localBytes": 22062,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 13,
++      "title": "SELF",
++      "cmsItemId": "65a1c314e5760e9cf81c2935",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "self",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/13.jpg",
++      "localSha256": "13eede0360faff3bdf7492a0bc20ce4a0390697b426fd405bb151afe99e74765",
++      "localMd5": "959e4dfc66bf42f732e02d3d8f914ba4",
++      "localBytes": 39644,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 14,
++      "title": "IN BLOOM",
++      "cmsItemId": "65a1c33d8c1ee331dbe5ea19",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "in-bloom",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/14.jpg",
++      "localSha256": "832a6fc19c8e33b858843600a99f564e408dcdcf9150264863ca1c6f47d3a73d",
++      "localMd5": "2c3243a1ca6d001abc80a9d7dcaa2d85",
++      "localBytes": 23837,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 15,
++      "title": "FEEL Ü",
++      "cmsItemId": "65a1c382b6ff8e5ea08a3db9",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "feel-u",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/15.jpg",
++      "localSha256": "60403c450749d52ada6f89dbb526a98b9ee3377708075e6e1174e1adf685a1ae",
++      "localMd5": "b0a91877e167f89d71fd37a3cbb88012",
++      "localBytes": 17117,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 16,
++      "title": "FYEA 2.0",
++      "cmsItemId": "65a1c3b567f9678656043651",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "fyea-2-0",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/16.jpg",
++      "localSha256": "0e7371349d31cb8c1a8166be313ddb1835418090298274675730db9299aac018",
++      "localMd5": "c94814c735f4dcea4f16f877e15dbf66",
++      "localBytes": 29391,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 17,
++      "title": "KINGPIN",
++      "cmsItemId": "65a1c3d5cae2314a8ac83fb1",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "kingpin",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/17.jpg",
++      "localSha256": "cdc83cef9d1615c01d6702582924796e4ff8a3e9f3165c0aa48f2ed2f96fd768",
++      "localMd5": "6e779836f6cf233e78758ae5239f4175",
++      "localBytes": 20134,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 2,
++      "batchId": "B2",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 18,
++      "title": "TEK",
++      "cmsItemId": "65dcff4ce6ba60dec918f46a",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "tek",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/18.jpg",
++      "localSha256": "2fe4ec8769dc20a3968b67ea98ec14d787a5f4077b11aa366a69eb4ab82df010",
++      "localMd5": "45f5bc62a5590cf40c7d08510514d7e4",
++      "localBytes": 31717,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 19,
++      "title": "INVERTED KINGPIN",
++      "cmsItemId": "65dcff9e27226dc26e8b1130",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "inverted-kingpin",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/19.jpg",
++      "localSha256": "17663d56e3913945b8923e5a527ffa0e208e03a208ec30132c6e433c1ccef4d1",
++      "localMd5": "3e740385725c8a31f69bb95e22257d28",
++      "localBytes": 24976,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 20,
++      "title": "microDOSR",
++      "cmsItemId": "65dcffe577389bbb31da21ba",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "microdosr",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/20.jpg",
++      "localSha256": "768278c1a8d10b1596dbe60e823a3c70eb5b079d3f4e4b71d504685a07e2a782",
++      "localMd5": "c29853ebcdb52fb19345339ad6b35430",
++      "localBytes": 38831,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 21,
++      "title": "FACE MELTER",
++      "cmsItemId": "65dd0025addade1b7c9e8c32",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "face-melter",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/21.jpg",
++      "localSha256": "d6d4617191b0a88cf5ade81e296f89a396bf0a35bb868133ebe2cd473915ae36",
++      "localMd5": "ce2f5bc9631d7665c43e6d1de386d155",
++      "localBytes": 17514,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 22,
++      "title": "BETWEEN TWO WORLDS",
++      "cmsItemId": "65dd005654c63a120e5649b9",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "between-two-worlds",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/22.jpg",
++      "localSha256": "9403e63873f5cdd0f7f39ccdfc7f7463e4ca5052a30fb08d7647aa4ac1c845a1",
++      "localMd5": "5dcab9a904d3727364fe9bd9cff27379",
++      "localBytes": 29918,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 23,
++      "title": "EVT",
++      "cmsItemId": "65dd0082eedbb748322e33c1",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "evt",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/23.jpg",
++      "localSha256": "6338a24e0ccce5fcb8581527ae8239bd6cd51d6d61cc6fc2cefb6646c118ce18",
++      "localMd5": "abc11b74f7bd196d4b7d2633c2b2bb63",
++      "localBytes": 18979,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 24,
++      "title": "HONK IF YOU BONK",
++      "cmsItemId": "65dd00eed55f0c8789540c86",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "honk-if-you-bonk",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/24.jpg",
++      "localSha256": "d39e384b70883bd6dd6d071e5b06a369d885a391c27ee1e31f14d57e135496f5",
++      "localMd5": "79ac17f0e2462f13f2221961ff16b5c2",
++      "localBytes": 35326,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 25,
++      "title": "COPY MACHINE GO BRRRRR",
++      "cmsItemId": "65dd029bf32f19961dfb353f",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "copy-machine-go-brrrrr",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/25.jpg",
++      "localSha256": "de132339265bb3eb821db782a4cf0b7546a37a5360664705947e37ebcfd60a36",
++      "localMd5": "a222bfa8ec4fee0a230c17aeb086b7f8",
++      "localBytes": 25744,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 26,
++      "title": "BLUE",
++      "cmsItemId": "65dd02d613a6d26ad46296ca",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "blue",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/26.jpg",
++      "localSha256": "fbbbee6d9f47885b010549936e7443f203ecf61a91471d0229971b7a573e70db",
++      "localMd5": "bc885bcecd34da54cf2662d065aef83b",
++      "localBytes": 15430,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 27,
++      "title": "EAT, PRAY, LSD.",
++      "cmsItemId": "65dd03455b33e6a25317985c",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "eat-pray-lsd",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/27.jpg",
++      "localSha256": "f6e5874fcaf03b2215c05b3812ea76f92b44b1bd0150edd8d4de176dbca34ae0",
++      "localMd5": "65a9e43da1839d5eae02895b495a2889",
++      "localBytes": 16183,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 28,
++      "title": "A WAY BACK HOME",
++      "cmsItemId": "65dd0373b8e24ee5a59d2956",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "a-way-back-home",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/28.jpg",
++      "localSha256": "3f0355e5f5ae75c06a0198dccd2354677e45b17078020aa2aa3a57bea2f60658",
++      "localMd5": "8fd74ed5f431c2999a3896429a9bf89b",
++      "localBytes": 17777,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 29,
++      "title": "SPLINTERED",
++      "cmsItemId": "6a1a0af1a5e9ac44f04c94d3",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "splintered",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/29.jpg",
++      "localSha256": "52d389cb8749fa9796f23e9c0c3aed92fe77fb93fb02f0983af012d6ccb6a840",
++      "localMd5": "4297ae08ac452332a76dad1fec11efec",
++      "localBytes": 25949,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 3,
++      "batchId": "B3",
++      "collection": "CANAAN",
++      "collectionId": "65a1be9dcae2314a8ac50aae",
++      "tokenId": 30,
++      "title": "BD25",
++      "cmsItemId": "6a1a0c033b962bc5f194b9b8",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "bd25",
++      "localSourceImage": "admin-ui/src/thumbs/canaan/30.jpg",
++      "localSha256": "701a1d6bbeb7fd5df47bbbe95d8252980e33c5d7e7b22d8b98676a331b3a8883",
++      "localMd5": "87231a5a3ce61861ea26b926e06f986b",
++      "localBytes": 39482,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 0,
++      "title": "// 01",
++      "cmsItemId": "656f8042fafe53839534f2c9",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "01",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/0.jpg",
++      "localSha256": "f217000c324cf68dc311b640a5eca8fe50000cacb7d17ce557437063470b5445",
++      "localMd5": "8892b35331babc0e462485fce2bb1b81",
++      "localBytes": 37169,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 1,
++      "title": "// 02",
++      "cmsItemId": "656f80a3a2351dad65454831",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "02",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/1.jpg",
++      "localSha256": "4f411da62786df1a726cd65d9101cdb90b51aeec9d2d447dd5746d6caf7ba921",
++      "localMd5": "2609bb2ee3b722197f4a94883cb4888d",
++      "localBytes": 32282,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 2,
++      "title": "// 03",
++      "cmsItemId": "656f80efbed80d5266244eb4",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "03",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/2.jpg",
++      "localSha256": "414f0bf914ebfa13bb8f697ce5268c5589a583ed56dc1192b96b0f03c2efea2e",
++      "localMd5": "b3cff75fdf75d1d8235f3c44e7efc3ef",
++      "localBytes": 34871,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 3,
++      "title": "// 04",
++      "cmsItemId": "656f811bf98f1971052ae289",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "04",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/3.jpg",
++      "localSha256": "56a4ebf6a3c5c0f75334e2d987587fc54c4a8859ff1788b87964022d2941b7c0",
++      "localMd5": "85421fccd30f9cfff73f64554e34fd33",
++      "localBytes": 32639,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 4,
++      "title": "// 05",
++      "cmsItemId": "656f815be9e0f0b55fda6ea2",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "05",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/4.jpg",
++      "localSha256": "55e572cdc11ab4803d9723ba157c5a0a39b8dd76906807db89568b4956aa61d7",
++      "localMd5": "60ab8708fbcc8c92a54585ddecd51151",
++      "localBytes": 33744,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 5,
++      "title": "// 06",
++      "cmsItemId": "656f81c424f6ae7a9375f0d6",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "06",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/5.jpg",
++      "localSha256": "f7724b82dab651dc7480d00445e4becce73af7dbba071b063e51c479476ba21a",
++      "localMd5": "23b9de2eaee6310f797e7261427ac8de",
++      "localBytes": 35924,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 6,
++      "title": "// 07",
++      "cmsItemId": "656f81df76153a9b5cee63e8",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "07",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/6.jpg",
++      "localSha256": "da251ed81fc8ddb0fc8ecd88fd508341570d5d3498c6c9b7e1397a30220f2823",
++      "localMd5": "52751f54ae6e3bf580039c7dde9b66b4",
++      "localBytes": 34624,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 7,
++      "title": "// 08",
++      "cmsItemId": "656f81f5c2c1d5213bcfe411",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "08",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/7.jpg",
++      "localSha256": "935fa74ba17722bc2413c9ac82b96a10e35db0718f1cdeaa674d879636f1f4d8",
++      "localMd5": "5a1c1cee32a71d8369a6f1e3dd1994db",
++      "localBytes": 31638,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 8,
++      "title": "// 09",
++      "cmsItemId": "656f820cecafff42f8b004dc",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "09",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/8.jpg",
++      "localSha256": "7c515aaf6c17bfb094bcae3ec0c2a345f01c4420ee5d9f690170a032d08af7c4",
++      "localMd5": "b35bda83ae35b0616f5876437dde203f",
++      "localBytes": 35131,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 9,
++      "title": "// 10",
++      "cmsItemId": "656f82465d651729c6ef6612",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "10",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/9.jpg",
++      "localSha256": "a073303d1fb963c69c180de0d591f5961db1e4dcd3c5cee7370045fa0d05054c",
++      "localMd5": "db2147b0f80636dd3b3b1154812e5aac",
++      "localBytes": 38022,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 10,
++      "title": "// 11",
++      "cmsItemId": "656f828d47349dc899a2ff83",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "11",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/10.jpg",
++      "localSha256": "0c1c1862e51e398b606662e5c9113108e7214c8463859b00f0e103de15a0b92b",
++      "localMd5": "13713f00fbfef44fd8e6f51ec4ff4adb",
++      "localBytes": 28578,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 11,
++      "title": "// 12",
++      "cmsItemId": "656f82a28c2e746cf88890a0",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "12",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/11.jpg",
++      "localSha256": "c2c0ce4f01527a337649b5ecc3e9d195cc2d15de1c9bfeac99ba3f8eddff73a2",
++      "localMd5": "5c7bb7d51c1aa4a6e850a9987ea6aebd",
++      "localBytes": 31939,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 4,
++      "batchId": "B4",
++      "collection": "THE 419 SCRIPT",
++      "collectionId": "656f7e02b503790c02f0edff",
++      "tokenId": 12,
++      "title": "// 13",
++      "cmsItemId": "69543cc3e0451cddbf1ffdda",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "13",
++      "localSourceImage": "admin-ui/src/thumbs/the_419_script/12.jpg",
++      "localSha256": "cc0b9d415e119bcefb2640486994b3b3bc940dda3fdf07662c76a11768fc65a9",
++      "localMd5": "9f7ca4a9566cd25f40932b034cf1289f",
++      "localBytes": 36366,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 386
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 5,
++      "batchId": "B5",
++      "collection": "INTRODUCTIONS",
++      "collectionId": "67be31a0b7084dfce75026fd",
++      "tokenId": 0,
++      "title": "FIVE // FIVE",
++      "cmsItemId": "67be340849f25c380c089452",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "five-five",
++      "localSourceImage": "admin-ui/src/thumbs/introductions/0.jpg",
++      "localSha256": "0a565e52342371981752100407f7815ed9635248741e9e2c9bdf6ea2652158f4",
++      "localMd5": "9c40b33cf40d8a1772d93add56abb909",
++      "localBytes": 23644,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 5,
++      "batchId": "B5",
++      "collection": "INTRODUCTIONS",
++      "collectionId": "67be31a0b7084dfce75026fd",
++      "tokenId": 1,
++      "title": "FOUR // FIVE",
++      "cmsItemId": "67be33ddc98a0659bcb2b379",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "four-five",
++      "localSourceImage": "admin-ui/src/thumbs/introductions/1.jpg",
++      "localSha256": "b800f746d2fe99c20f75a6bc2635bebd2587ea3364f4ebd163174c1d9e204a83",
++      "localMd5": "6683b4d4873850d246c6d0ddbb0722b4",
++      "localBytes": 22072,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 5,
++      "batchId": "B5",
++      "collection": "INTRODUCTIONS",
++      "collectionId": "67be31a0b7084dfce75026fd",
++      "tokenId": 2,
++      "title": "THREE // FIVE",
++      "cmsItemId": "67be339fd239775b2a77f4d4",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "three-five",
++      "localSourceImage": "admin-ui/src/thumbs/introductions/2.jpg",
++      "localSha256": "c969f36f1f78491d428d4060b7ddf5c13ac31580f39a8547f21c8806a1f9619c",
++      "localMd5": "b9e4216ec9beafe24ef75933563df68e",
++      "localBytes": 20284,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 5,
++      "batchId": "B5",
++      "collection": "INTRODUCTIONS",
++      "collectionId": "67be31a0b7084dfce75026fd",
++      "tokenId": 3,
++      "title": "TWO // FIVE",
++      "cmsItemId": "67be3361cc3b2ab001a7e073",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "two-five",
++      "localSourceImage": "admin-ui/src/thumbs/introductions/3.jpg",
++      "localSha256": "dfcc2af064555b34f6856ef78e1241a3bd7faff1fe11d97bf6b9e61cfe789005",
++      "localMd5": "e834f8252ca7b43a21b6d7ecf1be93c7",
++      "localBytes": 23870,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    },
++    {
++      "batchNumber": 5,
++      "batchId": "B5",
++      "collection": "INTRODUCTIONS",
++      "collectionId": "67be31a0b7084dfce75026fd",
++      "tokenId": 4,
++      "title": "ONE // FIVE",
++      "cmsItemId": "67be332491b516d49aba0ef0",
++      "localeId": "656d1d76a2cda12f26e04687",
++      "slug": "one-five",
++      "localSourceImage": "admin-ui/src/thumbs/introductions/4.jpg",
++      "localSha256": "081ad9c18f926db9c568f39fa19394aa8b461c6310299a841e6c7b597d767479",
++      "localMd5": "b1d773b3a7b9a147d9b1c4c114b521c4",
++      "localBytes": 21155,
++      "expectedDimensions": {
++        "width": 300,
++        "height": 375
++      },
++      "migrationStatus": "pending",
++      "skipReason": null
++    }
++  ],
++  "hardStops": [
++    "mapping ambiguity or unsupported collection",
++    "duplicate CMS item, collection/token, or local path",
++    "unexpected CMS identity or missing item",
++    "a planned item is the currently configured active redeem token",
++    "missing, undecodable, or metadata-mismatched local image",
++    "content hash/dimension mismatch",
++    "non-image field or unrelated-item drift",
++    "stale or uncertain journal state requiring reconciliation",
++    "failed content-based staged/live verification",
++    "unknown upload, patch, or publish outcome",
++    "publication response or live-state ambiguity"
++  ],
++  "publicationBoundary": "Staging never cascades to publishing. publish-batch requires a named batch, an exact verified item-ID set, an exact confirmation string, and no blocked or reconciliation-required item.",
++  "externalWritesPerformed": 0,
++  "statement": "Generated entirely from repository mapping, local image bytes, and durable pilot evidence. No Webflow request or write was performed."
++}
+diff --git a/docs/webflow-cms-image-audit/CMS-IMG-3.rollout-plan.md b/docs/webflow-cms-image-audit/CMS-IMG-3.rollout-plan.md
+new file mode 100644
+index 0000000..470da8c
+--- /dev/null
++++ b/docs/webflow-cms-image-audit/CMS-IMG-3.rollout-plan.md
+@@ -0,0 +1,119 @@
++# CMS-IMG-3 direct-map thumbnail rollout plan
++
++This deterministic plan was generated from `docs/webflow-cms-image-audit/CMS-IMG-1.mapping.json`, current local image bytes, and `docs/webflow-cms-image-audit/CMS-IMG-2.completion.json`. Content verification reuses `assets/webflow-cms-image-pilot/cms-image-pilot.mjs`; pilot completion evidence is retained at `assets/webflow-cms-image-pilot/README.md`. The ordering rule is: collection policy order, then numeric CMS token ID ascending, then CMS item ID. The batching rule is: CANAAN starts with exactly 5, then collection-local chunks of at most 13; later collections use collection-local chunks of at most 13.
++
++## Population
++
++- Total audited mappings: 66
++- Eligible direct-map mappings (including the completed pilot): 49
++- Excluded HEN mappings: 17
++- Already migrated: 1
++- Remaining CMS-IMG-3 rollout population: 48
++- Remaining by collection: CANAAN 30; THE 419 SCRIPT 13; INTRODUCTIONS 5
++
++HEN is explicitly ineligible for this rollout because its sparse mirror mapping belongs to CMS-IMG-4.
++
++## Already complete / skipped
++
++| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |
++|---:|---|---:|---|---|---|---|---|---|---|
++| — | CANAAN | 1 | I AM BICYCLE | `65a1bf3dc64d193880da0093` | `i-am-bicycle` | `admin-ui/src/thumbs/canaan/1.jpg` | `bdc5527224ff0926202ddbd8696f756bfc9289ade76d577754a9651933a948f9` | 300×375 | already-migrated — CMS-IMG-2 durable completion record: published-verified |
++
++## Exact batches
++
++### B1 — CANAAN (5)
++
++| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |
++|---:|---|---:|---|---|---|---|---|---|---|
++| 1 | CANAAN | 0 | SERIOUSLY STONED | `65a1bef667f967865601b215` | `seriously-stoned` | `admin-ui/src/thumbs/canaan/0.jpg` | `f75371caa1a0e6d726ce4201464178f6c334877c90d91523c1195b84533735ea` | 300×375 | pending |
++| 1 | CANAAN | 2 | THIS VERY MOMENT | `65a1bf5b7d17dc5aea534acf` | `this-very-moment` | `admin-ui/src/thumbs/canaan/2.jpg` | `9c97496b281d4bb5a91119e85995289e3dfb12f8c906b68bb7e733479eb6bf91` | 300×375 | pending |
++| 1 | CANAAN | 3 | THE HERO'S JOURNEY | `65a1bf85612e9792b512811e` | `the-heros-journey` | `admin-ui/src/thumbs/canaan/3.jpg` | `94443ef9b2f7b8bce58200281215c6886e0d26af65e70e6edae558fa96d683b7` | 300×375 | pending |
++| 1 | CANAAN | 4 | ALIGNMENT PERFECTUS | `65a1bfa583784c8c84d01982` | `alignment-perfectus` | `admin-ui/src/thumbs/canaan/4.jpg` | `0930256cdb61e104013e58ed84edae36c3b54ba5ee75969b16ace2ff937e5117` | 300×375 | pending |
++| 1 | CANAAN | 5 | GOOD TIMES | `65a1bfc87dbe94da28b7a98c` | `good-times` | `admin-ui/src/thumbs/canaan/5.jpg` | `14e46ed4d599850dcb523d1278b5cdf17712a87829436e140012963e7adcf7c7` | 300×375 | pending |
++
++### B2 — CANAAN (13)
++
++| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |
++|---:|---|---:|---|---|---|---|---|---|---|
++| 2 | CANAAN | 6 | ROYALS | `65a1bfe8e5760e9cf81a65ec` | `royals` | `admin-ui/src/thumbs/canaan/6.jpg` | `290dcc03e743b180aa728e63dd12dfeb6299415e06cb46dfe7cb59ebd4ec22d2` | 300×375 | pending |
++| 2 | CANAAN | 7 | ALL UP IN IT | `65a1c119847caa5268e2bf38` | `all-up-in-it` | `admin-ui/src/thumbs/canaan/7.jpg` | `4e5d58c166f0f9940f15a61ae97ff808fce3ee988f1b9659093bc8b5aff031e0` | 300×375 | pending |
++| 2 | CANAAN | 8 | THE EXPLORER | `65a1c15d83784c8c84d104cc` | `the-explorer` | `admin-ui/src/thumbs/canaan/8.jpg` | `8d4f9623aeeb90fe9d97362ceabb4cee6b969573fcf6574183aad8e988367ea5` | 300×375 | pending |
++| 2 | CANAAN | 9 | DENSITY | `65a1c18507efc2af8049a607` | `density` | `admin-ui/src/thumbs/canaan/9.jpg` | `4f3c74f0648d70ed156bc876d2f21de5b6921b569d31fc9af58cbbc47fe66cb9` | 300×375 | pending |
++| 2 | CANAAN | 10 | THE PAGE | `65a1c1ae7dbe94da28b89e36` | `the-page` | `admin-ui/src/thumbs/canaan/10.jpg` | `6e77902a1ee09ca28fd54fa30d86bf4d47869124b3f84202531bac7d8754452a` | 300×375 | pending |
++| 2 | CANAAN | 11 | YELLOW JACKETS | `65a1c2b93a064c4ad4db3d68` | `yellow-jackets` | `admin-ui/src/thumbs/canaan/11.jpg` | `a51d24643957d57c579f23bf5f40874261a34c3d4f2172e6e0ebb354dd04eafe` | 300×375 | pending |
++| 2 | CANAAN | 12 | THE CLASSIC | `65a1c2e6fc7fdb5d377b41c6` | `the-classic` | `admin-ui/src/thumbs/canaan/12.jpg` | `fcf2b2a0d1e7d0fb78534b5bd9c2e107c17318cf3d1f71a1037342d218ed5bb3` | 300×375 | pending |
++| 2 | CANAAN | 13 | SELF | `65a1c314e5760e9cf81c2935` | `self` | `admin-ui/src/thumbs/canaan/13.jpg` | `13eede0360faff3bdf7492a0bc20ce4a0390697b426fd405bb151afe99e74765` | 300×375 | pending |
++| 2 | CANAAN | 14 | IN BLOOM | `65a1c33d8c1ee331dbe5ea19` | `in-bloom` | `admin-ui/src/thumbs/canaan/14.jpg` | `832a6fc19c8e33b858843600a99f564e408dcdcf9150264863ca1c6f47d3a73d` | 300×375 | pending |
++| 2 | CANAAN | 15 | FEEL Ü | `65a1c382b6ff8e5ea08a3db9` | `feel-u` | `admin-ui/src/thumbs/canaan/15.jpg` | `60403c450749d52ada6f89dbb526a98b9ee3377708075e6e1174e1adf685a1ae` | 300×375 | pending |
++| 2 | CANAAN | 16 | FYEA 2.0 | `65a1c3b567f9678656043651` | `fyea-2-0` | `admin-ui/src/thumbs/canaan/16.jpg` | `0e7371349d31cb8c1a8166be313ddb1835418090298274675730db9299aac018` | 300×375 | pending |
++| 2 | CANAAN | 17 | KINGPIN | `65a1c3d5cae2314a8ac83fb1` | `kingpin` | `admin-ui/src/thumbs/canaan/17.jpg` | `cdc83cef9d1615c01d6702582924796e4ff8a3e9f3165c0aa48f2ed2f96fd768` | 300×375 | pending |
++| 2 | CANAAN | 18 | TEK | `65dcff4ce6ba60dec918f46a` | `tek` | `admin-ui/src/thumbs/canaan/18.jpg` | `2fe4ec8769dc20a3968b67ea98ec14d787a5f4077b11aa366a69eb4ab82df010` | 300×375 | pending |
++
++### B3 — CANAAN (12)
++
++| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |
++|---:|---|---:|---|---|---|---|---|---|---|
++| 3 | CANAAN | 19 | INVERTED KINGPIN | `65dcff9e27226dc26e8b1130` | `inverted-kingpin` | `admin-ui/src/thumbs/canaan/19.jpg` | `17663d56e3913945b8923e5a527ffa0e208e03a208ec30132c6e433c1ccef4d1` | 300×375 | pending |
++| 3 | CANAAN | 20 | microDOSR | `65dcffe577389bbb31da21ba` | `microdosr` | `admin-ui/src/thumbs/canaan/20.jpg` | `768278c1a8d10b1596dbe60e823a3c70eb5b079d3f4e4b71d504685a07e2a782` | 300×375 | pending |
++| 3 | CANAAN | 21 | FACE MELTER | `65dd0025addade1b7c9e8c32` | `face-melter` | `admin-ui/src/thumbs/canaan/21.jpg` | `d6d4617191b0a88cf5ade81e296f89a396bf0a35bb868133ebe2cd473915ae36` | 300×375 | pending |
++| 3 | CANAAN | 22 | BETWEEN TWO WORLDS | `65dd005654c63a120e5649b9` | `between-two-worlds` | `admin-ui/src/thumbs/canaan/22.jpg` | `9403e63873f5cdd0f7f39ccdfc7f7463e4ca5052a30fb08d7647aa4ac1c845a1` | 300×375 | pending |
++| 3 | CANAAN | 23 | EVT | `65dd0082eedbb748322e33c1` | `evt` | `admin-ui/src/thumbs/canaan/23.jpg` | `6338a24e0ccce5fcb8581527ae8239bd6cd51d6d61cc6fc2cefb6646c118ce18` | 300×375 | pending |
++| 3 | CANAAN | 24 | HONK IF YOU BONK | `65dd00eed55f0c8789540c86` | `honk-if-you-bonk` | `admin-ui/src/thumbs/canaan/24.jpg` | `d39e384b70883bd6dd6d071e5b06a369d885a391c27ee1e31f14d57e135496f5` | 300×375 | pending |
++| 3 | CANAAN | 25 | COPY MACHINE GO BRRRRR | `65dd029bf32f19961dfb353f` | `copy-machine-go-brrrrr` | `admin-ui/src/thumbs/canaan/25.jpg` | `de132339265bb3eb821db782a4cf0b7546a37a5360664705947e37ebcfd60a36` | 300×375 | pending |
++| 3 | CANAAN | 26 | BLUE | `65dd02d613a6d26ad46296ca` | `blue` | `admin-ui/src/thumbs/canaan/26.jpg` | `fbbbee6d9f47885b010549936e7443f203ecf61a91471d0229971b7a573e70db` | 300×375 | pending |
++| 3 | CANAAN | 27 | EAT, PRAY, LSD. | `65dd03455b33e6a25317985c` | `eat-pray-lsd` | `admin-ui/src/thumbs/canaan/27.jpg` | `f6e5874fcaf03b2215c05b3812ea76f92b44b1bd0150edd8d4de176dbca34ae0` | 300×375 | pending |
++| 3 | CANAAN | 28 | A WAY BACK HOME | `65dd0373b8e24ee5a59d2956` | `a-way-back-home` | `admin-ui/src/thumbs/canaan/28.jpg` | `3f0355e5f5ae75c06a0198dccd2354677e45b17078020aa2aa3a57bea2f60658` | 300×375 | pending |
++| 3 | CANAAN | 29 | SPLINTERED | `6a1a0af1a5e9ac44f04c94d3` | `splintered` | `admin-ui/src/thumbs/canaan/29.jpg` | `52d389cb8749fa9796f23e9c0c3aed92fe77fb93fb02f0983af012d6ccb6a840` | 300×375 | pending |
++| 3 | CANAAN | 30 | BD25 | `6a1a0c033b962bc5f194b9b8` | `bd25` | `admin-ui/src/thumbs/canaan/30.jpg` | `701a1d6bbeb7fd5df47bbbe95d8252980e33c5d7e7b22d8b98676a331b3a8883` | 300×375 | pending |
++
++### B4 — THE 419 SCRIPT (13)
++
++| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |
++|---:|---|---:|---|---|---|---|---|---|---|
++| 4 | THE 419 SCRIPT | 0 | // 01 | `656f8042fafe53839534f2c9` | `01` | `admin-ui/src/thumbs/the_419_script/0.jpg` | `f217000c324cf68dc311b640a5eca8fe50000cacb7d17ce557437063470b5445` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 1 | // 02 | `656f80a3a2351dad65454831` | `02` | `admin-ui/src/thumbs/the_419_script/1.jpg` | `4f411da62786df1a726cd65d9101cdb90b51aeec9d2d447dd5746d6caf7ba921` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 2 | // 03 | `656f80efbed80d5266244eb4` | `03` | `admin-ui/src/thumbs/the_419_script/2.jpg` | `414f0bf914ebfa13bb8f697ce5268c5589a583ed56dc1192b96b0f03c2efea2e` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 3 | // 04 | `656f811bf98f1971052ae289` | `04` | `admin-ui/src/thumbs/the_419_script/3.jpg` | `56a4ebf6a3c5c0f75334e2d987587fc54c4a8859ff1788b87964022d2941b7c0` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 4 | // 05 | `656f815be9e0f0b55fda6ea2` | `05` | `admin-ui/src/thumbs/the_419_script/4.jpg` | `55e572cdc11ab4803d9723ba157c5a0a39b8dd76906807db89568b4956aa61d7` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 5 | // 06 | `656f81c424f6ae7a9375f0d6` | `06` | `admin-ui/src/thumbs/the_419_script/5.jpg` | `f7724b82dab651dc7480d00445e4becce73af7dbba071b063e51c479476ba21a` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 6 | // 07 | `656f81df76153a9b5cee63e8` | `07` | `admin-ui/src/thumbs/the_419_script/6.jpg` | `da251ed81fc8ddb0fc8ecd88fd508341570d5d3498c6c9b7e1397a30220f2823` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 7 | // 08 | `656f81f5c2c1d5213bcfe411` | `08` | `admin-ui/src/thumbs/the_419_script/7.jpg` | `935fa74ba17722bc2413c9ac82b96a10e35db0718f1cdeaa674d879636f1f4d8` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 8 | // 09 | `656f820cecafff42f8b004dc` | `09` | `admin-ui/src/thumbs/the_419_script/8.jpg` | `7c515aaf6c17bfb094bcae3ec0c2a345f01c4420ee5d9f690170a032d08af7c4` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 9 | // 10 | `656f82465d651729c6ef6612` | `10` | `admin-ui/src/thumbs/the_419_script/9.jpg` | `a073303d1fb963c69c180de0d591f5961db1e4dcd3c5cee7370045fa0d05054c` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 10 | // 11 | `656f828d47349dc899a2ff83` | `11` | `admin-ui/src/thumbs/the_419_script/10.jpg` | `0c1c1862e51e398b606662e5c9113108e7214c8463859b00f0e103de15a0b92b` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 11 | // 12 | `656f82a28c2e746cf88890a0` | `12` | `admin-ui/src/thumbs/the_419_script/11.jpg` | `c2c0ce4f01527a337649b5ecc3e9d195cc2d15de1c9bfeac99ba3f8eddff73a2` | 300×386 | pending |
++| 4 | THE 419 SCRIPT | 12 | // 13 | `69543cc3e0451cddbf1ffdda` | `13` | `admin-ui/src/thumbs/the_419_script/12.jpg` | `cc0b9d415e119bcefb2640486994b3b3bc940dda3fdf07662c76a11768fc65a9` | 300×386 | pending |
++
++### B5 — INTRODUCTIONS (5)
++
++| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |
++|---:|---|---:|---|---|---|---|---|---|---|
++| 5 | INTRODUCTIONS | 0 | FIVE // FIVE | `67be340849f25c380c089452` | `five-five` | `admin-ui/src/thumbs/introductions/0.jpg` | `0a565e52342371981752100407f7815ed9635248741e9e2c9bdf6ea2652158f4` | 300×375 | pending |
++| 5 | INTRODUCTIONS | 1 | FOUR // FIVE | `67be33ddc98a0659bcb2b379` | `four-five` | `admin-ui/src/thumbs/introductions/1.jpg` | `b800f746d2fe99c20f75a6bc2635bebd2587ea3364f4ebd163174c1d9e204a83` | 300×375 | pending |
++| 5 | INTRODUCTIONS | 2 | THREE // FIVE | `67be339fd239775b2a77f4d4` | `three-five` | `admin-ui/src/thumbs/introductions/2.jpg` | `c969f36f1f78491d428d4060b7ddf5c13ac31580f39a8547f21c8806a1f9619c` | 300×375 | pending |
++| 5 | INTRODUCTIONS | 3 | TWO // FIVE | `67be3361cc3b2ab001a7e073` | `two-five` | `admin-ui/src/thumbs/introductions/3.jpg` | `dfcc2af064555b34f6856ef78e1241a3bd7faff1fe11d97bf6b9e61cfe789005` | 300×375 | pending |
++| 5 | INTRODUCTIONS | 4 | ONE // FIVE | `67be332491b516d49aba0ef0` | `one-five` | `admin-ui/src/thumbs/introductions/4.jpg` | `081ad9c18f926db9c568f39fa19394aa8b461c6310299a841e6c7b597d767479` | 300×375 | pending |
++
++## Safety and publication boundary
++
++Every `stage-batch` invocation rereads current drop parameters and staged/live CMS state before another write is possible. The first invocation saves an immutable pre-write baseline; a resumed invocation must reconcile current state to that original baseline plus known journaled progress. Unexplained drift blocks execution and is never absorbed by refreshing the baseline.
++
++The lifecycle is fresh invocation safety gate → sequential stage and per-item verification → full staged-batch reconciliation → explicit human publish approval → exact-ID batch publish → fresh live CMS reconciliation. Staging never cascades into publication. The future `publish-batch` command requires the named batch, the exact staged-verified item IDs, an exact confirmation string, and no blocked or reconciliation-required item.
++
++Hard stops:
++
++- mapping ambiguity or unsupported collection
++- duplicate CMS item, collection/token, or local path
++- unexpected CMS identity or missing item
++- a planned item is the currently configured active redeem token
++- missing, undecodable, or metadata-mismatched local image
++- content hash/dimension mismatch
++- non-image field or unrelated-item drift
++- stale or uncertain journal state requiring reconciliation
++- failed content-based staged/live verification
++- unknown upload, patch, or publish outcome
++- publication response or live-state ambiguity
++
++## Execution boundary
++
++Generated entirely from repository mapping, local image bytes, and durable pilot evidence. No Webflow request or write was performed.
+diff --git a/package.json b/package.json
+index b56bf33..7eead16 100644
+--- a/package.json
++++ b/package.json
+@@ -21,6 +21,8 @@
+     "test:thumbs": "node assets/thumbs/scripts/thumbs.test.mjs",
+     "cms:image-pilot": "node assets/webflow-cms-image-pilot/cms-image-pilot.mjs",
+     "test:cms-image-pilot": "node assets/webflow-cms-image-pilot/cms-image-pilot.test.mjs",
++    "cms:image-rollout": "node assets/webflow-cms-image-rollout/cms-image-rollout.mjs",
++    "test:cms-image-rollout": "node assets/webflow-cms-image-rollout/cms-image-rollout.test.mjs",
+     "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
+     "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
+     "pages:sanity": "npm run build:pages:staging && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs",
