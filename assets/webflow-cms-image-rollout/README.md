@@ -50,6 +50,13 @@ Only the explicit verified item IDs are sent. Staging never cascades into
 publishing. A failed or uncertain write preserves the last successful phase,
 appends a blocked attempt, and requires reconciliation before another write.
 
+Terminal `published-verified` reconciliation requires clean Webflow publication
+metadata in addition to staged/live content equivalence. Both representations
+must have valid `lastPublished` values, and their publication markers must
+cover the newest staged/live update. A queued staged revision such as
+`staged.lastUpdated > staged.lastPublished` fails terminal verification and is
+recorded as reconciliation-required; exact timestamp equality is not required.
+
 Webflow may normalize a submitted CMS Image into a different `fileId`, URL, or
 JPEG encoding. Identity equality is therefore not a success condition. The
 tool reuses the CMS-IMG-2 verifier: it downloads the resulting image and checks

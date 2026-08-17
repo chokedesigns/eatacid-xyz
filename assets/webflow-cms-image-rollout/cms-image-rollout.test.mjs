@@ -27,6 +27,7 @@ import {
   main,
   publishConfirmation,
   publishBatch,
+  reconcilePublishedBatch,
   redactRollout,
   recordItemAttempt,
   renderPlanMarkdown,
@@ -34,6 +35,7 @@ import {
   validateCompletions,
   validateMapping,
   verifyPlannedCmsImage,
+  verifyCleanPublishedState,
   writeJson,
 } from './cms-image-rollout.mjs';
 
@@ -55,7 +57,8 @@ function fakeCmsItem(plannedItem, image = { fileId: 'old-id', url: 'https://exam
     cmsLocaleId: plannedItem.localeId,
     isDraft: false,
     isArchived: false,
-    lastUpdated: 'before',
+    lastUpdated: '2026-08-17T00:00:00.000Z',
+    lastPublished: '2026-08-17T00:00:00.000Z',
     fieldData: {
       name: plannedItem.title,
       slug: plannedItem.slug,
@@ -274,6 +277,56 @@ test('non-image and unrelated-item drift are hard failures', () => {
   assert.equal(unrelated.ok, false);
 });
 
+test('clean publication metadata permits harmless timestamp differences', () => {
+  const item = plan.items.find((candidate) => candidate.cmsItemId === plan.batches[0].itemIds[0]);
+  const staged = fakeCmsItem(item);
+  const live = clone(staged);
+  staged.lastUpdated = '2026-08-17T00:00:00.000Z';
+  staged.lastPublished = '2026-08-17T00:02:00.000Z';
+  live.lastUpdated = '2026-08-16T23:59:00.000Z';
+  live.lastPublished = '2026-08-17T00:01:00.000Z';
+  const result = verifyCleanPublishedState(staged, live);
+  assert.equal(result.ok, true);
+  assert.equal(result.publicationMarkersCoverAllUpdates, true);
+});
+
+test('content-identical queued metadata is not a clean published state', () => {
+  const item = plan.items.find((candidate) => candidate.cmsItemId === plan.batches[0].itemIds[0]);
+  const live = fakeCmsItem(item);
+  const staged = clone(live);
+  staged.lastUpdated = '2026-08-17T00:01:00.000Z';
+  staged.lastPublished = '2026-08-17T00:00:00.000Z';
+  const result = verifyCleanPublishedState(staged, live);
+  assert.equal(result.ok, false);
+  assert.equal(result.stagedUpdatedNotAfterPublished, false);
+});
+
+test('matching content with null lastPublished is not a clean published state', () => {
+  const item = plan.items.find((candidate) => candidate.cmsItemId === plan.batches[0].itemIds[0]);
+  const staged = fakeCmsItem(item);
+  const live = clone(staged);
+  staged.lastPublished = null;
+  live.lastPublished = null;
+  const result = verifyCleanPublishedState(staged, live);
+  assert.equal(result.ok, false);
+  assert.equal(result.lastPublishedPresent, false);
+});
+
+test('individually clean but inconsistent staged/live publication metadata fails', () => {
+  const item = plan.items.find((candidate) => candidate.cmsItemId === plan.batches[0].itemIds[0]);
+  const staged = fakeCmsItem(item);
+  const live = clone(staged);
+  staged.lastUpdated = '2026-08-17T00:01:00.000Z';
+  staged.lastPublished = '2026-08-17T00:03:00.000Z';
+  live.lastUpdated = '2026-08-16T23:59:00.000Z';
+  live.lastPublished = '2026-08-17T00:00:00.000Z';
+  const result = verifyCleanPublishedState(staged, live);
+  assert.equal(result.stagedUpdatedNotAfterPublished, true);
+  assert.equal(result.liveUpdatedNotAfterPublished, true);
+  assert.equal(result.publicationMarkersCoverAllUpdates, false);
+  assert.equal(result.ok, false);
+});
+
 function stagedVerifiedJournal() {
   let journal = initialBatchJournal(plan, 'B1', '2026-08-17T00:00:00.000Z');
   for (const itemId of plan.batches[0].itemIds) {
@@ -361,6 +414,8 @@ test('mocked batch stages five sequentially without publishing, then exact publi
     publishItems: async (_collectionId, itemIds) => {
       assert.deepEqual(itemIds, plan.batches[0].itemIds);
       publishCalls += 1;
+      const publishedAt = '2026-08-17T02:00:00.000Z';
+      stagedItems = stagedItems.map((item) => ({ ...item, lastUpdated: publishedAt, lastPublished: publishedAt }));
       liveItems = clone(stagedItems);
     },
   };
@@ -464,6 +519,17 @@ async function createResumeFixture(t) {
     journal = recordItemAttempt(journal, itemId, { phase: 'published-verified', status: 'succeeded',
       patch: { submittedImage: image, resultingStagedImage: image, publishedImage: image } }, '2026-08-17T00:02:00.000Z');
   };
+  const setPublished = (itemId) => {
+    const image = { fileId: `cms-${itemId}`, url: `https://cms.example.test/${itemId}.jpg`, alt: null };
+    stagedItems = stagedItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
+    liveItems = liveItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
+    journal = recordItemAttempt(journal, itemId, { phase: 'staged-verified', status: 'succeeded',
+      patch: { submittedImage: image, resultingStagedImage: image } }, '2026-08-17T00:01:00.000Z');
+    journal = recordItemAttempt(journal, itemId, { phase: 'publish-approved', status: 'succeeded' },
+      '2026-08-17T00:01:30.000Z');
+    journal = recordItemAttempt(journal, itemId, { phase: 'published', status: 'succeeded' },
+      '2026-08-17T00:02:00.000Z');
+  };
   const mutationCount = () => calls.createAsset + calls.upload + calls.patchImage + calls.publishItems;
   return {
     paths, batch, members, baseline, api, fetchImpl, dropParamsLoader, calls, mutationCount,
@@ -474,9 +540,43 @@ async function createResumeFixture(t) {
     get liveItems() { return liveItems; },
     set liveItems(value) { liveItems = value; },
     setDropParams(value) { dropParams = value; },
-    persist, setStagedVerified, setPublishedVerified,
+    persist, setStagedVerified, setPublishedVerified, setPublished,
   };
 }
+
+test('queued but content-identical reconciliation fails without a write and requires reconciliation', async (t) => {
+  const fixture = await createResumeFixture(t);
+  for (const itemId of fixture.batch.itemIds) fixture.setPublished(itemId);
+  const itemId = fixture.batch.itemIds[0];
+  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === itemId ? {
+    ...item, lastUpdated: '2026-08-17T00:03:00.000Z', lastPublished: '2026-08-17T00:02:00.000Z',
+  } : item);
+  fixture.liveItems = fixture.liveItems.map((item) => item.id === itemId ? {
+    ...item, lastUpdated: '2026-08-17T00:02:00.000Z', lastPublished: '2026-08-17T00:02:00.000Z',
+  } : item);
+  await fixture.persist();
+  await assert.rejects(reconcilePublishedBatch({ plan, batchId: 'B1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl }), /Published reconciliation failed/);
+  assert.equal(fixture.mutationCount(), 0);
+  const journal = JSON.parse(await fs.readFile(path.join(fixture.paths.runtime, 'B1', 'journal.json'), 'utf8'));
+  assert.ok(Object.values(journal.items).every((entry) => entry.currentPhase !== 'published-verified'));
+  assert.equal(journal.items[itemId].currentPhase, 'published');
+  assert.equal(journal.items[itemId].lastSuccessfulPhase, 'published');
+  assert.equal(journal.items[itemId].lastAttemptStatus, 'reconciliation-required');
+  assert.equal(journal.items[itemId].reconciliationRequired, true);
+});
+
+test('clean content-identical reconciliation reaches published-verified without a write', async (t) => {
+  const fixture = await createResumeFixture(t);
+  for (const itemId of fixture.batch.itemIds) fixture.setPublished(itemId);
+  await fixture.persist();
+  const result = await reconcilePublishedBatch({ plan, batchId: 'B1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl });
+  assert.equal(result.result.ok, true);
+  assert.ok(result.result.targetResults.every((entry) => entry.publicationState.ok));
+  assert.ok(Object.values(result.journal.items).every((entry) => entry.currentPhase === 'published-verified'));
+  assert.equal(fixture.mutationCount(), 0);
+});
 
 test('clean resume freshly validates staged progress and permits the next pending item', async (t) => {
   const fixture = await createResumeFixture(t);
@@ -589,6 +689,27 @@ test('published-verified resume reconciles staged/live content and introduces no
   assert.equal(result.result.idempotentNoop, true);
   assert.equal(fixture.calls.publishItems, 0);
   assert.equal(fixture.mutationCount(), 0);
+});
+
+test('published-verified resume rejects a later queued revision and requires reconciliation', async (t) => {
+  const fixture = await createResumeFixture(t);
+  for (const itemId of fixture.batch.itemIds) fixture.setPublishedVerified(itemId);
+  const itemId = fixture.batch.itemIds[0];
+  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === itemId ? {
+    ...item, lastUpdated: '2026-08-17T00:03:00.000Z', lastPublished: '2026-08-17T00:02:00.000Z',
+  } : item);
+  fixture.liveItems = fixture.liveItems.map((item) => item.id === itemId ? {
+    ...item, lastUpdated: '2026-08-17T00:02:00.000Z', lastPublished: '2026-08-17T00:02:00.000Z',
+  } : item);
+  await fixture.persist();
+  await assert.rejects(stageBatch({ plan, batchId: 'B1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /cannot be reconciled/);
+  assert.equal(fixture.mutationCount(), 0);
+  const journal = JSON.parse(await fs.readFile(path.join(fixture.paths.runtime, 'B1', 'journal.json'), 'utf8'));
+  assert.equal(journal.items[itemId].currentPhase, 'published-verified');
+  assert.equal(journal.items[itemId].lastSuccessfulPhase, 'published-verified');
+  assert.equal(journal.items[itemId].lastAttemptStatus, 'reconciliation-required');
+  assert.equal(journal.items[itemId].reconciliationRequired, true);
 });
 
 test('existing reconciliation-required state refuses another stage mutation', async (t) => {

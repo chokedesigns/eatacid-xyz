@@ -346,6 +346,40 @@ function sortCmsItems(items) {
   return [...items].sort((left, right) => `${left.id}:${left.cmsLocaleId}`.localeCompare(`${right.id}:${right.cmsLocaleId}`));
 }
 
+function parsedCmsTimestamp(value) {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+}
+
+export function verifyCleanPublishedState(staged, live) {
+  const stagedLastUpdated = parsedCmsTimestamp(staged?.lastUpdated);
+  const stagedLastPublished = parsedCmsTimestamp(staged?.lastPublished);
+  const liveLastUpdated = parsedCmsTimestamp(live?.lastUpdated);
+  const liveLastPublished = parsedCmsTimestamp(live?.lastPublished);
+  const lastPublishedPresent = staged?.lastPublished != null && live?.lastPublished != null;
+  const timestampsValid = [stagedLastUpdated, stagedLastPublished, liveLastUpdated, liveLastPublished]
+    .every((timestamp) => timestamp !== null);
+  const stagedUpdatedNotAfterPublished = timestampsValid && stagedLastUpdated <= stagedLastPublished;
+  const liveUpdatedNotAfterPublished = timestampsValid && liveLastUpdated <= liveLastPublished;
+  const publicationMarkersCoverAllUpdates = timestampsValid &&
+    Math.max(stagedLastUpdated, liveLastUpdated) <= Math.min(stagedLastPublished, liveLastPublished);
+  const publishedFlagsClean = staged?.isDraft === false && live?.isDraft === false &&
+    staged?.isArchived === false && live?.isArchived === false;
+  return {
+    ok: lastPublishedPresent && timestampsValid && stagedUpdatedNotAfterPublished &&
+      liveUpdatedNotAfterPublished && publicationMarkersCoverAllUpdates && publishedFlagsClean,
+    lastPublishedPresent,
+    timestampsValid,
+    stagedUpdatedNotAfterPublished,
+    liveUpdatedNotAfterPublished,
+    publicationMarkersCoverAllUpdates,
+    publishedFlagsClean,
+    staged: { lastUpdated: staged?.lastUpdated ?? null, lastPublished: staged?.lastPublished ?? null },
+    live: { lastUpdated: live?.lastUpdated ?? null, lastPublished: live?.lastPublished ?? null },
+  };
+}
+
 export function compareUnrelatedItems(beforeItems, afterItems, targetItemIds) {
   const targets = new Set(targetItemIds);
   const before = sortCmsItems(beforeItems.filter((item) => !targets.has(item.id))).map(stripSystemTimestamps);
@@ -731,13 +765,15 @@ function verifyBatchCollectionState({ plan, batch, baseline, current, imageCheck
       ok: stable(stripSystemTimestamps(beforeLive)) === stable(stripSystemTimestamps(live)),
       differences: diffPaths(stripSystemTimestamps(beforeLive), stripSystemTimestamps(live)),
     };
+    const publicationState = requireLiveReplacement ? verifyCleanPublishedState(staged, live) : null;
     targetResults.push({ itemId, staged: stagedCheck, live: liveCheck,
-      stagedLiveNonImageMatch: stable(withoutImage(staged)) === stable(withoutImage(live)) });
+      stagedLiveNonImageMatch: stable(withoutImage(staged)) === stable(withoutImage(live)), publicationState });
   }
   const unrelatedStaged = compareUnrelatedItems(baseline.staged.items, current.staged.items, targetIds);
   const unrelatedLive = compareUnrelatedItems(baseline.live.items, current.live.items, targetIds);
   const ok = targetResults.every((result) => result.staged.ok && result.live.ok &&
-    (!requireLiveReplacement || result.stagedLiveNonImageMatch)) && unrelatedStaged.ok && unrelatedLive.ok;
+    (!requireLiveReplacement || (result.stagedLiveNonImageMatch && result.publicationState.ok))) &&
+    unrelatedStaged.ok && unrelatedLive.ok;
   return { ok, targetResults, unrelatedStaged, unrelatedLive };
 }
 
@@ -931,11 +967,12 @@ export async function validateResumeState({ plan, batch, journal, baseline, curr
       state.publishedImage ?? submitted);
     const liveCheck = compareTarget(baselineLive, live, liveImage);
     const stagedLiveNonImageMatch = stable(withoutImage(staged)) === stable(withoutImage(live));
-    if (!liveCheck.ok || !stagedLiveNonImageMatch) {
+    const publicationState = verifyCleanPublishedState(staged, live);
+    if (!liveCheck.ok || !stagedLiveNonImageMatch || !publicationState.ok) {
       throw resumeDrift(`Published replacement for ${itemId} cannot be reconciled.`, itemId, phase,
-        { liveCheck, stagedLiveNonImageMatch });
+        { liveCheck, stagedLiveNonImageMatch, publicationState });
     }
-    items[itemId] = { phase, stagedCheck, liveCheck, stagedLiveNonImageMatch };
+    items[itemId] = { phase, stagedCheck, liveCheck, stagedLiveNonImageMatch, publicationState };
   }
   return { ok: true, items, unrelatedStaged, unrelatedLive };
 }
@@ -1144,9 +1181,23 @@ export async function reconcilePublishedBatch({ plan, batchId, api, paths = DEFA
   const current = await readCollectionStates(api, expectedCollectionId(plan, batch));
   const checks = await itemImageChecks({ plan, batch, current, paths, journal, fetchImpl, includeLive: true });
   const result = verifyBatchCollectionState({ plan, batch, baseline, current, imageChecks: checks, requireLiveReplacement: true });
-  if (!result.ok) throw new RolloutError(`Published reconciliation failed for ${batchId}.`, {
-    code: 'PUBLISHED_RECONCILIATION_FAILED', details: result,
-  });
+  if (!result.ok) {
+    const error = new RolloutError(`Published reconciliation failed for ${batchId}.`, {
+      code: 'PUBLISHED_RECONCILIATION_FAILED', details: result,
+    });
+    const publicationFailures = result.targetResults.filter((target) => target.publicationState?.ok === false);
+    for (const target of publicationFailures) {
+      journal = recordItemAttempt(journal, target.itemId, {
+        phase: 'reconcile-published', status: 'reconciliation-required', writeOutcome: 'not-attempted',
+        error: publicError(error), details: { publicationState: target.publicationState },
+      });
+    }
+    if (publicationFailures.length > 0) {
+      await saveBatchJournal(journal, paths.runtime);
+      await writeJson(path.join(paths.runtime, batchId, 'comparison.published.json'), result);
+    }
+    throw error;
+  }
   for (const itemId of batch.itemIds) {
     const live = exactlyOneCmsItem(current.live.items, requirePlanItem(plan, itemId), 'Verified live');
     journal = recordItemAttempt(journal, itemId, { phase: 'published-verified', status: 'succeeded',
