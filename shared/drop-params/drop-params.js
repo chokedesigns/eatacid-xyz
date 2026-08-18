@@ -7,7 +7,7 @@ export default {
   // true  = Show Drops UI
   // false = Show "No Drops Scheduled" panel
   // ============================================================
-  dropScheduled: true,
+  dropScheduled: false,
 
   // ============================================================
   // DROP NAME
