@@ -16,6 +16,28 @@ npm run cms:image-rollout -- status
 Markdown/JSON plan. `status` reads the plan and ignored local journals. Neither
 constructs a Webflow client or reads `WEBFLOW_API_TOKEN`.
 
+CMS-IMG-4 HEN planning is a separate read-only namespace and does not read or
+write CMS-IMG-3 batch journals:
+
+```powershell
+npm run cms:image-rollout -- hen-plan testnet
+npm run cms:image-rollout -- hen-status
+```
+
+The HEN planner consumes the audited CMS-IMG-4 mapping, the centralized
+`shared/chain-registry.js` mirror, canonical titles, and current local bytes.
+For the `testnet` registry slot (Shadownet), a canonical CMS token ID resolves
+through `testnet.mirrors.HEN` before locating the local thumbnail. For
+`mainnet`, the lookup ID is the canonical ID itself and no mirror translation
+occurs. Unknown networks, unknown testnet tokens, missing/duplicate/gapped
+mirror entries, audit/registry disagreement, and missing or changed local files
+fail closed.
+
+Current checked-in HEN files are Shadownet-keyed `0.jpg` through `16.jpg`, so
+the testnet plan is materializable now. Sparse canonical mainnet filenames are
+a later file-layout concern; the mainnet planner intentionally fails on those
+missing files instead of introducing a permanent canonical-to-`0..16` mirror.
+
 Later execution commands are deliberately separate:
 
 ```powershell

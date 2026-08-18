@@ -5,6 +5,9 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import sharp from 'sharp';
 
+import { chainRegistry } from '../../shared/chain-registry.js';
+import { toNetworkTokenId as authoritativeHenNetworkTokenId } from '../../admin-ui/src/utils/hen-ids.js';
+
 import {
   compareTarget,
   diffPaths,
@@ -16,6 +19,9 @@ import {
 } from '../webflow-cms-image-pilot/cms-image-pilot.mjs';
 
 export const TICKET = 'CMS-IMG-3';
+export const HEN_TICKET = 'CMS-IMG-4';
+export const HEN_EXPECTED_COUNT = 17;
+export const HEN_NETWORKS = Object.freeze(['testnet', 'mainnet']);
 export const ELIGIBLE_COLLECTIONS = Object.freeze([
   'CANAAN',
   'THE 419 SCRIPT',
@@ -31,6 +37,8 @@ export const COLLECTION_POLICY = Object.freeze({
 export const MODES = Object.freeze([
   'plan',
   'status',
+  'hen-plan',
+  'hen-status',
   'stage-batch',
   'verify-staged',
   'publish-batch',
@@ -47,6 +55,10 @@ export const DEFAULT_PATHS = Object.freeze({
   dropParams: path.resolve(moduleDir, '..', '..', 'shared', 'drop-params', 'drop-params.js'),
   planJson: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-3.rollout-plan.json'),
   planMarkdown: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-3.rollout-plan.md'),
+  henMapping: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-4.mapping.json'),
+  henTitles: path.resolve(moduleDir, '..', '..', 'admin-ui', 'src', 'titles', 'hen.json'),
+  henPlanJson: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-4.rollout-plan.json'),
+  henPlanMarkdown: path.resolve(moduleDir, '..', '..', 'docs', 'webflow-cms-image-audit', 'CMS-IMG-4.rollout-plan.md'),
   runtime: path.join(moduleDir, 'runtime'),
 });
 
@@ -329,6 +341,258 @@ export async function buildRolloutPlan({ mapping, completions, repoRoot = DEFAUL
     publicationBoundary: 'Staging never cascades to publishing. publish-batch requires a named batch, an exact verified item-ID set, an exact confirmation string, and no blocked or reconciliation-required item.',
     externalWritesPerformed: 0,
     statement: 'Generated entirely from repository mapping, local image bytes, and durable pilot evidence. No Webflow request or write was performed.',
+  };
+}
+
+function normalizedHenTokenId(value, label = 'HEN token ID') {
+  const text = String(value ?? '');
+  if (!/^\d+$/.test(text)) throw new RolloutError(`${label} must be a non-negative integer.`);
+  const tokenId = Number(text);
+  if (!Number.isSafeInteger(tokenId)) throw new RolloutError(`${label} must be a safe integer.`);
+  return tokenId;
+}
+
+export function validateHenMirror(mirror) {
+  if (!mirror || typeof mirror !== 'object' || Array.isArray(mirror)) {
+    throw new RolloutError('The authoritative testnet HEN mirror is missing.');
+  }
+  const entries = Object.entries(mirror);
+  if (entries.length !== HEN_EXPECTED_COUNT) {
+    throw new RolloutError(`The authoritative testnet HEN mirror has ${entries.length} entries; expected ${HEN_EXPECTED_COUNT}.`);
+  }
+  const canonicalIds = new Set();
+  const lookupIds = new Set();
+  for (const [canonicalValue, lookupValue] of entries) {
+    const canonicalId = normalizedHenTokenId(canonicalValue, 'Canonical HEN mirror ID');
+    const lookupId = normalizedHenTokenId(lookupValue, `Mirror target for canonical HEN ID ${canonicalId}`);
+    if (canonicalIds.has(canonicalId)) throw new RolloutError(`Duplicate canonical HEN mirror ID ${canonicalId}.`);
+    if (lookupIds.has(lookupId)) throw new RolloutError(`Duplicate HEN mirror target ${lookupId}.`);
+    canonicalIds.add(canonicalId);
+    lookupIds.add(lookupId);
+  }
+  const expectedLookupIds = Array.from({ length: HEN_EXPECTED_COUNT }, (_, index) => index);
+  const actualLookupIds = [...lookupIds].sort((left, right) => left - right);
+  if (actualLookupIds.some((value, index) => value !== expectedLookupIds[index])) {
+    throw new RolloutError(`The authoritative testnet HEN mirror has a gap; expected lookup IDs 0..${HEN_EXPECTED_COUNT - 1}.`);
+  }
+  return { entries, canonicalIds, lookupIds };
+}
+
+export function resolveHenThumbnailLookupId({ canonicalTokenId, network, mirror = chainRegistry.testnet?.mirrors?.HEN }) {
+  if (!HEN_NETWORKS.includes(network)) throw new RolloutError(`Unsupported HEN thumbnail network: ${network}.`);
+  const canonicalId = normalizedHenTokenId(canonicalTokenId, 'Canonical HEN token ID');
+  if (network === 'mainnet') return canonicalId;
+  validateHenMirror(mirror);
+  const lookupValue = mirror[String(canonicalId)];
+  if (lookupValue == null) throw new RolloutError(`Canonical HEN token ID ${canonicalId} is absent from the authoritative testnet mirror.`);
+  return normalizedHenTokenId(lookupValue, `Mirror target for canonical HEN ID ${canonicalId}`);
+}
+
+export function validateHenAudit({ audit, titles, registry = chainRegistry }) {
+  if (audit?.ticket !== HEN_TICKET || !Array.isArray(audit?.mappings)) {
+    throw new RolloutError('CMS-IMG-4 audit authority must contain a mappings array.');
+  }
+  if (audit.mappings.length !== HEN_EXPECTED_COUNT) {
+    throw new RolloutError(`CMS-IMG-4 audit contains ${audit.mappings.length} mappings; expected ${HEN_EXPECTED_COUNT}.`);
+  }
+  if (!titles || typeof titles !== 'object' || Array.isArray(titles) || Object.keys(titles).length !== HEN_EXPECTED_COUNT) {
+    throw new RolloutError(`HEN title authority must contain exactly ${HEN_EXPECTED_COUNT} canonical IDs.`);
+  }
+  const mirror = registry.testnet?.mirrors?.HEN;
+  const mirrorValidation = validateHenMirror(mirror);
+  if (Object.keys(registry.mainnet?.mirrors ?? {}).length !== 0) {
+    throw new RolloutError('Mainnet registry mirrors must remain empty for canonical HEN identity semantics.');
+  }
+  const canonicalIds = new Set();
+  const lookupIds = new Set();
+  const cmsItemIds = new Set();
+  const localPaths = new Set();
+  for (const [index, item] of audit.mappings.entries()) {
+    const canonicalId = normalizedHenTokenId(item.canonicalHenTokenId, `mappings[${index}].canonicalHenTokenId`);
+    const lookupId = normalizedHenTokenId(item.testnetHenTokenId, `mappings[${index}].testnetHenTokenId`);
+    if (canonicalIds.has(canonicalId)) throw new RolloutError(`Duplicate audited canonical HEN ID ${canonicalId}.`);
+    if (lookupIds.has(lookupId)) throw new RolloutError(`Duplicate audited HEN mirror target ${lookupId}.`);
+    assertNonEmptyString(item.webflowCmsItemId, `mappings[${index}].webflowCmsItemId`);
+    assertNonEmptyString(item.currentLocalThumbnail, `mappings[${index}].currentLocalThumbnail`);
+    if (cmsItemIds.has(item.webflowCmsItemId)) throw new RolloutError(`Duplicate audited CMS item ID ${item.webflowCmsItemId}.`);
+    if (localPaths.has(item.currentLocalThumbnail)) throw new RolloutError(`Duplicate audited local thumbnail ${item.currentLocalThumbnail}.`);
+    const registryLookupId = resolveHenThumbnailLookupId({ canonicalTokenId: canonicalId, network: 'testnet', mirror });
+    if (lookupId !== registryLookupId) {
+      throw new RolloutError(`Audit/registry mismatch for canonical HEN ID ${canonicalId}: audit=${lookupId}, registry=${registryLookupId}.`);
+    }
+    if (normalizedHenTokenId(authoritativeHenNetworkTokenId('HEN', canonicalId, 'testnet')) !== registryLookupId ||
+        normalizedHenTokenId(authoritativeHenNetworkTokenId('HEN', canonicalId, 'mainnet')) !== canonicalId) {
+      throw new RolloutError(`Audit/admin HEN resolver mismatch for canonical HEN ID ${canonicalId}.`);
+    }
+    if (item.mainnetThumbnailId !== canonicalId || item.currentWebflowCmsTokenId !== canonicalId) {
+      throw new RolloutError(`Canonical/mainnet identity mismatch for HEN ID ${canonicalId}.`);
+    }
+    if (item.currentLocalThumbnail !== `admin-ui/src/thumbs/hen/${lookupId}.jpg` || item.currentLocalFilename !== `${lookupId}.jpg`) {
+      throw new RolloutError(`Audited local thumbnail path mismatch for canonical HEN ID ${canonicalId}.`);
+    }
+    if (item.canonicalMainnetExpectedFilename !== `${canonicalId}.jpg`) {
+      throw new RolloutError(`Canonical filename seam mismatch for HEN ID ${canonicalId}.`);
+    }
+    if (titles[String(canonicalId)] !== item.title || item.name !== item.title) {
+      throw new RolloutError(`Title authority mismatch for canonical HEN ID ${canonicalId}.`);
+    }
+    if (item.confidence !== 'HIGH' || item.isDraft !== false || item.isArchived !== false || item.stagedLiveEqual !== true) {
+      throw new RolloutError(`HEN ID ${canonicalId} is not a clean HIGH-confidence audited mapping.`);
+    }
+    if (item.mediaType !== 'image/jpeg' || item.jpegProgressive !== true || item.dimensions?.width !== 300 || item.dimensions?.height !== 375 ||
+        !Number.isSafeInteger(item.byteCount) || item.byteCount <= 0 || !/^[a-f0-9]{64}$/.test(item.sha256)) {
+      throw new RolloutError(`HEN ID ${canonicalId} has invalid audited thumbnail metadata.`);
+    }
+    canonicalIds.add(canonicalId);
+    lookupIds.add(lookupId);
+    cmsItemIds.add(item.webflowCmsItemId);
+    localPaths.add(item.currentLocalThumbnail);
+  }
+  for (const canonicalId of mirrorValidation.canonicalIds) {
+    if (!canonicalIds.has(canonicalId)) throw new RolloutError(`Audited mapping is missing canonical HEN ID ${canonicalId}.`);
+  }
+  for (const canonicalId of Object.keys(titles).map(Number)) {
+    if (!canonicalIds.has(canonicalId)) throw new RolloutError(`Audited mapping is missing titled canonical HEN ID ${canonicalId}.`);
+  }
+  return { mirror, canonicalIds, lookupIds, cmsItemIds, localPaths };
+}
+
+export async function inspectHenThumbnail(repoRoot, localThumbnail) {
+  const localPath = path.resolve(repoRoot, localThumbnail);
+  const relative = path.relative(repoRoot, localPath);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) throw new RolloutError(`Local HEN thumbnail escapes the repository: ${localThumbnail}.`);
+  let bytes;
+  try { bytes = await fs.readFile(localPath); }
+  catch (error) { throw new RolloutError(`Missing local HEN thumbnail ${localThumbnail}: ${error.message}`); }
+  let metadata;
+  try { metadata = await sharp(bytes, { failOn: 'error' }).metadata(); }
+  catch (error) { throw new RolloutError(`Undecodable local HEN thumbnail ${localThumbnail}: ${error.message}`); }
+  if (metadata.format !== 'jpeg' || metadata.width !== 300 || metadata.height !== 375 || metadata.isProgressive !== true) {
+    throw new RolloutError(`Local HEN thumbnail ${localThumbnail} must be progressive JPEG 300x375; got ${metadata.format} ${metadata.width}x${metadata.height}.`);
+  }
+  return { sha256: digest(bytes, 'sha256'), byteCount: bytes.length, dimensions: { width: metadata.width, height: metadata.height },
+    format: metadata.format, progressive: metadata.isProgressive };
+}
+
+export async function buildHenRolloutPlan({ audit, titles, network, registry = chainRegistry, repoRoot = DEFAULT_PATHS.repoRoot }) {
+  const validation = validateHenAudit({ audit, titles, registry });
+  if (!HEN_NETWORKS.includes(network)) throw new RolloutError(`Unsupported HEN thumbnail network: ${network}.`);
+  const sorted = [...audit.mappings].sort((left, right) => left.canonicalHenTokenId - right.canonicalHenTokenId);
+  const items = [];
+  for (const item of sorted) {
+    const canonicalTokenId = item.canonicalHenTokenId;
+    const thumbnailLookupId = resolveHenThumbnailLookupId({ canonicalTokenId, network, mirror: validation.mirror });
+    const localThumbnailPath = `admin-ui/src/thumbs/hen/${thumbnailLookupId}.jpg`;
+    const local = await inspectHenThumbnail(repoRoot, localThumbnailPath);
+    if (network === 'testnet' && (local.sha256 !== item.sha256 || local.byteCount !== item.byteCount ||
+        local.dimensions.width !== item.dimensions.width || local.dimensions.height !== item.dimensions.height)) {
+      throw new RolloutError(`Local thumbnail bytes disagree with the audit for canonical HEN ID ${canonicalTokenId}.`);
+    }
+    items.push({
+      canonicalHenTokenId: canonicalTokenId,
+      network,
+      networkLabel: registry[network].label,
+      thumbnailLookupId,
+      webflowCmsItemId: item.webflowCmsItemId,
+      title: item.title,
+      name: item.name,
+      slug: item.slug,
+      locale: item.cmsLocaleId,
+      localThumbnailPath,
+      sha256: local.sha256,
+      byteCount: local.byteCount,
+      dimensions: local.dimensions,
+      imageFormat: local.format,
+      progressive: local.progressive,
+      mappingSource: network === 'testnet'
+        ? 'shared/chain-registry.js testnet.mirrors.HEN, verified against docs/webflow-cms-image-audit/CMS-IMG-4.mapping.json'
+        : 'canonical HEN identity (no mirror), verified against docs/webflow-cms-image-audit/CMS-IMG-4.mapping.json',
+      confidence: item.confidence,
+      expectedPhase: 'pending',
+    });
+  }
+  return {
+    ticket: HEN_TICKET,
+    sourceGeneratedAt: audit.generatedAt,
+    network: { slot: network, label: registry[network].label },
+    collection: { id: audit.collection.id, displayName: audit.collection.displayName },
+    sources: {
+      audit: 'docs/webflow-cms-image-audit/CMS-IMG-4.audit.md',
+      mapping: 'docs/webflow-cms-image-audit/CMS-IMG-4.mapping.json',
+      registry: 'shared/chain-registry.js',
+      publicNetwork: 'shared/network.js',
+      adminNetwork: 'admin-ui/src/network.js',
+      henResolver: 'admin-ui/src/utils/hen-ids.js',
+      titles: 'admin-ui/src/titles/hen.json',
+    },
+    resolutionRule: network === 'testnet'
+      ? 'canonical CMS HEN token ID -> authoritative Shadownet mirror ID -> local thumbnail'
+      : 'canonical CMS HEN token ID -> identical canonical thumbnail lookup ID (no mirror)',
+    counts: { mappings: items.length, canonicalIds: validation.canonicalIds.size, lookupIds: validation.lookupIds.size,
+      cmsItemIds: validation.cmsItemIds.size, localThumbnailPaths: validation.localPaths.size },
+    stateNamespace: `CMS-IMG-4/HEN/${network}`,
+    cmsImg3RuntimeStateConsumed: false,
+    items,
+    externalWritesPerformed: 0,
+    webflowWritesPerformed: 0,
+    statement: 'Generated entirely from repository audit authorities, registry semantics, title authority, and local image bytes. No Webflow request or write was performed.',
+    unresolvedFileLayoutSeam: 'Canonical sparse mainnet thumbnail filenames are not currently materialized. That is a later file-layout concern and does not introduce a mainnet mirror.',
+  };
+}
+
+function henMarkdownTable(items) {
+  const lines = [
+    '| Canonical HEN ID | Network | Lookup ID | CMS item ID | Title | Slug | Locale | Local thumbnail | SHA-256 | Bytes | Dimensions | Format | Confidence | Phase |',
+    '|---:|---|---:|---|---|---|---|---|---|---:|---|---|---|---|',
+  ];
+  for (const item of items) {
+    lines.push(`| ${item.canonicalHenTokenId} | ${item.networkLabel} (\`${item.network}\`) | ${item.thumbnailLookupId} | \`${item.webflowCmsItemId}\` | ${item.title.replaceAll('|', '\\|')} | \`${item.slug}\` | \`${item.locale}\` | \`${item.localThumbnailPath}\` | \`${item.sha256}\` | ${item.byteCount} | ${item.dimensions.width}x${item.dimensions.height} | ${item.imageFormat} | ${item.confidence} | ${item.expectedPhase} |`);
+  }
+  return lines.join('\n');
+}
+
+export function renderHenPlanMarkdown(plan) {
+  return `# CMS-IMG-4 HEN thumbnail rollout plan
+
+Network: **${plan.network.label}** (\`${plan.network.slot}\`)
+
+Resolution: ${plan.resolutionRule}.
+
+This deterministic, read-only plan consumes \`${plan.sources.mapping}\` and verifies it against \`${plan.sources.registry}\`, \`${plan.sources.titles}\`, and current local image bytes. CMS-IMG-3 runtime/journal state is not consumed.
+
+${henMarkdownTable(plan.items)}
+
+## File-layout seam
+
+${plan.unresolvedFileLayoutSeam}
+
+## Execution boundary
+
+${plan.statement}
+`;
+}
+
+export async function generateHenPlan({ network, paths = DEFAULT_PATHS, registry = chainRegistry } = {}) {
+  const [audit, titles] = await Promise.all([readJson(paths.henMapping), readJson(paths.henTitles)]);
+  const plan = await buildHenRolloutPlan({ audit, titles, network, registry, repoRoot: paths.repoRoot });
+  await Promise.all([
+    writeJson(paths.henPlanJson, plan),
+    atomicWrite(paths.henPlanMarkdown, `${renderHenPlanMarkdown(plan).trimEnd()}\n`),
+  ]);
+  return plan;
+}
+
+export function henRolloutStatus(plan) {
+  if (plan?.ticket !== HEN_TICKET || !Array.isArray(plan?.items) || plan.items.length !== HEN_EXPECTED_COUNT) {
+    throw new RolloutError('CMS-IMG-4 HEN status requires a valid 17-item HEN rollout plan.');
+  }
+  return {
+    ticket: HEN_TICKET,
+    stateNamespace: plan.stateNamespace,
+    network: plan.network,
+    expectedPhases: Object.fromEntries(plan.items.map((item) => [item.webflowCmsItemId, item.expectedPhase])),
+    cmsImg3RuntimeStateConsumed: false,
+    externalWritesPerformed: 0,
   };
 }
 
@@ -1297,20 +1561,50 @@ export async function rolloutStatus(plan, paths = DEFAULT_PATHS) {
 
 function parseArguments(argv) {
   const [mode, ...rest] = argv;
-  if (!MODES.includes(mode)) throw new RolloutError(`Usage: npm run cms:image-rollout -- <${MODES.join('|')}> [--batch B1]`);
+  if (!MODES.includes(mode)) throw new RolloutError(`Usage: npm run cms:image-rollout -- <${MODES.join('|')}> [testnet|mainnet] [--batch B1]`);
   let batchId = null;
+  let network = null;
   for (let index = 0; index < rest.length; index += 1) {
-    if (rest[index] !== '--batch' || !rest[index + 1] || batchId !== null) throw new RolloutError('Only one --batch <batch-id> argument is supported.');
-    batchId = rest[index + 1];
+    const flag = rest[index];
+    if (mode === 'hen-plan' && HEN_NETWORKS.includes(flag) && network === null) {
+      network = flag;
+      continue;
+    }
+    const value = rest[index + 1];
+    if (!value) throw new RolloutError(`${flag} requires a value.`);
+    if (flag === '--batch' && batchId === null) batchId = value;
+    else if (flag === '--target-network' && network === null) network = value;
+    else throw new RolloutError('Only one --batch and one --target-network argument are supported.');
     index += 1;
   }
-  if (mode !== 'plan' && mode !== 'status' && !batchId) throw new RolloutError(`${mode} requires --batch <batch-id>.`);
-  if ((mode === 'plan' || mode === 'status') && batchId) throw new RolloutError(`${mode} does not accept --batch.`);
-  return { mode, batchId };
+  if (mode === 'hen-plan') {
+    if (batchId) throw new RolloutError('hen-plan does not accept --batch.');
+    if (!network) throw new RolloutError('hen-plan requires an explicit <testnet|mainnet> network argument.');
+    if (!HEN_NETWORKS.includes(network)) throw new RolloutError(`Unsupported HEN thumbnail network: ${network}.`);
+  } else if (mode === 'hen-status') {
+    if (batchId || network) throw new RolloutError('hen-status does not accept --batch or --target-network; it reads the network-specific HEN plan.');
+  } else {
+    if (network) throw new RolloutError(`${mode} does not accept --target-network.`);
+    if (mode !== 'plan' && mode !== 'status' && !batchId) throw new RolloutError(`${mode} requires --batch <batch-id>.`);
+    if ((mode === 'plan' || mode === 'status') && batchId) throw new RolloutError(`${mode} does not accept --batch.`);
+  }
+  return { mode, batchId, network };
 }
 
 export async function main({ argv = process.argv.slice(2), env = process.env, paths = DEFAULT_PATHS, fetchImpl = fetch } = {}) {
-  const { mode, batchId } = parseArguments(argv);
+  const { mode, batchId, network } = parseArguments(argv);
+  if (mode === 'hen-plan') {
+    const plan = await generateHenPlan({ network, paths });
+    console.log(JSON.stringify({ mode, network: plan.network, counts: plan.counts, items: plan.items,
+      externalWritesPerformed: 0 }, null, 2));
+    return { mode, plan, externalWritesPerformed: 0 };
+  }
+  if (mode === 'hen-status') {
+    const plan = await readJson(paths.henPlanJson);
+    const status = henRolloutStatus(plan);
+    console.log(JSON.stringify(status, null, 2));
+    return { mode, status, externalWritesPerformed: 0 };
+  }
   if (mode === 'plan') {
     const plan = await generatePlan(paths);
     console.log(JSON.stringify({ mode, counts: plan.counts, batches: plan.batches, externalWritesPerformed: 0 }, null, 2));

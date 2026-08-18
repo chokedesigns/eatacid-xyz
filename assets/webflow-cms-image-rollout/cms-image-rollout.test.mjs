@@ -7,21 +7,26 @@ import { fileURLToPath } from 'node:url';
 
 import sharp from 'sharp';
 
+import { chainRegistry } from '../../shared/chain-registry.js';
 import { compareTarget, redact } from '../webflow-cms-image-pilot/cms-image-pilot.mjs';
 import {
   COLLECTION_POLICY,
   DEFAULT_PATHS,
   ELIGIBLE_COLLECTIONS,
   EXPECTED_COUNTS,
+  HEN_EXPECTED_COUNT,
   WRITE_CAPABLE_MODES,
   WebflowRolloutClient,
   approvePublish,
   assertNoActiveRedeemTarget,
   buildRolloutPlan,
+  buildHenRolloutPlan,
   compareUnrelatedItems,
   determineIdempotentAction,
   exactPublishItemIds,
   generatePlan,
+  generateHenPlan,
+  henRolloutStatus,
   initialBatchJournal,
   inspectLocalImage,
   main,
@@ -31,8 +36,12 @@ import {
   redactRollout,
   recordItemAttempt,
   renderPlanMarkdown,
+  renderHenPlanMarkdown,
+  resolveHenThumbnailLookupId,
   stageBatch,
   validateCompletions,
+  validateHenAudit,
+  validateHenMirror,
   validateMapping,
   verifyPlannedCmsImage,
   verifyCleanPublishedState,
@@ -45,7 +54,12 @@ const mappingPath = path.join(repoRoot, 'docs', 'webflow-cms-image-audit', 'CMS-
 const completionsPath = path.join(repoRoot, 'docs', 'webflow-cms-image-audit', 'CMS-IMG-2.completion.json');
 const mapping = JSON.parse(await fs.readFile(mappingPath, 'utf8'));
 const completions = JSON.parse(await fs.readFile(completionsPath, 'utf8'));
+const henMappingPath = path.join(repoRoot, 'docs', 'webflow-cms-image-audit', 'CMS-IMG-4.mapping.json');
+const henTitlesPath = path.join(repoRoot, 'admin-ui', 'src', 'titles', 'hen.json');
+const henMapping = JSON.parse(await fs.readFile(henMappingPath, 'utf8'));
+const henTitles = JSON.parse(await fs.readFile(henTitlesPath, 'utf8'));
 const plan = await buildRolloutPlan({ mapping, completions, repoRoot });
+const henPlan = await buildHenRolloutPlan({ audit: henMapping, titles: henTitles, network: 'testnet', repoRoot });
 
 function clone(value) {
   return structuredClone(value);
@@ -74,6 +88,94 @@ test('collection policy explicitly includes only direct-map collections and excl
   assert.equal(COLLECTION_POLICY.HEN.eligible, false);
   assert.match(COLLECTION_POLICY.HEN.reason, /CMS-IMG-4/);
   assert.deepEqual(WRITE_CAPABLE_MODES, ['stage-batch', 'publish-batch']);
+});
+
+test('CMS-IMG-4 audit and authoritative registry prove all 17 HEN mappings', () => {
+  const validation = validateHenAudit({ audit: henMapping, titles: henTitles });
+  assert.equal(validation.canonicalIds.size, HEN_EXPECTED_COUNT);
+  assert.equal(validation.lookupIds.size, HEN_EXPECTED_COUNT);
+  assert.equal(validation.cmsItemIds.size, HEN_EXPECTED_COUNT);
+  assert.equal(validation.localPaths.size, HEN_EXPECTED_COUNT);
+  const expected = [
+    [94684, 0], [103062, 1], [104492, 2], [114368, 3], [125115, 4], [135460, 5],
+    [141634, 6], [147893, 7], [175592, 8], [200717, 9], [209650, 10], [279300, 11],
+    [369693, 12], [397098, 13], [422822, 14], [455835, 15], [526531, 16],
+  ];
+  assert.deepEqual(henMapping.mappings.map((item) => [item.canonicalHenTokenId,
+    resolveHenThumbnailLookupId({ canonicalTokenId: item.canonicalHenTokenId, network: 'testnet' })]), expected);
+});
+
+test('HEN resolution is network-explicit: Shadownet mirrors and mainnet is identity', () => {
+  assert.equal(resolveHenThumbnailLookupId({ canonicalTokenId: 94684, network: 'testnet' }), 0);
+  assert.equal(resolveHenThumbnailLookupId({ canonicalTokenId: 526531, network: 'testnet' }), 16);
+  assert.equal(resolveHenThumbnailLookupId({ canonicalTokenId: 94684, network: 'mainnet' }), 94684);
+  assert.notEqual(resolveHenThumbnailLookupId({ canonicalTokenId: 94684, network: 'mainnet' }), 0);
+});
+
+test('HEN resolution fails closed for unknown token, missing mirror, duplicate target, gap, and unknown network', () => {
+  assert.throws(() => resolveHenThumbnailLookupId({ canonicalTokenId: 999999, network: 'testnet' }), /absent from the authoritative testnet mirror/);
+  const missing = clone(chainRegistry.testnet.mirrors.HEN);
+  delete missing['94684'];
+  assert.throws(() => resolveHenThumbnailLookupId({ canonicalTokenId: 94684, network: 'testnet', mirror: missing }), /has 16 entries/);
+  const duplicate = clone(chainRegistry.testnet.mirrors.HEN);
+  duplicate['103062'] = duplicate['94684'];
+  assert.throws(() => validateHenMirror(duplicate), /Duplicate HEN mirror target 0/);
+  const gap = clone(chainRegistry.testnet.mirrors.HEN);
+  gap['526531'] = '17';
+  assert.throws(() => validateHenMirror(gap), /has a gap/);
+  assert.throws(() => resolveHenThumbnailLookupId({ canonicalTokenId: 94684, network: 'ghostnet' }), /Unsupported HEN thumbnail network/);
+});
+
+test('HEN audit validation rejects audit/registry mismatch, duplicate identities, and missing audited canonical IDs', () => {
+  const mismatch = clone(henMapping);
+  mismatch.mappings[0].testnetHenTokenId = 99;
+  assert.throws(() => validateHenAudit({ audit: mismatch, titles: henTitles }), /Audit\/registry mismatch/);
+
+  const duplicateCanonical = clone(henMapping);
+  duplicateCanonical.mappings[1].canonicalHenTokenId = duplicateCanonical.mappings[0].canonicalHenTokenId;
+  assert.throws(() => validateHenAudit({ audit: duplicateCanonical, titles: henTitles }), /Duplicate audited canonical HEN ID/);
+
+  const missingAudit = clone(henMapping);
+  missingAudit.mappings.pop();
+  assert.throws(() => validateHenAudit({ audit: missingAudit, titles: henTitles }), /contains 16 mappings/);
+});
+
+test('CMS-IMG-4 testnet plan contains 17 verified local JPEG mappings and separate pending state', () => {
+  assert.equal(henPlan.ticket, 'CMS-IMG-4');
+  assert.deepEqual(henPlan.network, { slot: 'testnet', label: 'Shadownet' });
+  assert.equal(henPlan.items.length, HEN_EXPECTED_COUNT);
+  assert.equal(henPlan.cmsImg3RuntimeStateConsumed, false);
+  assert.equal(henPlan.stateNamespace, 'CMS-IMG-4/HEN/testnet');
+  assert.equal(new Set(henPlan.items.map((item) => item.webflowCmsItemId)).size, HEN_EXPECTED_COUNT);
+  assert.equal(new Set(henPlan.items.map((item) => item.localThumbnailPath)).size, HEN_EXPECTED_COUNT);
+  for (const item of henPlan.items) {
+    assert.match(item.sha256, /^[a-f0-9]{64}$/);
+    assert.ok(item.byteCount > 0);
+    assert.deepEqual(item.dimensions, { width: 300, height: 375 });
+    assert.equal(item.imageFormat, 'jpeg');
+    assert.equal(item.progressive, true);
+    assert.equal(item.confidence, 'HIGH');
+    assert.equal(item.expectedPhase, 'pending');
+  }
+});
+
+test('CMS-IMG-4 mainnet planning preserves identity and fails on the documented sparse-file seam', async () => {
+  await assert.rejects(buildHenRolloutPlan({ audit: henMapping, titles: henTitles, network: 'mainnet', repoRoot }),
+    /Missing local HEN thumbnail admin-ui\/src\/thumbs\/hen\/94684\.jpg/);
+});
+
+test('CMS-IMG-4 plan Markdown and status expose mappings without CMS-IMG-3 state', () => {
+  const markdown = renderHenPlanMarkdown(henPlan);
+  assert.match(markdown, /CMS-IMG-4 HEN thumbnail rollout plan/);
+  assert.match(markdown, /94684.*\| 0 .*67be1933648307936604171f/);
+  assert.match(markdown, /526531.*\| 16 .*67be2f200e39e3baf53bcc67/);
+  assert.match(markdown, /CMS-IMG-3 runtime\/journal state is not consumed/);
+  assert.match(markdown, /No Webflow request or write was performed/);
+  const status = henRolloutStatus(henPlan);
+  assert.equal(status.cmsImg3RuntimeStateConsumed, false);
+  assert.equal(Object.keys(status.expectedPhases).length, HEN_EXPECTED_COUNT);
+  assert.equal(new Set(Object.values(status.expectedPhases)).size, 1);
+  assert.equal(Object.values(status.expectedPhases)[0], 'pending');
 });
 
 test('authoritative mapping validates expected collection counts and uniqueness', () => {
@@ -805,6 +907,44 @@ test('offline plan mode performs no fetch and writes only deterministic plan tar
   assert.equal((await fs.stat(paths.planJson)).isFile(), true);
   assert.equal((await fs.stat(paths.planMarkdown)).isFile(), true);
   await assert.rejects(fs.stat(paths.runtime), /ENOENT/);
+});
+
+test('offline HEN plan/status modes perform no fetch and never touch CMS-IMG-3 runtime state', async (t) => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-4-plan-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const paths = {
+    ...DEFAULT_PATHS,
+    henPlanJson: path.join(temp, 'hen-plan.json'),
+    henPlanMarkdown: path.join(temp, 'hen-plan.md'),
+    runtime: path.join(temp, 'cms-img-3-runtime-must-not-exist'),
+  };
+  let fetchCalls = 0;
+  const fetchImpl = async () => {
+    fetchCalls += 1;
+    throw new Error('fetch must not run');
+  };
+  const planned = await main({ argv: ['hen-plan', 'testnet'], paths,
+    env: { WEBFLOW_API_TOKEN: 'must-not-be-read' }, fetchImpl });
+  const status = await main({ argv: ['hen-status'], paths,
+    env: { WEBFLOW_API_TOKEN: 'must-not-be-read' }, fetchImpl });
+  assert.equal(planned.externalWritesPerformed, 0);
+  assert.equal(status.externalWritesPerformed, 0);
+  assert.equal(status.status.cmsImg3RuntimeStateConsumed, false);
+  assert.equal(fetchCalls, 0);
+  assert.equal((await fs.stat(paths.henPlanJson)).isFile(), true);
+  assert.equal((await fs.stat(paths.henPlanMarkdown)).isFile(), true);
+  await assert.rejects(fs.stat(paths.runtime), /ENOENT/);
+});
+
+test('generated HEN plan is deterministic across repeated offline generations', async (t) => {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-4-deterministic-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const paths = { ...DEFAULT_PATHS, henPlanJson: path.join(temp, 'plan.json'), henPlanMarkdown: path.join(temp, 'plan.md') };
+  await generateHenPlan({ network: 'testnet', paths });
+  const first = [await fs.readFile(paths.henPlanJson, 'utf8'), await fs.readFile(paths.henPlanMarkdown, 'utf8')];
+  await generateHenPlan({ network: 'testnet', paths });
+  const second = [await fs.readFile(paths.henPlanJson, 'utf8'), await fs.readFile(paths.henPlanMarkdown, 'utf8')];
+  assert.deepEqual(second, first);
 });
 
 test('generated plan is deterministic across repeated offline generations', async (t) => {
