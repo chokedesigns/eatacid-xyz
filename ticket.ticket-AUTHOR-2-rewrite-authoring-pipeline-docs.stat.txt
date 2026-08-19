@@ -1,0 +1,27 @@
+ docs/admin-authoring-pipeline/00-START-HERE.md     | 113 ++++++++++
+ docs/admin-authoring-pipeline/00-overview.md       |  94 --------
+ docs/admin-authoring-pipeline/01-current-state.md  | 158 -------------
+ docs/admin-authoring-pipeline/01-current-system.md | 118 ++++++++++
+ .../02-data-duplication-map.md                     |  96 --------
+ .../02-identity-and-source-of-truth.md             |  94 ++++++++
+ .../03-canonical-authoring-record.md               | 188 ----------------
+ .../03-canonical-work-record.md                    | 123 ++++++++++
+ .../04-local-artifact-generation.md                | 109 +++++++++
+ .../04-local-minting-and-objkt.md                  | 123 ----------
+ .../05-admin-cms-publishing-pipeline.md            | 112 ---------
+ .../05-webflow-cms-adapter.md                      | 157 +++++++++++++
+ .../06-collection-policies.md                      | 101 +++++++++
+ .../06-drop-lifecycle-and-live-ui.md               | 161 -------------
+ .../07-drop-params-editor.md                       | 142 ------------
+ docs/admin-authoring-pipeline/07-work-lifecycle.md | 124 ++++++++++
+ .../08-canaan-drop-handoff.md                      | 114 ++++++++++
+ .../08-security-wallet-and-signing.md              | 132 -----------
+ .../09-minting-security-and-wallets.md             | 123 ++++++++++
+ .../09-target-architecture.md                      | 218 ------------------
+ .../10-implementation-roadmap.md                   | 250 ---------------------
+ .../10-target-architecture.md                      | 159 +++++++++++++
+ .../11-implementation-roadmap.md                   | 154 +++++++++++++
+ docs/admin-authoring-pipeline/11-open-questions.md |  48 ----
+ .../12-decisions-and-invariants.md                 | 153 +++++++++++++
+ .../13-current-project-state.md                    |  83 +++++++
+ 26 files changed, 1725 insertions(+), 1722 deletions(-)
