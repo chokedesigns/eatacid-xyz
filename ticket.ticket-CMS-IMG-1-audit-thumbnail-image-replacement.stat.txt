@@ -1,3 +1,0 @@
-﻿ docs/webflow-cms-image-audit/CMS-IMG-1.audit.md    |  193 ++
- .../webflow-cms-image-audit/CMS-IMG-1.mapping.json | 1890 ++++++++++++++++++++
- 2 files changed, 2083 insertions(+)
