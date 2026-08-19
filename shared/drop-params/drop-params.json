@@ -1,5 +1,5 @@
 {
-  "dropScheduled": false,
+  "dropScheduled": true,
   "dropName": "SPLINTERED",
   "mirrorNetwork": "testnet",
   "dropDate": {
