@@ -1,13 +1,14 @@
 {
   "ticket": "CMS-IMG-5",
-  "generatedAt": "2026-08-19T16:35:02.093Z",
-  "auditMode": "READ-ONLY",
+  "generatedAt": "2026-08-19T16:57:03.235Z",
+  "auditMode": "fresh authenticated read-only final reconciliation rerun after CMS-IMG-5A publication repair",
   "site": {
     "id": "656cf42faa2b1a7a1582d9d2",
     "displayName": "EATACID.xyz",
     "shortName": "staging-eatacid-xyz",
     "lastPublished": "2026-08-04T17:41:57.841Z",
-    "lastUpdated": "2026-08-19T01:32:43.018Z"
+    "lastUpdated": "2026-08-19T01:32:43.018Z",
+    "identityBasis": "pinned site ID plus fresh authenticated reads of all four exact collection IDs; token lacks sites:read"
   },
   "networkAndDropState": {
     "network": "testnet",
@@ -528,8 +529,8 @@
         "liveExact": 31,
         "canonicalIdentityPreserved": 31,
         "nonImagePreserved": 31,
-        "cleanPublicationState": 1,
-        "overallPass": 1
+        "cleanPublicationState": 31,
+        "overallPass": 31
       },
       "THE 419 SCRIPT": {
         "expected": 13,
@@ -569,10 +570,10 @@
       "liveExact": 66,
       "canonicalIdentityPreserved": 66,
       "nonImagePreserved": 66,
-      "cleanPublicationState": 36,
-      "queuedRevisions": 30,
+      "cleanPublicationState": 66,
+      "queuedRevisions": 0,
       "unexpectedCmsDrift": 0,
-      "overallPass": 36
+      "overallPass": 66
     }
   },
   "runtime": {
@@ -708,10 +709,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.892Z",
-      "liveLastUpdated": "2026-08-17T22:14:11.507Z",
-      "stagedLastPublished": "2026-08-17T22:14:11.507Z",
-      "liveLastPublished": "2026-08-17T22:14:11.507Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.487Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.487Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.487Z",
+      "liveLastPublished": "2026-08-19T16:56:57.487Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:36:38.956Z",
         "liveCreatedOn": "2024-01-12T22:36:38.956Z"
@@ -826,24 +827,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.892Z",
-          "lastPublished": "2026-08-17T22:14:11.507Z"
+          "lastUpdated": "2026-08-19T16:56:57.487Z",
+          "lastPublished": "2026-08-19T16:56:57.487Z"
         },
         "live": {
-          "lastUpdated": "2026-08-17T22:14:11.507Z",
-          "lastPublished": "2026-08-17T22:14:11.507Z"
+          "lastUpdated": "2026-08-19T16:56:57.487Z",
+          "lastPublished": "2026-08-19T16:56:57.487Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -1006,10 +1007,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.948Z",
-      "liveLastUpdated": "2026-08-17T22:14:11.511Z",
-      "stagedLastPublished": "2026-08-17T22:14:11.511Z",
-      "liveLastPublished": "2026-08-17T22:14:11.511Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.540Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.540Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.540Z",
+      "liveLastPublished": "2026-08-19T16:56:57.540Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:38:19.417Z",
         "liveCreatedOn": "2024-01-12T22:38:19.417Z"
@@ -1124,24 +1125,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.948Z",
-          "lastPublished": "2026-08-17T22:14:11.511Z"
+          "lastUpdated": "2026-08-19T16:56:57.540Z",
+          "lastPublished": "2026-08-19T16:56:57.540Z"
         },
         "live": {
-          "lastUpdated": "2026-08-17T22:14:11.511Z",
-          "lastPublished": "2026-08-17T22:14:11.511Z"
+          "lastUpdated": "2026-08-19T16:56:57.540Z",
+          "lastPublished": "2026-08-19T16:56:57.540Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -1155,10 +1156,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.888Z",
-      "liveLastUpdated": "2026-08-17T22:14:11.504Z",
-      "stagedLastPublished": "2026-08-17T22:14:11.504Z",
-      "liveLastPublished": "2026-08-17T22:14:11.504Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.459Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.459Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.459Z",
+      "liveLastPublished": "2026-08-19T16:56:57.459Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:39:01.990Z",
         "liveCreatedOn": "2024-01-12T22:39:01.990Z"
@@ -1273,24 +1274,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.888Z",
-          "lastPublished": "2026-08-17T22:14:11.504Z"
+          "lastUpdated": "2026-08-19T16:56:57.459Z",
+          "lastPublished": "2026-08-19T16:56:57.459Z"
         },
         "live": {
-          "lastUpdated": "2026-08-17T22:14:11.504Z",
-          "lastPublished": "2026-08-17T22:14:11.504Z"
+          "lastUpdated": "2026-08-19T16:56:57.459Z",
+          "lastPublished": "2026-08-19T16:56:57.459Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -1304,10 +1305,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.791Z",
-      "liveLastUpdated": "2026-08-17T22:14:11.509Z",
-      "stagedLastPublished": "2026-08-17T22:14:11.509Z",
-      "liveLastPublished": "2026-08-17T22:14:11.509Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.415Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.415Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.415Z",
+      "liveLastPublished": "2026-08-19T16:56:57.415Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:39:33.557Z",
         "liveCreatedOn": "2024-01-12T22:39:33.557Z"
@@ -1422,24 +1423,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.791Z",
-          "lastPublished": "2026-08-17T22:14:11.509Z"
+          "lastUpdated": "2026-08-19T16:56:57.415Z",
+          "lastPublished": "2026-08-19T16:56:57.415Z"
         },
         "live": {
-          "lastUpdated": "2026-08-17T22:14:11.509Z",
-          "lastPublished": "2026-08-17T22:14:11.509Z"
+          "lastUpdated": "2026-08-19T16:56:57.415Z",
+          "lastPublished": "2026-08-19T16:56:57.415Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -1453,10 +1454,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.900Z",
-      "liveLastUpdated": "2026-08-17T22:14:11.512Z",
-      "stagedLastPublished": "2026-08-17T22:14:11.512Z",
-      "liveLastPublished": "2026-08-17T22:14:11.512Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.536Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.536Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.536Z",
+      "liveLastPublished": "2026-08-19T16:56:57.536Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:40:08.709Z",
         "liveCreatedOn": "2024-01-12T22:40:08.709Z"
@@ -1571,24 +1572,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.900Z",
-          "lastPublished": "2026-08-17T22:14:11.512Z"
+          "lastUpdated": "2026-08-19T16:56:57.536Z",
+          "lastPublished": "2026-08-19T16:56:57.536Z"
         },
         "live": {
-          "lastUpdated": "2026-08-17T22:14:11.512Z",
-          "lastPublished": "2026-08-17T22:14:11.512Z"
+          "lastUpdated": "2026-08-19T16:56:57.536Z",
+          "lastPublished": "2026-08-19T16:56:57.536Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -1602,10 +1603,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.848Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.505Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.505Z",
-      "liveLastPublished": "2026-08-18T16:19:57.505Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.532Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.532Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.532Z",
+      "liveLastPublished": "2026-08-19T16:56:57.532Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:40:40.254Z",
         "liveCreatedOn": "2024-01-12T22:40:40.254Z"
@@ -1720,24 +1721,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.848Z",
-          "lastPublished": "2026-08-18T16:19:57.505Z"
+          "lastUpdated": "2026-08-19T16:56:57.532Z",
+          "lastPublished": "2026-08-19T16:56:57.532Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.505Z",
-          "lastPublished": "2026-08-18T16:19:57.505Z"
+          "lastUpdated": "2026-08-19T16:56:57.532Z",
+          "lastPublished": "2026-08-19T16:56:57.532Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -1751,10 +1752,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.818Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.490Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.490Z",
-      "liveLastPublished": "2026-08-18T16:19:57.490Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.542Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.542Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.542Z",
+      "liveLastPublished": "2026-08-19T16:56:57.542Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:45:45.105Z",
         "liveCreatedOn": "2024-01-12T22:45:45.105Z"
@@ -1869,24 +1870,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.818Z",
-          "lastPublished": "2026-08-18T16:19:57.490Z"
+          "lastUpdated": "2026-08-19T16:56:57.542Z",
+          "lastPublished": "2026-08-19T16:56:57.542Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.490Z",
-          "lastPublished": "2026-08-18T16:19:57.490Z"
+          "lastUpdated": "2026-08-19T16:56:57.542Z",
+          "lastPublished": "2026-08-19T16:56:57.542Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -1900,10 +1901,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.977Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.492Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.492Z",
-      "liveLastPublished": "2026-08-18T16:19:57.492Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.559Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.559Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.559Z",
+      "liveLastPublished": "2026-08-19T16:56:57.559Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:46:53.342Z",
         "liveCreatedOn": "2024-01-12T22:46:53.342Z"
@@ -2018,24 +2019,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.977Z",
-          "lastPublished": "2026-08-18T16:19:57.492Z"
+          "lastUpdated": "2026-08-19T16:56:57.559Z",
+          "lastPublished": "2026-08-19T16:56:57.559Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.492Z",
-          "lastPublished": "2026-08-18T16:19:57.492Z"
+          "lastUpdated": "2026-08-19T16:56:57.559Z",
+          "lastPublished": "2026-08-19T16:56:57.559Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -2049,10 +2050,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.869Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.487Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.487Z",
-      "liveLastPublished": "2026-08-18T16:19:57.487Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.557Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.557Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.557Z",
+      "liveLastPublished": "2026-08-19T16:56:57.557Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:47:33.221Z",
         "liveCreatedOn": "2024-01-12T22:47:33.221Z"
@@ -2167,24 +2168,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.869Z",
-          "lastPublished": "2026-08-18T16:19:57.487Z"
+          "lastUpdated": "2026-08-19T16:56:57.557Z",
+          "lastPublished": "2026-08-19T16:56:57.557Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.487Z",
-          "lastPublished": "2026-08-18T16:19:57.487Z"
+          "lastUpdated": "2026-08-19T16:56:57.557Z",
+          "lastPublished": "2026-08-19T16:56:57.557Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -2198,10 +2199,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.885Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.517Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.517Z",
-      "liveLastPublished": "2026-08-18T16:19:57.517Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.455Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.455Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.455Z",
+      "liveLastPublished": "2026-08-19T16:56:57.455Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:48:14.524Z",
         "liveCreatedOn": "2024-01-12T22:48:14.524Z"
@@ -2316,24 +2317,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.885Z",
-          "lastPublished": "2026-08-18T16:19:57.517Z"
+          "lastUpdated": "2026-08-19T16:56:57.455Z",
+          "lastPublished": "2026-08-19T16:56:57.455Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.517Z",
-          "lastPublished": "2026-08-18T16:19:57.517Z"
+          "lastUpdated": "2026-08-19T16:56:57.455Z",
+          "lastPublished": "2026-08-19T16:56:57.455Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -2347,10 +2348,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.932Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.519Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.519Z",
-      "liveLastPublished": "2026-08-18T16:19:57.519Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.538Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.538Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.538Z",
+      "liveLastPublished": "2026-08-19T16:56:57.538Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:52:41.149Z",
         "liveCreatedOn": "2024-01-12T22:52:41.149Z"
@@ -2465,24 +2466,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.932Z",
-          "lastPublished": "2026-08-18T16:19:57.519Z"
+          "lastUpdated": "2026-08-19T16:56:57.538Z",
+          "lastPublished": "2026-08-19T16:56:57.538Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.519Z",
-          "lastPublished": "2026-08-18T16:19:57.519Z"
+          "lastUpdated": "2026-08-19T16:56:57.538Z",
+          "lastPublished": "2026-08-19T16:56:57.538Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -2496,10 +2497,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.859Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.502Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.502Z",
-      "liveLastPublished": "2026-08-18T16:19:57.502Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.544Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.544Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.544Z",
+      "liveLastPublished": "2026-08-19T16:56:57.544Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:53:26.529Z",
         "liveCreatedOn": "2024-01-12T22:53:26.529Z"
@@ -2614,24 +2615,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.859Z",
-          "lastPublished": "2026-08-18T16:19:57.502Z"
+          "lastUpdated": "2026-08-19T16:56:57.544Z",
+          "lastPublished": "2026-08-19T16:56:57.544Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.502Z",
-          "lastPublished": "2026-08-18T16:19:57.502Z"
+          "lastUpdated": "2026-08-19T16:56:57.544Z",
+          "lastPublished": "2026-08-19T16:56:57.544Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -2645,10 +2646,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.866Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.504Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.504Z",
-      "liveLastPublished": "2026-08-18T16:19:57.504Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.604Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.604Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.604Z",
+      "liveLastPublished": "2026-08-19T16:56:57.604Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:54:12.917Z",
         "liveCreatedOn": "2024-01-12T22:54:12.917Z"
@@ -2763,24 +2764,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.866Z",
-          "lastPublished": "2026-08-18T16:19:57.504Z"
+          "lastUpdated": "2026-08-19T16:56:57.604Z",
+          "lastPublished": "2026-08-19T16:56:57.604Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.504Z",
-          "lastPublished": "2026-08-18T16:19:57.504Z"
+          "lastUpdated": "2026-08-19T16:56:57.604Z",
+          "lastPublished": "2026-08-19T16:56:57.604Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -2794,10 +2795,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.843Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.500Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.500Z",
-      "liveLastPublished": "2026-08-18T16:19:57.500Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.461Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.461Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.461Z",
+      "liveLastPublished": "2026-08-19T16:56:57.461Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:54:53.631Z",
         "liveCreatedOn": "2024-01-12T22:54:53.631Z"
@@ -2912,24 +2913,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.843Z",
-          "lastPublished": "2026-08-18T16:19:57.500Z"
+          "lastUpdated": "2026-08-19T16:56:57.461Z",
+          "lastPublished": "2026-08-19T16:56:57.461Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.500Z",
-          "lastPublished": "2026-08-18T16:19:57.500Z"
+          "lastUpdated": "2026-08-19T16:56:57.461Z",
+          "lastPublished": "2026-08-19T16:56:57.461Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -2943,10 +2944,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.959Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.494Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.494Z",
-      "liveLastPublished": "2026-08-18T16:19:57.494Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.530Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.530Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.530Z",
+      "liveLastPublished": "2026-08-19T16:56:57.530Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:56:02.705Z",
         "liveCreatedOn": "2024-01-12T22:56:02.705Z"
@@ -3061,24 +3062,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.959Z",
-          "lastPublished": "2026-08-18T16:19:57.494Z"
+          "lastUpdated": "2026-08-19T16:56:57.530Z",
+          "lastPublished": "2026-08-19T16:56:57.530Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.494Z",
-          "lastPublished": "2026-08-18T16:19:57.494Z"
+          "lastUpdated": "2026-08-19T16:56:57.530Z",
+          "lastPublished": "2026-08-19T16:56:57.530Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -3092,10 +3093,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.857Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.498Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.498Z",
-      "liveLastPublished": "2026-08-18T16:19:57.498Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.418Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.418Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.418Z",
+      "liveLastPublished": "2026-08-19T16:56:57.418Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:56:53.585Z",
         "liveCreatedOn": "2024-01-12T22:56:53.585Z"
@@ -3210,24 +3211,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.857Z",
-          "lastPublished": "2026-08-18T16:19:57.498Z"
+          "lastUpdated": "2026-08-19T16:56:57.418Z",
+          "lastPublished": "2026-08-19T16:56:57.418Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.498Z",
-          "lastPublished": "2026-08-18T16:19:57.498Z"
+          "lastUpdated": "2026-08-19T16:56:57.418Z",
+          "lastPublished": "2026-08-19T16:56:57.418Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -3241,10 +3242,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.793Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.496Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.496Z",
-      "liveLastPublished": "2026-08-18T16:19:57.496Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.422Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.422Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.422Z",
+      "liveLastPublished": "2026-08-19T16:56:57.422Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-01-12T22:57:25.066Z",
         "liveCreatedOn": "2024-01-12T22:57:25.066Z"
@@ -3359,24 +3360,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.793Z",
-          "lastPublished": "2026-08-18T16:19:57.496Z"
+          "lastUpdated": "2026-08-19T16:56:57.422Z",
+          "lastPublished": "2026-08-19T16:56:57.422Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.496Z",
-          "lastPublished": "2026-08-18T16:19:57.496Z"
+          "lastUpdated": "2026-08-19T16:56:57.422Z",
+          "lastPublished": "2026-08-19T16:56:57.422Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -3390,10 +3391,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.895Z",
-      "liveLastUpdated": "2026-08-18T16:19:57.514Z",
-      "stagedLastPublished": "2026-08-18T16:19:57.514Z",
-      "liveLastPublished": "2026-08-18T16:19:57.514Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.457Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.457Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.457Z",
+      "liveLastPublished": "2026-08-19T16:56:57.457Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:14:52.821Z",
         "liveCreatedOn": "2024-02-26T21:14:52.821Z"
@@ -3508,24 +3509,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.895Z",
-          "lastPublished": "2026-08-18T16:19:57.514Z"
+          "lastUpdated": "2026-08-19T16:56:57.457Z",
+          "lastPublished": "2026-08-19T16:56:57.457Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T16:19:57.514Z",
-          "lastPublished": "2026-08-18T16:19:57.514Z"
+          "lastUpdated": "2026-08-19T16:56:57.457Z",
+          "lastPublished": "2026-08-19T16:56:57.457Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -3539,10 +3540,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.814Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.019Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.019Z",
-      "liveLastPublished": "2026-08-18T21:31:35.019Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.485Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.485Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.485Z",
+      "liveLastPublished": "2026-08-19T16:56:57.485Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:16:14.571Z",
         "liveCreatedOn": "2024-02-26T21:16:14.571Z"
@@ -3657,24 +3658,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.814Z",
-          "lastPublished": "2026-08-18T21:31:35.019Z"
+          "lastUpdated": "2026-08-19T16:56:57.485Z",
+          "lastPublished": "2026-08-19T16:56:57.485Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.019Z",
-          "lastPublished": "2026-08-18T21:31:35.019Z"
+          "lastUpdated": "2026-08-19T16:56:57.485Z",
+          "lastPublished": "2026-08-19T16:56:57.485Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -3688,10 +3689,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.885Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.017Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.017Z",
-      "liveLastPublished": "2026-08-18T21:31:35.017Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.463Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.463Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.463Z",
+      "liveLastPublished": "2026-08-19T16:56:57.463Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:17:25.449Z",
         "liveCreatedOn": "2024-02-26T21:17:25.449Z"
@@ -3806,24 +3807,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.885Z",
-          "lastPublished": "2026-08-18T21:31:35.017Z"
+          "lastUpdated": "2026-08-19T16:56:57.463Z",
+          "lastPublished": "2026-08-19T16:56:57.463Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.017Z",
-          "lastPublished": "2026-08-18T21:31:35.017Z"
+          "lastUpdated": "2026-08-19T16:56:57.463Z",
+          "lastPublished": "2026-08-19T16:56:57.463Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -3837,10 +3838,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.895Z",
-      "liveLastUpdated": "2026-08-18T21:31:34.998Z",
-      "stagedLastPublished": "2026-08-18T21:31:34.998Z",
-      "liveLastPublished": "2026-08-18T21:31:34.998Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.427Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.427Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.427Z",
+      "liveLastPublished": "2026-08-19T16:56:57.427Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:18:29.473Z",
         "liveCreatedOn": "2024-02-26T21:18:29.473Z"
@@ -3955,24 +3956,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.895Z",
-          "lastPublished": "2026-08-18T21:31:34.998Z"
+          "lastUpdated": "2026-08-19T16:56:57.427Z",
+          "lastPublished": "2026-08-19T16:56:57.427Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:34.998Z",
-          "lastPublished": "2026-08-18T21:31:34.998Z"
+          "lastUpdated": "2026-08-19T16:56:57.427Z",
+          "lastPublished": "2026-08-19T16:56:57.427Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -3986,10 +3987,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:43.000Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.004Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.004Z",
-      "liveLastPublished": "2026-08-18T21:31:35.004Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.467Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.467Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.467Z",
+      "liveLastPublished": "2026-08-19T16:56:57.467Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:19:18.610Z",
         "liveCreatedOn": "2024-02-26T21:19:18.610Z"
@@ -4104,24 +4105,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:43.000Z",
-          "lastPublished": "2026-08-18T21:31:35.004Z"
+          "lastUpdated": "2026-08-19T16:56:57.467Z",
+          "lastPublished": "2026-08-19T16:56:57.467Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.004Z",
-          "lastPublished": "2026-08-18T21:31:35.004Z"
+          "lastUpdated": "2026-08-19T16:56:57.467Z",
+          "lastPublished": "2026-08-19T16:56:57.467Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -4135,10 +4136,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.871Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.001Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.001Z",
-      "liveLastPublished": "2026-08-18T21:31:35.001Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.420Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.420Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.420Z",
+      "liveLastPublished": "2026-08-19T16:56:57.420Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:20:02.275Z",
         "liveCreatedOn": "2024-02-26T21:20:02.275Z"
@@ -4253,24 +4254,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.871Z",
-          "lastPublished": "2026-08-18T21:31:35.001Z"
+          "lastUpdated": "2026-08-19T16:56:57.420Z",
+          "lastPublished": "2026-08-19T16:56:57.420Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.001Z",
-          "lastPublished": "2026-08-18T21:31:35.001Z"
+          "lastUpdated": "2026-08-19T16:56:57.420Z",
+          "lastPublished": "2026-08-19T16:56:57.420Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -4284,10 +4285,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.794Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.007Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.007Z",
-      "liveLastPublished": "2026-08-18T21:31:35.007Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.465Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.465Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.465Z",
+      "liveLastPublished": "2026-08-19T16:56:57.465Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:21:50.574Z",
         "liveCreatedOn": "2024-02-26T21:21:50.574Z"
@@ -4402,24 +4403,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.794Z",
-          "lastPublished": "2026-08-18T21:31:35.007Z"
+          "lastUpdated": "2026-08-19T16:56:57.465Z",
+          "lastPublished": "2026-08-19T16:56:57.465Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.007Z",
-          "lastPublished": "2026-08-18T21:31:35.007Z"
+          "lastUpdated": "2026-08-19T16:56:57.465Z",
+          "lastPublished": "2026-08-19T16:56:57.465Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -4433,10 +4434,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.927Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.010Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.010Z",
-      "liveLastPublished": "2026-08-18T21:31:35.010Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.423Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.423Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.423Z",
+      "liveLastPublished": "2026-08-19T16:56:57.423Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:28:59.794Z",
         "liveCreatedOn": "2024-02-26T21:28:59.794Z"
@@ -4551,24 +4552,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.927Z",
-          "lastPublished": "2026-08-18T21:31:35.010Z"
+          "lastUpdated": "2026-08-19T16:56:57.423Z",
+          "lastPublished": "2026-08-19T16:56:57.423Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.010Z",
-          "lastPublished": "2026-08-18T21:31:35.010Z"
+          "lastUpdated": "2026-08-19T16:56:57.423Z",
+          "lastPublished": "2026-08-19T16:56:57.423Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -4582,10 +4583,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.950Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.041Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.041Z",
-      "liveLastPublished": "2026-08-18T21:31:35.041Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.606Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.606Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.606Z",
+      "liveLastPublished": "2026-08-19T16:56:57.606Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:29:58.381Z",
         "liveCreatedOn": "2024-02-26T21:29:58.381Z"
@@ -4700,24 +4701,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.950Z",
-          "lastPublished": "2026-08-18T21:31:35.041Z"
+          "lastUpdated": "2026-08-19T16:56:57.606Z",
+          "lastPublished": "2026-08-19T16:56:57.606Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.041Z",
-          "lastPublished": "2026-08-18T21:31:35.041Z"
+          "lastUpdated": "2026-08-19T16:56:57.606Z",
+          "lastPublished": "2026-08-19T16:56:57.606Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -4731,10 +4732,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.841Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.055Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.055Z",
-      "liveLastPublished": "2026-08-18T21:31:35.055Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.600Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.600Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.600Z",
+      "liveLastPublished": "2026-08-19T16:56:57.600Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:31:49.408Z",
         "liveCreatedOn": "2024-02-26T21:31:49.408Z"
@@ -4849,24 +4850,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.841Z",
-          "lastPublished": "2026-08-18T21:31:35.055Z"
+          "lastUpdated": "2026-08-19T16:56:57.600Z",
+          "lastPublished": "2026-08-19T16:56:57.600Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.055Z",
-          "lastPublished": "2026-08-18T21:31:35.055Z"
+          "lastUpdated": "2026-08-19T16:56:57.600Z",
+          "lastPublished": "2026-08-19T16:56:57.600Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -4880,10 +4881,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.913Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.013Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.013Z",
-      "liveLastPublished": "2026-08-18T21:31:35.013Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.425Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.425Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.425Z",
+      "liveLastPublished": "2026-08-19T16:56:57.425Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2024-02-26T21:32:35.361Z",
         "liveCreatedOn": "2024-02-26T21:32:35.361Z"
@@ -4998,24 +4999,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.913Z",
-          "lastPublished": "2026-08-18T21:31:35.013Z"
+          "lastUpdated": "2026-08-19T16:56:57.425Z",
+          "lastPublished": "2026-08-19T16:56:57.425Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.013Z",
-          "lastPublished": "2026-08-18T21:31:35.013Z"
+          "lastUpdated": "2026-08-19T16:56:57.425Z",
+          "lastPublished": "2026-08-19T16:56:57.425Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -5029,10 +5030,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.812Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.015Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.015Z",
-      "liveLastPublished": "2026-08-18T21:31:35.015Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.452Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.452Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.452Z",
+      "liveLastPublished": "2026-08-19T16:56:57.452Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2026-05-29T21:53:53.909Z",
         "liveCreatedOn": "2026-05-29T21:53:53.909Z"
@@ -5147,24 +5148,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.812Z",
-          "lastPublished": "2026-08-18T21:31:35.015Z"
+          "lastUpdated": "2026-08-19T16:56:57.452Z",
+          "lastPublished": "2026-08-19T16:56:57.452Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.015Z",
-          "lastPublished": "2026-08-18T21:31:35.015Z"
+          "lastUpdated": "2026-08-19T16:56:57.452Z",
+          "lastPublished": "2026-08-19T16:56:57.452Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "CANAAN",
@@ -5178,10 +5179,10 @@
       "locale": "656d1d76a2cda12f26e04687",
       "isDraft": false,
       "isArchived": false,
-      "stagedLastUpdated": "2026-08-19T01:32:42.922Z",
-      "liveLastUpdated": "2026-08-18T21:31:35.021Z",
-      "stagedLastPublished": "2026-08-18T21:31:35.021Z",
-      "liveLastPublished": "2026-08-18T21:31:35.021Z",
+      "stagedLastUpdated": "2026-08-19T16:56:57.534Z",
+      "liveLastUpdated": "2026-08-19T16:56:57.534Z",
+      "stagedLastPublished": "2026-08-19T16:56:57.534Z",
+      "liveLastPublished": "2026-08-19T16:56:57.534Z",
       "publicationRelevantMetadata": {
         "stagedCreatedOn": "2026-05-29T21:58:27.010Z",
         "liveCreatedOn": "2026-05-29T21:58:27.010Z"
@@ -5296,24 +5297,24 @@
         "liveDifferences": []
       },
       "publicationStateVerification": {
-        "ok": false,
+        "ok": true,
         "lastPublishedPresent": true,
         "timestampsValid": true,
-        "stagedUpdatedNotAfterPublished": false,
+        "stagedUpdatedNotAfterPublished": true,
         "liveUpdatedNotAfterPublished": true,
-        "publicationMarkersCoverAllUpdates": false,
+        "publicationMarkersCoverAllUpdates": true,
         "publishedFlagsClean": true,
         "staged": {
-          "lastUpdated": "2026-08-19T01:32:42.922Z",
-          "lastPublished": "2026-08-18T21:31:35.021Z"
+          "lastUpdated": "2026-08-19T16:56:57.534Z",
+          "lastPublished": "2026-08-19T16:56:57.534Z"
         },
         "live": {
-          "lastUpdated": "2026-08-18T21:31:35.021Z",
-          "lastPublished": "2026-08-18T21:31:35.021Z"
+          "lastUpdated": "2026-08-19T16:56:57.534Z",
+          "lastPublished": "2026-08-19T16:56:57.534Z"
         }
       },
       "stagedLiveContentEqual": true,
-      "overallPass": false
+      "overallPass": true
     },
     {
       "collection": "THE 419 SCRIPT",
@@ -10531,5 +10532,5 @@
       "overallPass": true
     }
   ],
-  "closurePassed": false
+  "closurePassed": true
 }
