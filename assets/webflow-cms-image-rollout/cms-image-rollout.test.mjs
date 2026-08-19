@@ -15,10 +15,12 @@ import {
   ELIGIBLE_COLLECTIONS,
   EXPECTED_COUNTS,
   HEN_EXPECTED_COUNT,
+  HEN_WRITE_CAPABLE_MODES,
   WRITE_CAPABLE_MODES,
   WebflowRolloutClient,
   approvePublish,
   assertNoActiveRedeemTarget,
+  assertHenActiveRedeemModel,
   buildRolloutPlan,
   buildHenRolloutPlan,
   compareUnrelatedItems,
@@ -32,18 +34,23 @@ import {
   main,
   publishConfirmation,
   publishBatch,
+  publishHenBatch,
   reconcilePublishedBatch,
+  reconcileHenPublishedBatch,
   redactRollout,
   recordItemAttempt,
   renderPlanMarkdown,
   renderHenPlanMarkdown,
   resolveHenThumbnailLookupId,
   stageBatch,
+  stageHenBatch,
   validateCompletions,
   validateHenAudit,
   validateHenMirror,
+  validateHenExecutionPlan,
   validateMapping,
   verifyPlannedCmsImage,
+  verifyHenStagedBatch,
   verifyCleanPublishedState,
   writeJson,
 } from './cms-image-rollout.mjs';
@@ -146,6 +153,8 @@ test('CMS-IMG-4 testnet plan contains 17 verified local JPEG mappings and separa
   assert.equal(henPlan.items.length, HEN_EXPECTED_COUNT);
   assert.equal(henPlan.cmsImg3RuntimeStateConsumed, false);
   assert.equal(henPlan.stateNamespace, 'CMS-IMG-4/HEN/testnet');
+  assert.deepEqual(HEN_WRITE_CAPABLE_MODES, ['hen-stage-batch', 'hen-publish-batch']);
+  assert.deepEqual(henPlan.batches.map((batch) => [batch.batchId, batch.count]), [['H1', 5], ['H2', 12]]);
   assert.equal(new Set(henPlan.items.map((item) => item.webflowCmsItemId)).size, HEN_EXPECTED_COUNT);
   assert.equal(new Set(henPlan.items.map((item) => item.localThumbnailPath)).size, HEN_EXPECTED_COUNT);
   for (const item of henPlan.items) {
@@ -159,19 +168,65 @@ test('CMS-IMG-4 testnet plan contains 17 verified local JPEG mappings and separa
   }
 });
 
+test('H1 and H2 have exact deterministic canonical membership', () => {
+  validateHenExecutionPlan(henPlan);
+  const canonicalFor = (batch) => batch.itemIds.map((itemId) => henPlan.items.find((item) => item.cmsItemId === itemId).tokenId);
+  assert.deepEqual(canonicalFor(henPlan.batches[0]), [94684, 103062, 104492, 114368, 125115]);
+  assert.deepEqual(canonicalFor(henPlan.batches[1]), [135460, 141634, 147893, 175592, 200717, 209650,
+    279300, 369693, 397098, 422822, 455835, 526531]);
+});
+
+test('HEN execution plan fails closed on batch, plan-entry, mirror-resolution, and network tampering', async () => {
+  const duplicate = clone(henPlan);
+  duplicate.batches[0].itemIds[1] = duplicate.batches[0].itemIds[0];
+  assert.throws(() => validateHenExecutionPlan(duplicate), /batch membership/);
+
+  const mismatched = clone(henPlan);
+  mismatched.batches[0].itemIds[0] = mismatched.batches[1].itemIds[0];
+  assert.throws(() => validateHenExecutionPlan(mismatched), /batch membership/);
+
+  const missing = clone(henPlan);
+  missing.items.pop();
+  assert.throws(() => validateHenExecutionPlan(missing), /exactly 17 plan items/);
+
+  const mirrorMismatch = clone(henPlan);
+  mirrorMismatch.items[0].thumbnailLookupId = 16;
+  assert.throws(() => validateHenExecutionPlan(mirrorMismatch), /resolution mismatch/);
+
+  const wrongNetwork = clone(henPlan);
+  wrongNetwork.network.slot = 'mainnet';
+  assert.throws(() => validateHenExecutionPlan(wrongNetwork), /CMS-IMG-4\/HEN\/testnet/);
+
+  await assert.rejects(stageHenBatch({ plan: henPlan, batchId: 'UNKNOWN', api: null,
+    paths: { ...DEFAULT_PATHS, runtime: os.tmpdir() } }), /Unknown batch UNKNOWN/);
+});
+
+test('HEN active-token safety uses canonical IDs and rejects mirror-shaped active identity', () => {
+  const h1 = henPlan.batches[0].itemIds.map((itemId) => henPlan.items.find((item) => item.cmsItemId === itemId));
+  assert.doesNotThrow(() => assertHenActiveRedeemModel(henPlan, { redeemToken: { collection: '', tokenId: '' } }));
+  assert.doesNotThrow(() => assertHenActiveRedeemModel(henPlan,
+    { redeemToken: { collection: 'HEN', tokenId: '94684' } }));
+  assert.throws(() => assertNoActiveRedeemTarget(h1,
+    { redeemToken: { collection: 'HEN', tokenId: '94684' } }), /configured active redeem token/);
+  assert.throws(() => assertHenActiveRedeemModel(henPlan,
+    { redeemToken: { collection: 'HEN', tokenId: '0' } }), /not a canonical audited HEN ID/);
+});
+
 test('CMS-IMG-4 mainnet planning preserves identity and fails on the documented sparse-file seam', async () => {
   await assert.rejects(buildHenRolloutPlan({ audit: henMapping, titles: henTitles, network: 'mainnet', repoRoot }),
     /Missing local HEN thumbnail admin-ui\/src\/thumbs\/hen\/94684\.jpg/);
 });
 
-test('CMS-IMG-4 plan Markdown and status expose mappings without CMS-IMG-3 state', () => {
+test('CMS-IMG-4 plan Markdown and status expose mappings without CMS-IMG-3 state', async () => {
   const markdown = renderHenPlanMarkdown(henPlan);
   assert.match(markdown, /CMS-IMG-4 HEN thumbnail rollout plan/);
   assert.match(markdown, /94684.*\| 0 .*67be1933648307936604171f/);
   assert.match(markdown, /526531.*\| 16 .*67be2f200e39e3baf53bcc67/);
   assert.match(markdown, /CMS-IMG-3 runtime\/journal state is not consumed/);
   assert.match(markdown, /No Webflow request or write was performed/);
-  const status = henRolloutStatus(henPlan);
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-4-status-'));
+  const status = await henRolloutStatus(henPlan, { ...DEFAULT_PATHS, runtime: temp });
+  await fs.rm(temp, { recursive: true, force: true });
   assert.equal(status.cmsImg3RuntimeStateConsumed, false);
   assert.equal(Object.keys(status.expectedPhases).length, HEN_EXPECTED_COUNT);
   assert.equal(new Set(Object.values(status.expectedPhases)).size, 1);
@@ -477,6 +532,30 @@ test('generalized Webflow client patches only Image and publishes only exact ite
   assert.deepEqual(JSON.parse(requests[1].options.body), { itemIds: plan.batches[0].itemIds });
 });
 
+test('Webflow client bounds GET retry/backoff and never blindly retries mutation responses', async () => {
+  let getCalls = 0;
+  const sleeps = [];
+  const getClient = new WebflowRolloutClient({ token: 'mock-token', siteId: henPlan.site.siteId,
+    sleep: async (milliseconds) => { sleeps.push(milliseconds); },
+    fetchImpl: async () => {
+      getCalls += 1;
+      if (getCalls < 3) return new Response('{}', { status: 429 });
+      return new Response(JSON.stringify({ id: henPlan.collection.id }), { status: 200 });
+    } });
+  assert.equal((await getClient.getCollection(henPlan.collection.id)).id, henPlan.collection.id);
+  assert.equal(getCalls, 3);
+  assert.deepEqual(sleeps, [500, 1000]);
+
+  let patchCalls = 0;
+  const patchClient = new WebflowRolloutClient({ token: 'mock-token', siteId: henPlan.site.siteId,
+    sleep: async () => { throw new Error('mutation backoff must not run'); },
+    fetchImpl: async () => { patchCalls += 1; return new Response('{}', { status: 429 }); } });
+  const item = henPlan.items[0];
+  await assert.rejects(patchClient.patchImage(item.collectionId, item.cmsItemId, item.localeId,
+    { fileId: 'asset', url: 'https://example.test/asset.jpg', alt: null }), /HTTP 429/);
+  assert.equal(patchCalls, 1);
+});
+
 test('mocked batch stages five sequentially without publishing, then exact publish reconciles live state', async (t) => {
   const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-3-stage-mock-'));
   t.after(() => fs.rm(temp, { recursive: true, force: true }));
@@ -645,6 +724,274 @@ async function createResumeFixture(t) {
     persist, setStagedVerified, setPublishedVerified, setPublished,
   };
 }
+
+async function createHenExecutionFixture(t, batchId = 'H1') {
+  const temp = await fs.mkdtemp(path.join(os.tmpdir(), 'cms-img-4-hen-execution-'));
+  t.after(() => fs.rm(temp, { recursive: true, force: true }));
+  const paths = { ...DEFAULT_PATHS, runtime: path.join(temp, 'runtime') };
+  const runtime = path.join(paths.runtime, 'CMS-IMG-4', 'HEN', 'testnet');
+  const batch = henPlan.batches.find((candidate) => candidate.batchId === batchId);
+  const members = batch.itemIds.map((itemId) => henPlan.items.find((item) => item.cmsItemId === itemId));
+  const originalItems = henPlan.items.map((item) => fakeCmsItem(item, { fileId: `old-${item.cmsItemId}`,
+    url: `https://old.example.test/${item.cmsItemId}.jpg`, alt: null }));
+  let stagedItems = clone(originalItems);
+  let liveItems = clone(originalItems);
+  let dropParams = { redeemToken: { collection: '', tokenId: '' } };
+  let patchUncertainItemId = null;
+  let publishUncertain = false;
+  const oldBytes = await sharp({ create: { width: 300, height: 375, channels: 3, background: '#000000' } })
+    .jpeg({ progressive: true }).toBuffer();
+  const localBytes = new Map();
+  for (const item of henPlan.items) localBytes.set(item.cmsItemId, await fs.readFile(path.join(repoRoot, item.localSourceImage)));
+  const assets = new Map();
+  const calls = { dropParams: 0, collectionReads: 0, itemReads: 0, listAssets: 0,
+    createAsset: 0, upload: 0, patchImage: 0, publishItems: 0 };
+  const patchCalls = [];
+  const publishCalls = [];
+  const api = {
+    getCollection: async (collectionId) => { calls.collectionReads += 1; return { id: collectionId }; },
+    listItems: async (_collectionId, type) => {
+      calls.itemReads += 1;
+      return { items: clone(type === 'live' ? liveItems : stagedItems), pagination: { total: HEN_EXPECTED_COUNT } };
+    },
+    listAssets: async () => { calls.listAssets += 1; return []; },
+    createAsset: async (fileName) => {
+      calls.createAsset += 1;
+      const item = members.find((candidate) => fileName.includes(`-${candidate.tokenId}-`));
+      const metadata = { id: `asset-${item.cmsItemId}`, originalFileName: fileName,
+        hostedUrl: `https://assets.example.test/${item.cmsItemId}.jpg`,
+        uploadUrl: `https://upload.example.test/${item.cmsItemId}`, uploadDetails: { key: item.cmsItemId } };
+      assets.set(metadata.id, metadata);
+      return metadata;
+    },
+    getAsset: async (assetId) => assets.get(assetId),
+    patchImage: async (collectionId, itemId, localeId, image) => {
+      calls.patchImage += 1;
+      patchCalls.push({ collectionId, itemId, localeId, image });
+      stagedItems = stagedItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
+      if (itemId === patchUncertainItemId) throw new Error('mock patch response lost');
+      return { items: [{ id: itemId }] };
+    },
+    publishItems: async (collectionId, itemIds) => {
+      calls.publishItems += 1;
+      publishCalls.push({ collectionId, itemIds: [...itemIds] });
+      const publishedAt = '2026-08-18T03:00:00.000Z';
+      const authorized = new Set(itemIds);
+      stagedItems = stagedItems.map((item) => authorized.has(item.id) ?
+        { ...item, lastUpdated: publishedAt, lastPublished: publishedAt } : item);
+      const stagedById = new Map(stagedItems.map((item) => [item.id, item]));
+      liveItems = liveItems.map((item) => authorized.has(item.id) ? clone(stagedById.get(item.id)) : item);
+      if (publishUncertain) throw new Error('mock publish response lost');
+    },
+  };
+  const fetchImpl = async (url, options = {}) => {
+    if (options.method === 'POST') { calls.upload += 1; return new Response('', { status: 201 }); }
+    const oldMatch = /old\.example\.test\/([a-f0-9]+)\.jpg/.exec(url);
+    if (oldMatch) return new Response(oldBytes, { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    const imageMatch = /(?:assets|cms)\.example\.test\/([a-f0-9]+)\.jpg/.exec(url);
+    if (imageMatch) return new Response(localBytes.get(imageMatch[1]), { status: 200, headers: { 'content-type': 'image/jpeg' } });
+    throw new Error(`Unexpected mocked URL ${url}`);
+  };
+  const dropParamsLoader = async () => { calls.dropParams += 1; return clone(dropParams); };
+  const baseline = { collection: { id: henPlan.collection.id },
+    staged: { items: clone(originalItems), pagination: { total: HEN_EXPECTED_COUNT } },
+    live: { items: clone(originalItems), pagination: { total: HEN_EXPECTED_COUNT } } };
+  let journal = initialBatchJournal(henPlan, batchId, '2026-08-18T00:00:00.000Z');
+  const persist = async () => {
+    await writeJson(path.join(runtime, batchId, 'baseline.json'), baseline);
+    await writeJson(path.join(runtime, batchId, 'journal.json'), journal);
+  };
+  const setStagedVerified = (itemId) => {
+    const image = { fileId: `cms-${itemId}`, url: `https://cms.example.test/${itemId}.jpg`, alt: null };
+    stagedItems = stagedItems.map((item) => item.id === itemId ? { ...item, fieldData: { ...item.fieldData, image } } : item);
+    journal = recordItemAttempt(journal, itemId, { phase: 'staged-verified', status: 'succeeded',
+      patch: { submittedImage: image, resultingStagedImage: image } }, '2026-08-18T00:01:00.000Z');
+  };
+  const mutationCount = () => calls.createAsset + calls.upload + calls.patchImage + calls.publishItems;
+  return {
+    paths, runtime, batch, members, originalItems, baseline, api, fetchImpl, dropParamsLoader, calls, patchCalls, publishCalls, assets,
+    mutationCount, persist, setStagedVerified,
+    get journal() { return journal; }, set journal(value) { journal = value; },
+    get stagedItems() { return stagedItems; }, set stagedItems(value) { stagedItems = value; },
+    get liveItems() { return liveItems; }, set liveItems(value) { liveItems = value; },
+    setDropParams(value) { dropParams = value; },
+    setPatchUncertain(itemId) { patchUncertainItemId = itemId; },
+    setPublishUncertain(value) { publishUncertain = value; },
+  };
+}
+
+test('HEN H1 stages sequentially with canonical identity, mirror-derived files, Image-only patches, and isolated state', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  const cms3Sentinel = path.join(fixture.paths.runtime, 'B1', 'journal.json');
+  await writeJson(cms3Sentinel, { ticket: 'CMS-IMG-3', preserve: true });
+  const liveBefore = clone(fixture.liveItems);
+  const result = await stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
+  assert.equal(result.result.ok, true);
+  assert.equal(fixture.patchCalls.length, 5);
+  assert.deepEqual(fixture.patchCalls.map((call) => call.itemId), fixture.batch.itemIds);
+  assert.ok(fixture.patchCalls.every((call) => Object.keys(call).sort().join(',') === 'collectionId,image,itemId,localeId'));
+  assert.deepEqual(fixture.liveItems, liveBefore);
+  assert.deepEqual(fixture.stagedItems.filter((item) => !fixture.batch.itemIds.includes(item.id)),
+    fixture.originalItems.filter((item) => !fixture.batch.itemIds.includes(item.id)));
+  for (const member of fixture.members) {
+    const staged = fixture.stagedItems.find((item) => item.id === member.cmsItemId);
+    assert.equal(staged.fieldData['token-id'], member.canonicalHenTokenId);
+    assert.notEqual(staged.fieldData['token-id'], member.thumbnailLookupId);
+    assert.equal(staged.fieldData.reference, 'preserve-me');
+    assert.match([...fixture.assets.values()].find((asset) => asset.id === `asset-${member.cmsItemId}`).originalFileName,
+      new RegExp(`hen-${member.canonicalHenTokenId}-`));
+  }
+  const journal = JSON.parse(await fs.readFile(path.join(fixture.runtime, 'H1', 'journal.json'), 'utf8'));
+  assert.equal(journal.ticket, 'CMS-IMG-4');
+  assert.ok(Object.values(journal.items).every((item) => item.currentPhase === 'staged-verified' && !item.reconciliationRequired));
+  assert.deepEqual(JSON.parse(await fs.readFile(cms3Sentinel, 'utf8')), { ticket: 'CMS-IMG-3', preserve: true });
+  const mutationsBeforeVerify = fixture.mutationCount();
+  const verified = await verifyHenStagedBatch({ plan: henPlan, batchId: 'H1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl });
+  assert.equal(verified.result.ok, true);
+  assert.equal(verified.cmsWritesPerformed, 0);
+  assert.equal(fixture.mutationCount(), mutationsBeforeVerify);
+});
+
+test('HEN clean resume verifies prior progress and stages only remaining H1 items', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  fixture.setStagedVerified(fixture.batch.itemIds[0]);
+  await fixture.persist();
+  const result = await stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
+  assert.equal(result.result.ok, true);
+  assert.equal(fixture.calls.patchImage, 4);
+  assert.equal(fixture.calls.createAsset, 4);
+  assert.ok(Object.values(result.journal.items).every((item) => item.currentPhase === 'staged-verified'));
+});
+
+test('HEN GET-only staged verifier rejects mirror ID in canonical CMS identity', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  for (const itemId of fixture.batch.itemIds) fixture.setStagedVerified(itemId);
+  const first = fixture.members[0];
+  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === first.cmsItemId ?
+    { ...item, fieldData: { ...item.fieldData, 'token-id': first.thumbnailLookupId } } : item);
+  await fixture.persist();
+  await assert.rejects(verifyHenStagedBatch({ plan: henPlan, batchId: 'H1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl }), /CMS identity mismatch/);
+  assert.equal(fixture.mutationCount(), 0);
+});
+
+test('HEN GET-only staged verifier rejects remaining-item and live drift with zero writes', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  for (const itemId of fixture.batch.itemIds) fixture.setStagedVerified(itemId);
+  await fixture.persist();
+  const unrelatedId = henPlan.batches[1].itemIds[0];
+  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === unrelatedId ?
+    { ...item, fieldData: { ...item.fieldData, reference: 'unexpected-staged-drift' } } : item);
+  await assert.rejects(verifyHenStagedBatch({ plan: henPlan, batchId: 'H1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl }), /Full staged batch verification failed/);
+  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === unrelatedId ?
+    clone(fixture.originalItems.find((original) => original.id === unrelatedId)) : item);
+  const targetId = fixture.batch.itemIds[0];
+  fixture.liveItems = fixture.liveItems.map((item) => item.id === targetId ?
+    { ...item, fieldData: { ...item.fieldData, reference: 'unexpected-live-drift' } } : item);
+  await assert.rejects(verifyHenStagedBatch({ plan: henPlan, batchId: 'H1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl }), /Full staged batch verification failed/);
+  assert.equal(fixture.mutationCount(), 0);
+});
+
+test('HEN upload-complete patch-uncertain outcome stops and requires reconciliation without blind retry', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  const itemId = fixture.batch.itemIds[0];
+  fixture.setPatchUncertain(itemId);
+  await assert.rejects(stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /mock patch response lost/);
+  assert.equal(fixture.calls.createAsset, 1);
+  assert.equal(fixture.calls.upload, 1);
+  assert.equal(fixture.calls.patchImage, 1);
+  const journal = JSON.parse(await fs.readFile(path.join(fixture.runtime, 'H1', 'journal.json'), 'utf8'));
+  assert.equal(journal.items[itemId].currentPhase, 'uploaded');
+  assert.equal(journal.items[itemId].lastSuccessfulPhase, 'uploaded');
+  assert.equal(journal.items[itemId].reconciliationRequired, true);
+  const mutations = fixture.mutationCount();
+  await assert.rejects(stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /already requires reconciliation/);
+  assert.equal(fixture.mutationCount(), mutations);
+});
+
+test('HEN canonical active token blocks fresh preflight before any external mutation', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  fixture.setDropParams({ redeemToken: { collection: 'HEN', tokenId: '94684' } });
+  await assert.rejects(stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader }), /configured active redeem token/);
+  assert.equal(fixture.mutationCount(), 0);
+});
+
+test('HEN publication uses exact authorized IDs, performs no upload or patch, and cleanly reconciles metadata', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  await stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
+  const writesBeforePublish = { createAsset: fixture.calls.createAsset, upload: fixture.calls.upload, patchImage: fixture.calls.patchImage };
+  const confirmation = publishConfirmation('H1', fixture.batch.itemIds, 'CMS-IMG-4');
+  const published = await publishHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, confirmation,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl });
+  assert.deepEqual(fixture.publishCalls, [{ collectionId: henPlan.collection.id, itemIds: fixture.batch.itemIds }]);
+  assert.deepEqual({ createAsset: fixture.calls.createAsset, upload: fixture.calls.upload, patchImage: fixture.calls.patchImage }, writesBeforePublish);
+  assert.ok(Object.values(published.journal.items).every((item) => item.currentPhase === 'published-verified' && !item.reconciliationRequired));
+  assert.ok(published.result.targetResults.every((target) => target.publicationState.ok));
+  const mutations = fixture.mutationCount();
+  const reconciled = await reconcileHenPublishedBatch({ plan: henPlan, batchId: 'H1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl });
+  assert.equal(reconciled.cmsWritesPerformed, 0);
+  assert.equal(fixture.mutationCount(), mutations);
+});
+
+test('HEN publication ambiguity is attempted once, records reconciliationRequired, and blocks GET reconciliation', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  await stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
+  fixture.setPublishUncertain(true);
+  const confirmation = publishConfirmation('H1', fixture.batch.itemIds, 'CMS-IMG-4');
+  await assert.rejects(publishHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, confirmation,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl }), /mock publish response lost/);
+  assert.equal(fixture.calls.publishItems, 1);
+  const journal = JSON.parse(await fs.readFile(path.join(fixture.runtime, 'H1', 'journal.json'), 'utf8'));
+  assert.ok(Object.values(journal.items).every((item) => item.reconciliationRequired));
+  const mutations = fixture.mutationCount();
+  await assert.rejects(reconcileHenPublishedBatch({ plan: henPlan, batchId: 'H1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl }), /reconciliation-required items/);
+  assert.equal(fixture.mutationCount(), mutations);
+});
+
+test('HEN published reconciliation rejects a queued content-identical revision with zero writes', async (t) => {
+  const fixture = await createHenExecutionFixture(t);
+  await stageHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, paths: fixture.paths,
+    fetchImpl: fixture.fetchImpl, dropParamsLoader: fixture.dropParamsLoader });
+  const confirmation = publishConfirmation('H1', fixture.batch.itemIds, 'CMS-IMG-4');
+  await publishHenBatch({ plan: henPlan, batchId: 'H1', api: fixture.api, confirmation,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl });
+  const itemId = fixture.batch.itemIds[0];
+  fixture.stagedItems = fixture.stagedItems.map((item) => item.id === itemId ?
+    { ...item, lastUpdated: '2026-08-18T03:01:00.000Z', lastPublished: '2026-08-18T03:00:00.000Z' } : item);
+  const mutations = fixture.mutationCount();
+  await assert.rejects(reconcileHenPublishedBatch({ plan: henPlan, batchId: 'H1', api: fixture.api,
+    paths: fixture.paths, fetchImpl: fixture.fetchImpl }), /Published reconciliation failed/);
+  assert.equal(fixture.mutationCount(), mutations);
+  const journal = JSON.parse(await fs.readFile(path.join(fixture.runtime, 'H1', 'journal.json'), 'utf8'));
+  assert.equal(journal.items[itemId].reconciliationRequired, true);
+});
+
+test('HEN Webflow patch surface cannot write canonical or mirror token fields', async () => {
+  const requests = [];
+  const client = new WebflowRolloutClient({ token: 'mock-token', siteId: henPlan.site.siteId, fetchImpl: async (url, options) => {
+    requests.push({ url, options });
+    return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+  } });
+  const item = henPlan.items[0];
+  const image = { fileId: 'asset-id', url: 'https://example.test/asset.jpg', alt: null };
+  await client.patchImage(item.collectionId, item.cmsItemId, item.localeId, image);
+  const body = JSON.parse(requests[0].options.body);
+  assert.deepEqual(body, { items: [{ id: item.cmsItemId, cmsLocaleId: item.localeId, fieldData: { image } }] });
+  assert.equal(JSON.stringify(body).includes('token-id'), false);
+  assert.equal(JSON.stringify(body).includes(`:${item.thumbnailLookupId}`), false);
+});
 
 test('queued but content-identical reconciliation fails without a write and requires reconciliation', async (t) => {
   const fixture = await createResumeFixture(t);

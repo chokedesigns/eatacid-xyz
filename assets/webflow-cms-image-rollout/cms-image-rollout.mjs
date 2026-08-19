@@ -39,12 +39,17 @@ export const MODES = Object.freeze([
   'status',
   'hen-plan',
   'hen-status',
+  'hen-stage-batch',
+  'hen-verify-staged',
+  'hen-publish-batch',
+  'hen-reconcile-published',
   'stage-batch',
   'verify-staged',
   'publish-batch',
   'reconcile-published',
 ]);
 export const WRITE_CAPABLE_MODES = Object.freeze(['stage-batch', 'publish-batch']);
+export const HEN_WRITE_CAPABLE_MODES = Object.freeze(['hen-stage-batch', 'hen-publish-batch']);
 export const EXPECTED_COUNTS = Object.freeze({ audited: 66, eligible: 49, excluded: 17, completed: 1, rollout: 48 });
 
 const moduleDir = path.dirname(fileURLToPath(import.meta.url));
@@ -470,7 +475,8 @@ export async function inspectHenThumbnail(repoRoot, localThumbnail) {
   if (metadata.format !== 'jpeg' || metadata.width !== 300 || metadata.height !== 375 || metadata.isProgressive !== true) {
     throw new RolloutError(`Local HEN thumbnail ${localThumbnail} must be progressive JPEG 300x375; got ${metadata.format} ${metadata.width}x${metadata.height}.`);
   }
-  return { sha256: digest(bytes, 'sha256'), byteCount: bytes.length, dimensions: { width: metadata.width, height: metadata.height },
+  return { sha256: digest(bytes, 'sha256'), md5: digest(bytes, 'md5'), byteCount: bytes.length,
+    dimensions: { width: metadata.width, height: metadata.height },
     format: metadata.format, progressive: metadata.isProgressive };
 }
 
@@ -500,6 +506,7 @@ export async function buildHenRolloutPlan({ audit, titles, network, registry = c
       locale: item.cmsLocaleId,
       localThumbnailPath,
       sha256: local.sha256,
+      md5: local.md5,
       byteCount: local.byteCount,
       dimensions: local.dimensions,
       imageFormat: local.format,
@@ -511,10 +518,35 @@ export async function buildHenRolloutPlan({ audit, titles, network, registry = c
       expectedPhase: 'pending',
     });
   }
+  const batches = [
+    { batchId: 'H1', batchNumber: 1, collection: 'HEN', itemIds: items.slice(0, 5).map((item) => item.webflowCmsItemId), count: 5 },
+    { batchId: 'H2', batchNumber: 2, collection: 'HEN', itemIds: items.slice(5).map((item) => item.webflowCmsItemId), count: 12 },
+  ];
+  const batchByItem = new Map(batches.flatMap((batch) => batch.itemIds.map((itemId) => [itemId, batch])));
+  const executionItems = items.map((item) => {
+    const batch = batchByItem.get(item.webflowCmsItemId);
+    return {
+      ...item,
+      batchId: batch.batchId,
+      batchNumber: batch.batchNumber,
+      collection: 'HEN',
+      collectionId: audit.collection.id,
+      cmsItemId: item.webflowCmsItemId,
+      tokenId: item.canonicalHenTokenId,
+      localeId: item.locale,
+      localSourceImage: item.localThumbnailPath,
+      localSha256: item.sha256,
+      localMd5: item.md5,
+      localBytes: item.byteCount,
+      expectedDimensions: item.dimensions,
+      migrationStatus: 'pending',
+    };
+  });
   return {
     ticket: HEN_TICKET,
     sourceGeneratedAt: audit.generatedAt,
     network: { slot: network, label: registry[network].label },
+    site: { siteId: audit.site.id, displayName: audit.site.displayName },
     collection: { id: audit.collection.id, displayName: audit.collection.displayName },
     sources: {
       audit: 'docs/webflow-cms-image-audit/CMS-IMG-4.audit.md',
@@ -532,7 +564,9 @@ export async function buildHenRolloutPlan({ audit, titles, network, registry = c
       cmsItemIds: validation.cmsItemIds.size, localThumbnailPaths: validation.localPaths.size },
     stateNamespace: `CMS-IMG-4/HEN/${network}`,
     cmsImg3RuntimeStateConsumed: false,
-    items,
+    batchingRule: 'H1 is the first 5 canonical IDs in ascending order; H2 is the remaining 12 canonical IDs in ascending order',
+    batches,
+    items: executionItems,
     externalWritesPerformed: 0,
     webflowWritesPerformed: 0,
     statement: 'Generated entirely from repository audit authorities, registry semantics, title authority, and local image bytes. No Webflow request or write was performed.',
@@ -552,6 +586,10 @@ function henMarkdownTable(items) {
 }
 
 export function renderHenPlanMarkdown(plan) {
+  const batchLines = plan.batches.map((batch) => {
+    const canonicalIds = batch.itemIds.map((itemId) => plan.items.find((item) => item.cmsItemId === itemId).canonicalHenTokenId);
+    return `- ${batch.batchId} (${batch.count}): ${canonicalIds.join(', ')}`;
+  }).join('\n');
   return `# CMS-IMG-4 HEN thumbnail rollout plan
 
 Network: **${plan.network.label}** (\`${plan.network.slot}\`)
@@ -559,6 +597,14 @@ Network: **${plan.network.label}** (\`${plan.network.slot}\`)
 Resolution: ${plan.resolutionRule}.
 
 This deterministic, read-only plan consumes \`${plan.sources.mapping}\` and verifies it against \`${plan.sources.registry}\`, \`${plan.sources.titles}\`, and current local image bytes. CMS-IMG-3 runtime/journal state is not consumed.
+
+## Deterministic execution batches
+
+${batchLines}
+
+Runtime namespace: \`${plan.stateNamespace}\`.
+
+Execution flow: plan -> stage-batch -> verify-staged -> **STOP / human authorization** -> publish-batch -> reconcile-published.
 
 ${henMarkdownTable(plan.items)}
 
@@ -582,15 +628,30 @@ export async function generateHenPlan({ network, paths = DEFAULT_PATHS, registry
   return plan;
 }
 
-export function henRolloutStatus(plan) {
-  if (plan?.ticket !== HEN_TICKET || !Array.isArray(plan?.items) || plan.items.length !== HEN_EXPECTED_COUNT) {
-    throw new RolloutError('CMS-IMG-4 HEN status requires a valid 17-item HEN rollout plan.');
+export async function henRolloutStatus(plan, paths = DEFAULT_PATHS) {
+  validateHenExecutionPlan(plan);
+  const isolatedPaths = henExecutionPaths(paths, plan);
+  const batches = [];
+  for (const batch of plan.batches) {
+    const journal = await loadBatchJournal(plan, batch.batchId, isolatedPaths.runtime);
+    batches.push({
+      batchId: batch.batchId,
+      collection: batch.collection,
+      phases: Object.fromEntries(batch.itemIds.map((itemId) => [itemId, {
+        phase: journal.items[itemId].currentPhase,
+        lastSuccessfulPhase: journal.items[itemId].lastSuccessfulPhase,
+        lastAttemptStatus: journal.items[itemId].lastAttemptStatus,
+        reconciliationRequired: journal.items[itemId].reconciliationRequired,
+      }])),
+    });
   }
   return {
     ticket: HEN_TICKET,
     stateNamespace: plan.stateNamespace,
     network: plan.network,
-    expectedPhases: Object.fromEntries(plan.items.map((item) => [item.webflowCmsItemId, item.expectedPhase])),
+    expectedPhases: Object.fromEntries(batches.flatMap((batch) => Object.entries(batch.phases)
+      .map(([itemId, state]) => [itemId, state.phase]))),
+    batches,
     cmsImg3RuntimeStateConsumed: false,
     externalWritesPerformed: 0,
   };
@@ -676,6 +737,25 @@ export function assertNoActiveRedeemTarget(plannedItems, dropParams) {
   }
 }
 
+export function assertHenActiveRedeemModel(plan, dropParams) {
+  const collection = String(dropParams?.redeemToken?.collection ?? '').trim();
+  const rawTokenId = String(dropParams?.redeemToken?.tokenId ?? '').trim();
+  if (!collection && !rawTokenId) return;
+  if (!collection || !/^\d+$/.test(rawTokenId)) {
+    throw new RolloutError('HEN execution cannot interpret the configured active redeem token safely.', {
+      code: 'ACTIVE_REDEEM_TOKEN_MODEL_INVALID',
+    });
+  }
+  if (collection === 'HEN') {
+    const canonicalId = Number(rawTokenId);
+    if (!plan.items.some((item) => item.collection === 'HEN' && item.tokenId === canonicalId)) {
+      throw new RolloutError(`Configured active HEN token ${rawTokenId} is not a canonical audited HEN ID.`, {
+        code: 'ACTIVE_REDEEM_TOKEN_MODEL_INVALID',
+      });
+    }
+  }
+}
+
 function exactlyOneCmsItem(items, plannedItem, label) {
   const matches = items.filter((item) => item.id === plannedItem.cmsItemId);
   if (matches.length !== 1) throw new RolloutError(`${label} match count for ${plannedItem.cmsItemId} is ${matches.length}; expected 1.`, {
@@ -717,7 +797,7 @@ export function initialBatchJournal(plan, batchId, now = new Date().toISOString(
   const plannedItems = batch.itemIds.map((id) => requirePlanItem(plan, id));
   return {
     schemaVersion: 1,
-    ticket: TICKET,
+    ticket: plan.ticket,
     batchId,
     collection: batch.collection,
     plannedItemIds: [...batch.itemIds],
@@ -794,6 +874,44 @@ export function requirePlanItem(plan, itemId) {
   return matches[0];
 }
 
+export function validateHenExecutionPlan(plan) {
+  if (plan?.ticket !== HEN_TICKET || plan?.network?.slot !== 'testnet' || plan?.stateNamespace !== 'CMS-IMG-4/HEN/testnet') {
+    throw new RolloutError('HEN execution requires the CMS-IMG-4/HEN/testnet plan and runtime namespace.');
+  }
+  if (!Array.isArray(plan.items) || plan.items.length !== HEN_EXPECTED_COUNT || !Array.isArray(plan.batches)) {
+    throw new RolloutError(`HEN execution requires exactly ${HEN_EXPECTED_COUNT} plan items and deterministic batches.`);
+  }
+  const ordered = [...plan.items].sort((left, right) => left.canonicalHenTokenId - right.canonicalHenTokenId);
+  const itemIds = ordered.map((item) => item.cmsItemId);
+  if (new Set(itemIds).size !== HEN_EXPECTED_COUNT) throw new RolloutError('HEN execution plan contains duplicate CMS item IDs.');
+  const expectedBatches = [
+    { batchId: 'H1', batchNumber: 1, collection: 'HEN', itemIds: itemIds.slice(0, 5), count: 5 },
+    { batchId: 'H2', batchNumber: 2, collection: 'HEN', itemIds: itemIds.slice(5), count: 12 },
+  ];
+  if (stable(plan.batches) !== stable(expectedBatches)) {
+    throw new RolloutError('HEN H1/H2 batch membership does not match the deterministic authorized item sets.');
+  }
+  for (const item of ordered) {
+    const lookupId = resolveHenThumbnailLookupId({ canonicalTokenId: item.canonicalHenTokenId, network: 'testnet' });
+    const expectedBatch = expectedBatches.find((batch) => batch.itemIds.includes(item.cmsItemId));
+    if (item.collection !== 'HEN' || item.collectionId !== plan.collection?.id ||
+        item.tokenId !== item.canonicalHenTokenId || item.webflowCmsItemId !== item.cmsItemId ||
+        item.thumbnailLookupId !== lookupId || item.localSourceImage !== `admin-ui/src/thumbs/hen/${lookupId}.jpg` ||
+        item.localThumbnailPath !== item.localSourceImage || item.localSha256 !== item.sha256 ||
+        item.localBytes !== item.byteCount || stable(item.expectedDimensions) !== stable(item.dimensions) ||
+        item.localeId !== item.locale || item.migrationStatus !== 'pending' || item.batchId !== expectedBatch.batchId ||
+        item.batchNumber !== expectedBatch.batchNumber) {
+      throw new RolloutError(`HEN execution identity or canonical-to-testnet resolution mismatch for ${item.cmsItemId}.`);
+    }
+  }
+  return { ordered, batches: expectedBatches };
+}
+
+export function henExecutionPaths(paths = DEFAULT_PATHS, plan) {
+  validateHenExecutionPlan(plan);
+  return { ...paths, runtime: path.join(paths.runtime, 'CMS-IMG-4', 'HEN', 'testnet') };
+}
+
 export function exactPublishItemIds(plan, batchId, journal) {
   const batch = requireBatch(plan, batchId);
   if (journal.batchId !== batchId || stable(journal.plannedItemIds) !== stable(batch.itemIds)) {
@@ -809,13 +927,13 @@ export function exactPublishItemIds(plan, batchId, journal) {
   return [...batch.itemIds];
 }
 
-export function publishConfirmation(batchId, itemIds) {
-  return `${TICKET}:PUBLISH:${batchId}:${itemIds.join(',')}`;
+export function publishConfirmation(batchId, itemIds, ticket = TICKET) {
+  return `${ticket}:PUBLISH:${batchId}:${itemIds.join(',')}`;
 }
 
 export function approvePublish(plan, batchId, journal, confirmation, now = new Date().toISOString()) {
   const itemIds = exactPublishItemIds(plan, batchId, journal);
-  const expected = publishConfirmation(batchId, itemIds);
+  const expected = publishConfirmation(batchId, itemIds, plan.ticket);
   if (confirmation !== expected) throw new RolloutError('Exact batch publish confirmation is missing.');
   let next = { ...journal, publishApproval: { approvedAt: now, batchId, itemIds, confirmationSha256: digest(Buffer.from(confirmation), 'sha256') } };
   for (const itemId of itemIds) next = recordItemAttempt(next, itemId, { phase: 'publish-approved', status: 'succeeded' }, now);
@@ -835,7 +953,7 @@ export async function loadBatchJournal(plan, batchId, runtime = DEFAULT_PATHS.ru
     if (error?.code === 'ENOENT') return initialBatchJournal(plan, batchId);
     throw error;
   }
-  if (journal.ticket !== TICKET || journal.batchId !== batchId || journal.planFingerprint !== planFingerprint(plan, batchId)) {
+  if (journal.ticket !== plan.ticket || journal.batchId !== batchId || journal.planFingerprint !== planFingerprint(plan, batchId)) {
     throw new RolloutError(`Stale or foreign journal for ${batchId}.`);
   }
   return journal;
@@ -874,7 +992,7 @@ export class WebflowRolloutClient {
       const text = await response.text();
       let parsed = null;
       try { parsed = text ? JSON.parse(text) : null; } catch { parsed = text; }
-      if (response.status === 429 && attempt < 2) {
+      if (method === 'GET' && response.status === 429 && attempt < 2) {
         await this.sleep(500 * (attempt + 1));
         continue;
       }
@@ -1088,9 +1206,19 @@ function baselineItemEqual(baselineItem, currentItem) {
 
 async function readFreshBatchSafetyState({ plan, batchId, api, paths, dropParamsLoader }) {
   const batch = requireBatch(plan, batchId);
-  if (batch.collection === 'HEN' || !ELIGIBLE_COLLECTIONS.includes(batch.collection)) throw new RolloutError(`${batch.collection} is not CMS-IMG-3 eligible.`);
+  if (plan.ticket === TICKET) {
+    if (batch.collection === 'HEN' || !ELIGIBLE_COLLECTIONS.includes(batch.collection)) {
+      throw new RolloutError(`${batch.collection} is not CMS-IMG-3 eligible.`);
+    }
+  } else if (plan.ticket === HEN_TICKET) {
+    validateHenExecutionPlan(plan);
+    if (batch.collection !== 'HEN') throw new RolloutError(`${batch.collection} is not CMS-IMG-4 HEN eligible.`);
+  } else {
+    throw new RolloutError(`Unsupported rollout execution ticket ${plan.ticket}.`);
+  }
   const plannedItems = batch.itemIds.map((id) => requirePlanItem(plan, id));
   const dropParams = await dropParamsLoader(paths);
+  if (plan.ticket === HEN_TICKET) assertHenActiveRedeemModel(plan, dropParams);
   assertNoActiveRedeemTarget(plannedItems, dropParams);
   const collectionId = expectedCollectionId(plan, batch);
   const [collection, states] = await Promise.all([api.getCollection(collectionId), readCollectionStates(api, collectionId)]);
@@ -1473,6 +1601,46 @@ export async function reconcilePublishedBatch({ plan, batchId, api, paths = DEFA
   return { result, journal, cmsWritesPerformed: 0, publishRequestsPerformed: 0 };
 }
 
+async function requireClearHenJournal(plan, batchId, paths) {
+  validateHenExecutionPlan(plan);
+  const batch = requireBatch(plan, batchId);
+  const journal = await loadBatchJournal(plan, batchId, paths.runtime);
+  assertJournalResumeShape(plan, batch, journal);
+  const blocked = batch.itemIds.filter((itemId) => journal.items[itemId]?.reconciliationRequired);
+  if (blocked.length) {
+    throw new RolloutError(`HEN batch ${batchId} has reconciliation-required items: ${blocked.join(', ')}.`, {
+      code: 'RECONCILIATION_REQUIRED', details: { itemIds: blocked },
+    });
+  }
+  return journal;
+}
+
+export async function stageHenBatch({ plan, batchId, api, paths = DEFAULT_PATHS, fetchImpl = fetch,
+  dropParamsLoader = loadCurrentDropParams }) {
+  validateHenExecutionPlan(plan);
+  const isolatedPaths = henExecutionPaths(paths, plan);
+  return stageBatch({ plan, batchId, api, paths: isolatedPaths, fetchImpl, dropParamsLoader });
+}
+
+export async function verifyHenStagedBatch({ plan, batchId, api, paths = DEFAULT_PATHS, fetchImpl = fetch }) {
+  const isolatedPaths = henExecutionPaths(paths, plan);
+  const journal = await requireClearHenJournal(plan, batchId, isolatedPaths);
+  const result = await verifyStagedBatch({ plan, batchId, api, paths: isolatedPaths, fetchImpl, journal });
+  return { ...result, cmsWritesPerformed: 0, assetWritesPerformed: 0, publishRequestsPerformed: 0 };
+}
+
+export async function publishHenBatch({ plan, batchId, api, confirmation, paths = DEFAULT_PATHS, fetchImpl = fetch }) {
+  const isolatedPaths = henExecutionPaths(paths, plan);
+  await requireClearHenJournal(plan, batchId, isolatedPaths);
+  return publishBatch({ plan, batchId, api, confirmation, paths: isolatedPaths, fetchImpl });
+}
+
+export async function reconcileHenPublishedBatch({ plan, batchId, api, paths = DEFAULT_PATHS, fetchImpl = fetch }) {
+  const isolatedPaths = henExecutionPaths(paths, plan);
+  const journal = await requireClearHenJournal(plan, batchId, isolatedPaths);
+  return reconcilePublishedBatch({ plan, batchId, api, paths: isolatedPaths, fetchImpl, journal });
+}
+
 function markdownTable(items) {
   const lines = [
     '| Batch | Collection | Token | Title | CMS item ID | Slug | Local source | SHA-256 | Dimensions | Status / skip reason |',
@@ -1577,12 +1745,16 @@ function parseArguments(argv) {
     else throw new RolloutError('Only one --batch and one --target-network argument are supported.');
     index += 1;
   }
+  const henExecutionModes = new Set(['hen-stage-batch', 'hen-verify-staged', 'hen-publish-batch', 'hen-reconcile-published']);
   if (mode === 'hen-plan') {
     if (batchId) throw new RolloutError('hen-plan does not accept --batch.');
     if (!network) throw new RolloutError('hen-plan requires an explicit <testnet|mainnet> network argument.');
     if (!HEN_NETWORKS.includes(network)) throw new RolloutError(`Unsupported HEN thumbnail network: ${network}.`);
   } else if (mode === 'hen-status') {
     if (batchId || network) throw new RolloutError('hen-status does not accept --batch or --target-network; it reads the network-specific HEN plan.');
+  } else if (henExecutionModes.has(mode)) {
+    if (network) throw new RolloutError(`${mode} reads the explicit network from the HEN plan.`);
+    if (!batchId) throw new RolloutError(`${mode} requires --batch <H1|H2>.`);
   } else {
     if (network) throw new RolloutError(`${mode} does not accept --target-network.`);
     if (mode !== 'plan' && mode !== 'status' && !batchId) throw new RolloutError(`${mode} requires --batch <batch-id>.`);
@@ -1601,9 +1773,22 @@ export async function main({ argv = process.argv.slice(2), env = process.env, pa
   }
   if (mode === 'hen-status') {
     const plan = await readJson(paths.henPlanJson);
-    const status = henRolloutStatus(plan);
+    const status = await henRolloutStatus(plan, paths);
     console.log(JSON.stringify(status, null, 2));
     return { mode, status, externalWritesPerformed: 0 };
+  }
+  if (mode.startsWith('hen-')) {
+    const plan = await readJson(paths.henPlanJson);
+    validateHenExecutionPlan(plan);
+    const api = new WebflowRolloutClient({ token: env.WEBFLOW_API_TOKEN, siteId: plan.site.siteId, fetchImpl });
+    let result;
+    if (mode === 'hen-stage-batch') result = await stageHenBatch({ plan, batchId, api, paths, fetchImpl });
+    else if (mode === 'hen-verify-staged') result = await verifyHenStagedBatch({ plan, batchId, api, paths, fetchImpl });
+    else if (mode === 'hen-publish-batch') result = await publishHenBatch({ plan, batchId, api,
+      confirmation: env.CMS_IMG_4_HEN_PUBLISH_CONFIRM, paths, fetchImpl });
+    else result = await reconcileHenPublishedBatch({ plan, batchId, api, paths, fetchImpl });
+    console.log(JSON.stringify(redactRollout({ mode, batchId, result }), null, 2));
+    return { mode, batchId, result };
   }
   if (mode === 'plan') {
     const plan = await generatePlan(paths);

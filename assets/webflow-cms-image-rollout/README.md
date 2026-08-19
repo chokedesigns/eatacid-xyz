@@ -38,6 +38,52 @@ the testnet plan is materializable now. Sparse canonical mainnet filenames are
 a later file-layout concern; the mainnet planner intentionally fails on those
 missing files instead of introducing a permanent canonical-to-`0..16` mirror.
 
+The testnet HEN execution plan has two exact deterministic batches: `H1` is
+the first five canonical IDs in ascending order and `H2` is the remaining 12.
+Execution state is derived beneath `runtime/CMS-IMG-4/HEN/testnet/`; HEN
+commands never read or normalize CMS-IMG-3 batch directories.
+
+The HEN lifecycle is deliberately split at the publication boundary:
+
+```text
+hen-plan testnet
+-> hen-stage-batch
+-> hen-verify-staged
+-> STOP / human authorization
+-> hen-publish-batch
+-> hen-reconcile-published
+```
+
+```powershell
+npm run cms:image-rollout -- hen-stage-batch --batch H1
+npm run cms:image-rollout -- hen-verify-staged --batch H1
+$env:CMS_IMG_4_HEN_PUBLISH_CONFIRM='<exact CMS-IMG-4 confirmation>'
+npm run cms:image-rollout -- hen-publish-batch --batch H1
+npm run cms:image-rollout -- hen-reconcile-published --batch H1
+```
+
+`hen-stage-batch` and `hen-publish-batch` are write-capable and must not be run
+without an authorized execution pass. Staging reuses the generalized fresh
+preflight, immutable baseline, canonical active-token protection, sequential
+asset verification/upload, Image-only patch, content verification, durable
+journal, and resume reconciliation machinery. The mirror-derived lookup ID is
+used only to select local bytes; Webflow identity checks and asset names retain
+the canonical HEN token ID.
+
+`hen-verify-staged` and `hen-reconcile-published` are GET-only with respect to
+Webflow. They require exact batch membership and no reconciliation-required
+item. Publishing rereads and verifies the full staged batch, requires every
+item to be staged-verified plus the exact ticket-aware confirmation, and sends
+only the authorized CMS item IDs. It performs no asset upload or Image patch.
+Mutation requests are never blindly retried; bounded retry/backoff applies only
+to GET requests. An uncertain mutation outcome preserves the last verified
+phase, marks reconciliation required, and stops.
+
+Terminal HEN reconciliation requires content-correct staged and live images,
+unchanged canonical token/non-image identity, clean draft/archive flags,
+non-null valid publication markers covering every update, and no queued
+content-identical revision. Content equality alone is not published-verified.
+
 Later execution commands are deliberately separate:
 
 ```powershell

@@ -6,6 +6,15 @@ Resolution: canonical CMS HEN token ID -> authoritative Shadownet mirror ID -> l
 
 This deterministic, read-only plan consumes `docs/webflow-cms-image-audit/CMS-IMG-4.mapping.json` and verifies it against `shared/chain-registry.js`, `admin-ui/src/titles/hen.json`, and current local image bytes. CMS-IMG-3 runtime/journal state is not consumed.
 
+## Deterministic execution batches
+
+- H1 (5): 94684, 103062, 104492, 114368, 125115
+- H2 (12): 135460, 141634, 147893, 175592, 200717, 209650, 279300, 369693, 397098, 422822, 455835, 526531
+
+Runtime namespace: `CMS-IMG-4/HEN/testnet`.
+
+Execution flow: plan -> stage-batch -> verify-staged -> **STOP / human authorization** -> publish-batch -> reconcile-published.
+
 | Canonical HEN ID | Network | Lookup ID | CMS item ID | Title | Slug | Locale | Local thumbnail | SHA-256 | Bytes | Dimensions | Format | Confidence | Phase |
 |---:|---|---:|---|---|---|---|---|---|---:|---|---|---|---|
 | 94684 | Shadownet (`testnet`) | 0 | `67be1933648307936604171f` | PAPER CHASER | `paper-chaser` | `656d1d76a2cda12f26e04687` | `admin-ui/src/thumbs/hen/0.jpg` | `66367a0949f8a64766b8c4a6f1791234c12bfd3f218d18facf96cbd66a8d41a6` | 22396 | 300x375 | jpeg | HIGH | pending |
