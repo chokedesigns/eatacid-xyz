@@ -12,7 +12,7 @@ export default {
   // ============================================================
   // DROP NAME
   // ============================================================
-  dropName: "",
+  dropName: "SPLINTERED",
   mirrorNetwork: "testnet",
 
   // ============================================================
@@ -55,8 +55,8 @@ export default {
   // REDEEM TOKEN
   // ============================================================
   redeemToken: {
-    collection:   "",
-    tokenId:      "",
+    collection:   "CANAAN",
+    tokenId:      "29",
     redeemAmount: 1,
     totalSupply:  10
   }

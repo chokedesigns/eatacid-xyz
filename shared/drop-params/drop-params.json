@@ -1,6 +1,6 @@
 {
   "dropScheduled": false,
-  "dropName": "",
+  "dropName": "SPLINTERED",
   "mirrorNetwork": "testnet",
   "dropDate": {
     "month": "May",
@@ -31,8 +31,8 @@
     }
   ],
   "redeemToken": {
-    "collection": "",
-    "tokenId": "",
+    "collection": "CANAAN",
+    "tokenId": "29",
     "redeemAmount": 1,
     "totalSupply": 10
   }
