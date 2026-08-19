@@ -133,7 +133,7 @@ Allowed variations:
 | CMS_PUBLISHED_VERIFIED | fresh live item matches approved staged result |
 | COMPLETE | all required policy gates pass and journal has no reconciliation requirement |
 
-Any network failure after a possible write sets `reconciliationRequired:true`; it does not regress or optimistically advance state. This follows the current CMS pilot pattern (`assets/webflow-cms-image-pilot/README.md:57-60`).
+Any network failure after a possible write sets `reconciliationRequired:true`; it does not regress or optimistically advance state. The retained CMS client surfaces these failures as ambiguous outcomes and provides a read-only reconciliation primitive (`assets/webflow-cms/webflow-cms.mjs`).
 
 ## Drop handoff and operational state machine
 

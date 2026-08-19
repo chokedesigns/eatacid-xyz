@@ -54,7 +54,7 @@ Current collection roles are not uniform:
 | INTRODUCTIONS | IDs 0-4; title order is FIVE to ONE | 5 audited items | Drops burn input | Backfill/review only; no new-item input path or mint creator |
 | ACID COIN / `$ACID` | One local title/thumb | No CMS sync (explicitly skipped) | Exchange redeem asset and Admin registry surface | No authoring/mint path in repo |
 
-Evidence: collection contracts and surface lists are explicit at `shared/chain-registry.js:23-29` and `shared/chain-registry.js:106-115`; title tables are assembled at `admin-ui/src/titles.manifest.js:1-29`; CMS collection fields/counts are recorded at `docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:50-61`; thumbnail input supports only CANAAN and THE 419 SCRIPT while backfill covers all four CMS collections (`assets/thumbs/scripts/thumbs.mjs:10-15`).
+Evidence: collection contracts and surface lists are explicit at `shared/chain-registry.js:23-29` and `shared/chain-registry.js:106-115`; title tables are assembled at `admin-ui/src/titles.manifest.js:1-29`; CMS collection fields are recorded at `docs/webflow-migration/02-cms-schema.md:28-128`; thumbnail input supports only CANAAN and THE 419 SCRIPT while backfill covers all four CMS collections (`assets/thumbs/scripts/thumbs.mjs:10-15`).
 
 **RECOMMENDATION.** Model “participates in the Drops runtime” separately from “newly minted works may become redeem-token drop candidates.” HEN and INTRODUCTIONS currently participate as burn collections, but this does not prove that new works should be minted or offered as future redeem drops. CANAAN is the only requested new-work drop-candidate policy; THE 419 SCRIPT must be `dropEligible:false`.
 
@@ -91,9 +91,9 @@ ACID COIN is intentionally excluded, but all other registry collections—includ
 
 ## Webflow tooling
 
-**CURRENT STATE.** The checked-in CMS audit identifies four collections and 66 items, with high-confidence mappings to local thumbnails (`docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:50-76`). It also records collection-specific schema differences: THE 419 SCRIPT, HEN, and INTRODUCTIONS have mint-date and OBJKT-link fields; CANAAN does not; CANAAN and THE 419 SCRIPT have `acid-value` (`docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:54-61`).
+**CURRENT STATE.** The completed migration covered four collections and 66 items (`docs/webflow-cms-image-migration.md`). Collection-specific schema differences remain documented in `docs/webflow-migration/02-cms-schema.md`: THE 419 SCRIPT, HEN, and INTRODUCTIONS have mint-date and OBJKT-link fields; CANAAN does not; CANAAN and THE 419 SCRIPT have `acid-value`.
 
-The CMS image pilot is update-specific and hard-locked to one existing CANAAN item (`assets/webflow-cms-image-pilot/README.md:1-9`). Its API client can list staged/live items, list/create assets, patch one existing item's Image field, and publish that item (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:233-267`). It does not create a CMS item.
+The one-time migration CLI has been retired. The retained `assets/webflow-cms/webflow-cms.mjs` module can list staged/live items and assets, create/upload assets, patch explicit item fields, publish exact item IDs, verify image content, and verify clean publication; it does not create a CMS item or provide an active migration workflow.
 
 **REUSABLE.** Redaction, retry policy, atomic local journaling, before snapshots, staged/live preservation comparisons, deterministic asset naming, upload verification, explicit confirmation, unknown-outcome reconciliation, and rollback separation.
 
@@ -146,9 +146,9 @@ There is no single schema validator for the complete drop-params object. `drops.
 
 ## Current disagreements and seams
 
-1. **HEN identity:** CMS/title identity uses sparse mainnet token IDs; Shadownet/local thumbs use 0-16. The explicit registry mirror resolves this and must remain authoritative (`docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:73-98`).
-2. **THE 419 SCRIPT labels:** token IDs 0-12 map to titles `// 01`-`// 13`; title ordinal is not token identity (`docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:73-75`).
-3. **INTRODUCTIONS order:** IDs 0-4 map to reverse-sounding FIVE-to-ONE titles; order cannot determine identity (`docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:75-76`).
+1. **HEN identity:** CMS/title identity uses sparse mainnet token IDs; Shadownet/local thumbs use 0-16. The explicit `shared/chain-registry.js` mirror and `admin-ui/src/utils/hen-ids.js` translation remain authoritative; mirror IDs are lookup adapters, not CMS identity.
+2. **THE 419 SCRIPT labels:** token IDs 0-12 map to titles `// 01`-`// 13`; title ordinal is not token identity (`admin-ui/src/titles/the419script.json`).
+3. **INTRODUCTIONS order:** IDs 0-4 map to reverse-sounding FIVE-to-ONE titles; order cannot determine identity (`admin-ui/src/titles/introductions.json`).
 4. **Slug derivation:** exact slugs are CMS-only inputs; existing migration evidence records at least one CANAAN slug that cannot safely be regenerated from title (`docs/webflow-migration/06-data-model.json`, `slug` field decision).
 5. **Editions:** CMS and HTML treat editions as curated presentation data, while Admin also attempts chain-economic comparison. Existing migration design explicitly warns not to relabel Editions as live supply (`docs/webflow-migration/06-target-architecture.md:217-221`).
 6. **CMS authority:** public rows are Webflow-owned today, while Admin local title/thumb resolution is repository-owned. Neither can silently overwrite the other without a staged comparison.

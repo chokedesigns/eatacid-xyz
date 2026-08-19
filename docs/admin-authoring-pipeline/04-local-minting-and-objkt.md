@@ -114,7 +114,7 @@ Any change invalidates the approval plan hash. Beacon or the external wallet rem
 
 ## OBJKT-specific limits
 
-**CURRENT STATE.** Existing CMS route families differ. The migration model records SCRIPT as `/asset/{mainnetContract}/{mainTokenId}`, HEN as `/tokens/hicetnunc/{mainTokenId}`, and INTRODUCTIONS as `/tokens/{mainnetContract}/{mainTokenId}`; CANAAN's audited CMS schema has no OBJKT-link field (`docs/webflow-migration/06-data-model.json`; `docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:54-59`).
+**CURRENT STATE.** Existing CMS route families differ. The migration model records SCRIPT as `/asset/{mainnetContract}/{mainTokenId}`, HEN as `/tokens/hicetnunc/{mainTokenId}`, and INTRODUCTIONS as `/tokens/{mainnetContract}/{mainTokenId}`; CANAAN's CMS schema has no OBJKT-link field (`docs/webflow-migration/06-data-model.json`; `docs/webflow-migration/02-cms-schema.md`).
 
 **RECOMMENDATION.** Do not implement one universal OBJKT URL rule. Collection policy may derive a link only after current URL behavior is reverified. Marketplace availability is verification/presentation, not mint success authority.
 

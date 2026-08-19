@@ -123,7 +123,7 @@ The implementation must not use the example's path, keys, or optional fields wit
 | Current Drops runtime role | Redeem; also public list | None | Burn input | Burn input | None |
 | ID mapping | Identity in current audited sets | Identity with one-based display title | Explicit sparse mainnet to active map | Explicit identity map | Registry identity |
 
-The current schema facts are documented at `docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:50-61`; runtime collection lists are explicit at `shared/chain-registry.js:106-115`; input/backfill support is explicit at `assets/thumbs/scripts/thumbs.mjs:10-15`.
+The current schema facts are documented at `docs/webflow-migration/02-cms-schema.md`; runtime collection lists are explicit at `shared/chain-registry.js:106-115`; input/backfill support is explicit at `assets/thumbs/scripts/thumbs.mjs:10-15`.
 
 ## Validation layers
 
@@ -165,7 +165,7 @@ The current schema facts are documented at `docs/webflow-cms-image-audit/CMS-IMG
 
 ## Operation journal
 
-**RECOMMENDATION.** Store journal records separately from canonical content so retries do not churn authoring facts. Reuse the CMS pilot's durable-phase pattern: atomic writes, `lastSuccessfulPhase`, `reconciliationRequired`, attempts, blocked attempts, redacted errors, and exact verification results (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:118-177`; `assets/webflow-cms-image-pilot/README.md:57-60`).
+**RECOMMENDATION.** Store journal records separately from canonical content so retries do not churn authoring facts. The future pipeline should record durable phases, `lastSuccessfulPhase`, `reconciliationRequired`, attempts, blocked attempts, redacted errors, and exact verification results. The retained Webflow module supplies redaction, ambiguous-write signaling, and read-only reconciliation primitives (`assets/webflow-cms/webflow-cms.mjs`).
 
 Minimum event fields:
 

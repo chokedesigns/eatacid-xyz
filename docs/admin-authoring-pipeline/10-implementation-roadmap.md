@@ -107,7 +107,7 @@
 
 **Dependencies.** Tickets 1, 3, 4; fresh Webflow schema verification; API token/scopes; decision on failed staged-item retention.
 
-**Likely files/systems.** `assets/webflow-cms-image-pilot` code extracted/reused into a general adapter, service endpoints, Admin CMS stage view, Webflow API/assets.
+**Likely files/systems.** Extend the retained `assets/webflow-cms/webflow-cms.mjs` primitives through service endpoints, an Admin CMS stage view, and explicit Webflow API/assets policy.
 
 **Risks.** Opaque/changing schema, duplicate item after unknown response, slug collision, orphan assets, accidentally changing non-target fields.
 
@@ -224,7 +224,7 @@
 - The local helper would gain cross-repository write authority and needs security review.
 - HEN's sparse mainnet/active mapping must remain explicit.
 - Durable live-after-pause/reload semantics are unresolved.
-- CMS public routes are not currently an authoritative publication signal (`assets/webflow-cms-image-pilot/README.md:62-70`).
+- CMS public routes were not established as the authoritative publication signal by the completed image migration (`docs/webflow-cms-image-migration.md`).
 
 ## Before production versus after launch
 

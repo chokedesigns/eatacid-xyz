@@ -18,31 +18,15 @@ The manifest generator derives contract/folder bindings from the chain registry 
 
 **LIMITATION.** CSV health cannot prove current staged versus live state, cannot create/update items, and can be stale. A future API adapter should emit the same normalized comparison model from fresh staged/live reads; CSV remains an offline/manual fallback.
 
-## Current Webflow image pilot
+## Current Webflow CMS primitives
 
-**CURRENT STATE.** The one-item pilot is deliberately locked to an existing CANAAN item and path (`assets/webflow-cms-image-pilot/README.md:1-9`). It supports separate dry-run, staged update, verify, reconcile, publish, and rollback commands (`assets/webflow-cms-image-pilot/README.md:11-48`).
+**CURRENT STATE.** The completed image-migration commands have been retired. `assets/webflow-cms/webflow-cms.mjs` retains only reusable mechanisms: credential-safe diagnostics; bounded GET retry; explicit ambiguous-write outcomes; staged/live pagination; asset creation and presigned upload; exact item-field patches and exact-ID publication; content-based image verification; clean-publication verification; and read-only mutation reconciliation. It is a library, not an active migration or authoring CLI.
 
-Reusable mechanisms:
-
-- least-privilege bearer token from `WEBFLOW_API_TOKEN`, never source control (`assets/webflow-cms-image-pilot/README.md:6-9`);
-- recursive secret/presigned-URL redaction (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:60-111`);
-- atomic journal/snapshot writes and durable phases (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:118-177`);
-- bounded API retry behavior and sanitized errors (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:203-231`);
-- staged/live pagination, asset creation, item patch, and per-item publish (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:233-267`);
-- byte upload to the Webflow presigned destination plus read-back verification (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:579-615`);
-- before snapshots, non-target preservation comparisons, exact publish confirmation, and unknown-outcome reconciliation (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:619-729`, `assets/webflow-cms-image-pilot/cms-image-pilot.mjs:760-953`).
-
-Migration-specific constraints to remove only in a new adapter:
-
-- hard-coded one-item `TARGET`;
-- dependence on `CMS-IMG-1.mapping.json` for a pre-existing item;
-- image-only PATCH and legacy-image rollback;
-- CANAAN-specific unrelated-item comparison;
-- nominal route policy tied to one existing slug.
+The future Admin pipeline still needs an application-level journal, schema/locale preflight, new-item creation, approval binding, and collection policy. The migration's hard-coded target, ticket mapping, batch state, rollback shell, and route policy were intentionally not retained.
 
 ## New-item creation gap
 
-**CURRENT STATE.** No code calls Webflow's collection-item creation endpoint. The pilot can only PATCH a known item ID (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:260-267`). The existing CMS audit observed action surfaces for existing-item update and publish but did not write-test item creation (`docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:18-36`).
+**CURRENT STATE.** No code calls Webflow's collection-item creation endpoint. The retained client can only PATCH a known item ID and publish explicit IDs (`assets/webflow-cms/webflow-cms.mjs`). Historical audit work observed existing-item update and publish surfaces but did not write-test item creation.
 
 A future creation adapter must add:
 
@@ -98,7 +82,7 @@ A future creation adapter must add:
 2. Require separate publish approval bound to current record/plan hashes.
 3. Publish only the captured item ID.
 4. Re-read live state and verify fields/image.
-5. Treat the public route as an additional signal only if the route is proven authoritative; the pilot currently records route ambiguity (`assets/webflow-cms-image-pilot/README.md:62-70`).
+5. Treat the public route as an additional signal only if the route is proven authoritative; the completed migration did not establish public routes as the primary publication signal (`docs/webflow-cms-image-migration.md`).
 6. Mark CMS integrated only after live verification.
 
 ## Collection-specific CMS projections
@@ -110,18 +94,18 @@ A future creation adapter must add:
 | HEN | core plus mint date/OBJKT; sparse mainnet token identity | Local 0-16 thumbnail key is not CMS token ID |
 | INTRODUCTIONS | core plus mint date/OBJKT | Title/order does not determine token ID or presentation order |
 
-Source: `docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:50-76` and `docs/webflow-migration/02-cms-schema.md:151-215`.
+Source: `docs/webflow-migration/02-cms-schema.md:151-215` and `docs/webflow-cms-image-migration.md`.
 
 ## Idempotency and rollback
 
 - Idempotency key: work ID plus verified collection contract/token ID and planned payload hash.
 - Before any retry, search by captured item ID; if missing, search exact collection/token ID and reconcile duplicates.
-- Never create a second asset merely because an upload response was lost; search deterministic name and verify bytes first, as the pilot does (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:592-615`).
+- Never create a second asset merely because an upload response was lost; search the deterministic name and verify content first (`assets/webflow-cms/webflow-cms.mjs`).
 - Local writes can restore exact before bytes.
 - Staged CMS fields can be restored from complete before snapshots where an item existed.
 - A newly created staged item has no exact “before item”; default rollback is to leave it staged and recorded until an explicit archive/delete policy exists.
 - Publishing is reversible only by another external write and therefore is not equivalent to local rollback.
-- Never auto-delete orphaned Webflow assets; record them for a separate cleanup decision (`docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:155-167`).
+- Never auto-delete orphaned Webflow assets; record them for a separate cleanup decision. The migration's one retained CANAAN token-1 asset illustrates why deletion independence must be proven (`docs/webflow-cms-image-migration.md`).
 
 ## Completion definition
 

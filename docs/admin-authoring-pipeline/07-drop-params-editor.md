@@ -25,7 +25,7 @@ The JavaScript source has `dropScheduled`, `dropName`, `mirrorNetwork`, `dropDat
 - Admin statically imports its JSON mirror (`admin-ui/src/features/drops/drops.controller.js:43-47`).
 - Admin normalizes the mirrored object for preview/pair generation and checklist state (`admin-ui/src/features/drops/drops.data.js:230-410`).
 - Admin compares the mirrored JSON structurally with GitHub raw `staging` and `main` copies every 15 seconds while scheduled (`admin-ui/src/features/drops/drops.checklist.controller.js:738-943`).
-- The CMS image pilot reads the authoritative JS object to prevent changing the configured active redeem token (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:349-383`).
+- Historical CMS migration preflight read the authoritative JS object to avoid changing the configured active redeem token; a future authoring pipeline must preserve that safety boundary.
 
 ## Current validation
 

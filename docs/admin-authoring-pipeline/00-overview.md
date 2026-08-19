@@ -8,7 +8,7 @@ Scope: documentation only; current outer repository plus read-only inspection of
 
 ## Purpose and method
 
-This audit documents the path from the current repository to a future local authoring, minting, Admin UI, Webflow CMS, and Drops workflow. It is based on the checked-out code and existing repository audit artifacts. No Webflow read or write was required for this ticket; current CMS facts come from the checked-in Webflow audits, particularly `docs/webflow-cms-image-audit/CMS-IMG-1.audit.md:18-61` and `docs/webflow-migration/02-cms-schema.md:28-128`.
+This audit documents the path from the current repository to a future local authoring, minting, Admin UI, Webflow CMS, and Drops workflow. It is based on the checked-out code and existing repository audit artifacts. No Webflow read or write was required for this ticket; current CMS facts come from `docs/webflow-migration/02-cms-schema.md:28-128`, with the completed image migration summarized in `docs/webflow-cms-image-migration.md`.
 
 The workspace has two Git repositories:
 
@@ -26,7 +26,7 @@ The workspace has two Git repositories:
 - deterministic thumbnail conversion plus transactional manifest restoration (`assets/thumbs/scripts/thumbs.mjs:10-84`, `assets/thumbs/scripts/thumbs.mjs:220-301`);
 - a registry-backed Admin thumbnail manifest generator (`admin-ui/scripts/gen-thumbs-manifest.mjs:24-67`, `admin-ui/scripts/gen-thumbs-manifest.mjs:124-181`);
 - local title/thumb, CMS CSV, and chain-economics health checks (`admin-ui/src/features/health/health.controller.js:430-583`; `admin-ui/src/features/health/health.cms.js:1-12`, `admin-ui/src/features/health/health.cms.js:469-528`);
-- a narrowly locked, journaled, staged/live Webflow image pilot with redaction, reconciliation, and explicit publish approval (`assets/webflow-cms-image-pilot/cms-image-pilot.mjs:60-177`, `assets/webflow-cms-image-pilot/cms-image-pilot.mjs:203-267`; `assets/webflow-cms-image-pilot/README.md:11-60`).
+- reusable staged/live Webflow CMS primitives with redaction, bounded reads, ambiguous-write signaling, content verification, and exact-ID publication (`assets/webflow-cms/webflow-cms.mjs`).
 
 **OBSERVED BEHAVIOR.** The same token facts are maintained in different authorities for different surfaces: local title JSON, numeric thumbnail filenames, generated manifest keys, Webflow fields, chain registry mirrors, drop params, and live chain state. The public site currently consumes Webflow-rendered rows, while the Admin deliberately resolves titles and images locally (`admin-ui/src/utils/nft.js:691-755`). There is no global source of truth.
 

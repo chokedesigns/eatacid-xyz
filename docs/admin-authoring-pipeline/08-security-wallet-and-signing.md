@@ -6,7 +6,7 @@
 
 **CURRENT STATE.** Admin chain writes are guarded by live storage and admin/account checks. Pause UI reads storage `admin`, blocks non-admin toggle, broadcasts verified/unknown pause state, and does not optimistically claim success (`admin-ui/src/features/pause.js:355-475`). Drop pair sends require verified paused state (`admin-ui/src/features/drops/drops.send.service.js:99-108`).
 
-**CURRENT STATE.** Webflow writes use a process environment token. The pilot requests CMS/assets read/write scopes, does not use `sites:write`, redacts authorization/token/signature/presigned fields, and keeps runtime snapshots under an ignored directory (`assets/webflow-cms-image-pilot/README.md:6-9`; `assets/webflow-cms-image-pilot/cms-image-pilot.mjs:60-111`).
+**CURRENT STATE.** Webflow API access uses a process environment token. The retained CMS client keeps the token out of source control and redacts authorization, token, signature, credential, policy, and presigned-upload fields (`assets/webflow-cms/webflow-cms.mjs`). The retired migration runtime is no longer an active repository workflow.
 
 ## Action classification
 
@@ -51,7 +51,7 @@ Required controls:
 - presigned upload URL treated as a secret and never retained unredacted;
 - no automatic orphan asset/item deletion.
 
-The current pilot demonstrates most of these controls (`assets/webflow-cms-image-pilot/README.md:21-60`; `assets/webflow-cms-image-pilot/cms-image-pilot.mjs:760-953`).
+The retained Webflow CMS module demonstrates bounded reads, no blind write retry, explicit ambiguous outcomes, redaction, exact-ID publication, and read-only reconciliation (`assets/webflow-cms/webflow-cms.mjs`). Application-level approvals and durable journaling remain work for the Admin pipeline.
 
 ## Local filesystem boundary
 
@@ -129,4 +129,4 @@ Each approval should summarize only the action it authorizes. “Run pipeline”
 
 ## Security verdict
 
-The safest architecture keeps private signing in the existing browser wallet, Webflow credentials in a loopback service process environment, filesystem writes behind narrow domain endpoints, and all consequential actions separately approved. The existing wallet validation, pause/send gates, and CMS pilot journal/redaction are good patterns to reuse. The largest new risks are a local write bridge, ambiguous mint retries, and generalizing a one-item Webflow script without weakening its target/preservation checks.
+The safest architecture keeps private signing in the existing browser wallet, Webflow credentials in a loopback service process environment, filesystem writes behind narrow domain endpoints, and all consequential actions separately approved. The existing wallet validation, pause/send gates, and retained CMS redaction/reconciliation primitives are good patterns to reuse. The largest new risks are a local write bridge, ambiguous mint retries, and adding general authoring orchestration without weakening target/preservation checks.
