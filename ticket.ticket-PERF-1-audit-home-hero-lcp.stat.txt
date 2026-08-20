@@ -1,0 +1,2 @@
+﻿ docs/performance/PERF-1.home-hero-lcp-audit.md | 191 +++++++++++++++++++++++++
+ 1 file changed, 191 insertions(+)
