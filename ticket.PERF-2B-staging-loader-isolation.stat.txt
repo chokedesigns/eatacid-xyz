@@ -1,0 +1,19 @@
+﻿ .github/workflows/pages.yml                        |  41 +-
+ docs/performance/PERF-2.early-home-first-paint.md  |  12 +-
+ .../performance/PERF-2A.home-loader-deploy-path.md |   5 +
+ .../PERF-2B.staging-loader-isolation.md            |  70 ++++
+ docs/webflow-migration/01-custom-code-inventory.md |  17 +-
+ docs/webflow-migration/01-site-architecture.md     |   9 +-
+ .../webflow-migration/05-static-visual-behavior.md |   2 +-
+ loaders/environment/drops.js                       |  29 ++
+ loaders/environment/exchange.js                    |  29 ++
+ loaders/environment/home.js                        |  41 ++
+ loaders/loader-architecture.test.mjs               | 343 +++++++++++++++
+ loaders/root/drops.js                              |  37 ++
+ loaders/root/exchange.js                           |  37 ++
+ loaders/root/home.js                               |  37 ++
+ package.json                                       |   6 +-
+ scripts/sync-test-harness.mjs                      |  45 +-
+ scripts/verify-pages-loader-artifacts.mjs          | 460 +++++++++++++++++++++
+ scripts/verify-pages-loader-artifacts.test.mjs     | 337 +++++++++++++++
+ 18 files changed, 1525 insertions(+), 32 deletions(-)

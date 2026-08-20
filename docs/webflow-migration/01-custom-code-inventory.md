@@ -104,17 +104,18 @@ Purpose: initial wallet-control visibility, marquee presentation, and Exchange r
 **REPOSITORY directly observed deployment flow:**
 
 1. `.github/workflows/pages.yml` copies:
-   - `loaders/home.loader.js` to deployed root `home.js`
-   - `loaders/drops.loader.js` to deployed root `drops.js`
-   - `loaders/exchange.loader.js` to deployed root `exchange.js`
-2. Each loader treats `eatacid.xyz` and `www.eatacid.xyz` as production hosts.
-3. Production hosts dynamically import `./prod/{home|drops|exchange}.js`; all other hosts dynamically import `./staging/{home|drops|exchange}.js`.
-4. `package.json` builds the three Parcel entrypoints `webflow/home.js`, `webflow/drops.js`, and `webflow/exchange.js` into `dist/prod` or `dist/staging`.
+   - main's `loaders/root/*.js` to the stable deployed root names;
+   - main's `loaders/environment/*.js` to deployed `prod/*-loader.js`;
+   - staging's `loaders/environment/*.js` to deployed `staging/*-loader.js`.
+2. Each root router treats `eatacid.xyz` and `www.eatacid.xyz` as production hosts.
+3. Root routers dynamically import the selected environment loader. Home's environment loader independently starts `first-paint.js` and `home.js`; Drops and Exchange start their matching application bundle.
+4. `package.json` builds the Parcel entrypoints into `dist/prod` or `dist/staging` without changing the prod/staging bundle layout.
 
 ```text
 Webflow footer module URL
-  -> deployed root loader
-  -> host-selected prod/staging bundle
+  -> main-owned deployed root router
+  -> host-selected branch-owned environment loader
+  -> same-environment application bundle(s)
   -> webflow/*.js Parcel entry
   -> shared and page-specific repository runtime
 ```

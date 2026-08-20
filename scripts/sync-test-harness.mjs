@@ -34,7 +34,7 @@ function removeMarkedBlock(html) {
 // - Drops/Exchange: js/main.js (within each folder)
 // - Your previous harness injections: dist/(home|drops|exchange).js
 // - NEW: staging/prod subfolder injections: dist/(staging|prod)/(home|drops|exchange).js
-// - Optional: wrapper entrypoints (/home.js, /drops.js, /exchange.js) if they ever appear
+// - Stable or candidate wrapper entrypoints when loader-chain mode is used
 function stripAppScripts(html) {
   const patterns = [
     // Webflow-exported module entrypoints for Drops/Exchange
@@ -60,6 +60,10 @@ function stripAppScripts(html) {
     // Optional: if you ever put these stable entrypoints directly in HTML
     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
     /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+
+    // Temporary root-level candidate routers used before stable cutover
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?candidate-(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?candidate-(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
   ];
 
   let out = html;
@@ -101,26 +105,57 @@ function buildOne({ src, dest, bundleSrc }) {
 
 const root = process.cwd();
 const testDir = path.join(root, "test");
+const loaderChain = process.argv.includes("--loader-chain");
 ensureDir(testDir);
+
+if (loaderChain) {
+  for (const surface of ["home", "drops", "exchange"]) {
+    const rootRouterSource = path.join(root, "loaders", "root", `${surface}.js`);
+    const environmentLoaderSource = path.join(
+      root,
+      "loaders",
+      "environment",
+      `${surface}.js`
+    );
+    const candidateRouter = path.join(root, "dist", `candidate-${surface}.js`);
+    const stagingLoader = path.join(
+      root,
+      "dist",
+      "staging",
+      `${surface}-loader.js`
+    );
+
+    ensureDir(path.dirname(candidateRouter));
+    ensureDir(path.dirname(stagingLoader));
+    fs.copyFileSync(rootRouterSource, candidateRouter);
+    fs.copyFileSync(environmentLoaderSource, stagingLoader);
+  }
+}
+
+function harnessBundle(surface) {
+  return loaderChain
+    ? `../dist/candidate-${surface}.js`
+    : `../dist/staging/${surface}.js`;
+}
 
 // Copies your current Webflow HTML shells from the repo,
 // strips app module loader scripts, injects dist bundles.
 buildOne({
   src: path.join(root, "index.html"),
   dest: path.join(testDir, "home.html"),
-  bundleSrc: "../dist/staging/home.js",
+  bundleSrc: harnessBundle("home"),
 });
 
 buildOne({
   src: path.join(root, "drops", "index.html"),
   dest: path.join(testDir, "drops.html"),
-  bundleSrc: "../dist/staging/drops.js",
+  bundleSrc: harnessBundle("drops"),
 });
 
 buildOne({
   src: path.join(root, "exchange", "index.html"),
   dest: path.join(testDir, "exchange.html"),
-  bundleSrc: "../dist/staging/exchange.js",
+  bundleSrc: harnessBundle("exchange"),
 });
 
-console.log("done.");
+console.log(`done (${loaderChain ? "loader-chain" : "direct-bundle"} mode).`);

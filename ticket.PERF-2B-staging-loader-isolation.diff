@@ -1,0 +1,1767 @@
+﻿diff --git a/.github/workflows/pages.yml b/.github/workflows/pages.yml
+index 54cac24..bb7687e 100644
+--- a/.github/workflows/pages.yml
++++ b/.github/workflows/pages.yml
+@@ -84,13 +84,42 @@ jobs:
+           cp -R repo-main/dist/prod/* dist/prod/ || true
+           cp -R repo-staging/dist/staging/* dist/staging/ || true
+ 
+-          # Copy loaders to root with the stable names Webflow will load
+-          cp repo-main/loaders/home.loader.js dist/home.js
+-          cp repo-main/loaders/drops.loader.js dist/drops.js
+-          cp repo-main/loaders/exchange.loader.js dist/exchange.js
++          # Staging environment loaders are always staging-owned.
++          cp repo-staging/loaders/environment/home.js dist/staging/home-loader.js
++          cp repo-staging/loaders/environment/drops.js dist/staging/drops-loader.js
++          cp repo-staging/loaders/environment/exchange.js dist/staging/exchange-loader.js
++
++          main_root_count=0
++          for source in home drops exchange; do
++            if [[ -f "repo-main/loaders/root/${source}.js" ]]; then
++              main_root_count=$((main_root_count + 1))
++            fi
++          done
++
++          if [[ "$main_root_count" -eq 3 ]]; then
++            # Stable cutover: root routers and prod environment loaders are main-owned.
++            cp repo-main/loaders/root/home.js dist/home.js
++            cp repo-main/loaders/root/drops.js dist/drops.js
++            cp repo-main/loaders/root/exchange.js dist/exchange.js
++            cp repo-main/loaders/environment/home.js dist/prod/home-loader.js
++            cp repo-main/loaders/environment/drops.js dist/prod/drops-loader.js
++            cp repo-main/loaders/environment/exchange.js dist/prod/exchange-loader.js
++          elif [[ "$main_root_count" -eq 0 ]]; then
++            # Additive pre-cutover: stable roots remain legacy main bytes. Candidate
++            # routers are root-level so their relative staging imports match cutover.
++            cp repo-main/loaders/home.loader.js dist/home.js
++            cp repo-main/loaders/drops.loader.js dist/drops.js
++            cp repo-main/loaders/exchange.loader.js dist/exchange.js
++            cp repo-staging/loaders/root/home.js dist/candidate-home.js
++            cp repo-staging/loaders/root/drops.js dist/candidate-drops.js
++            cp repo-staging/loaders/root/exchange.js dist/candidate-exchange.js
++          else
++            echo "::error title=PARTIAL ROOT ROUTER CUTOVER::main must contain all three root routers or none of them."
++            exit 1
++          fi
+ 
+-      - name: Verify Pages Home loader compatibility
+-        run: node repo-staging/scripts/verify-pages-home-loader-artifacts.mjs dist repo-main/loaders/home.loader.js
++      - name: Verify Pages loader graph and provenance
++        run: node repo-staging/scripts/verify-pages-loader-artifacts.mjs dist repo-main repo-staging
+ 
+       - name: Upload Pages artifact
+         uses: actions/upload-pages-artifact@v3
+diff --git a/docs/performance/PERF-2.early-home-first-paint.md b/docs/performance/PERF-2.early-home-first-paint.md
+index abec225..ff6cd48 100644
+--- a/docs/performance/PERF-2.early-home-first-paint.md
++++ b/docs/performance/PERF-2.early-home-first-paint.md
+@@ -8,7 +8,7 @@ Profile: AUDIT / CLOSURE
+ 
+ `webflow/first-paint.js` is a dedicated Parcel entry that imports only the existing `shared/public-first-paint.js` coordinator. The coordinator itself is unchanged, preserving its network state, image/font readiness gates, bounded timeouts, animation-frame sequencing, ready/fallback classes, fail-open path, reveal choreography, banner presentation, and global duplicate-start guard.
+ 
+-`loaders/home.loader.js` now selects production or staging once and immediately starts two sibling dynamic imports. Each import has its own rejection handling, so neither load is sequenced behind or blocked by the other. `webflow/home.js` retains its coordinator import as a fallback; the coordinator's global state prevents a second initialization regardless of which bundle evaluates first.
++`loaders/environment/home.js` immediately starts two sibling dynamic imports after the stable root router selects the environment loader. Each import has its own rejection handling, so neither load is sequenced behind or blocked by the other. `webflow/home.js` retains its coordinator import as a fallback; the coordinator's global state prevents a second initialization regardless of which bundle evaluates first.
+ 
+ Old dependency chain:
+ 
+@@ -20,9 +20,9 @@ HTML -> root Home loader -> Home bundle -> first-paint coordinator -> reveal
+ New dependency chain:
+ 
+ ```text
+-                         /-> first-paint entry -> coordinator -> reveal
+-HTML -> root Home loader
+-                         \-> Home bundle -> Beacon/wallet application
++HTML -> root Home router -> environment Home loader
++                                      /-> first-paint entry -> coordinator -> reveal
++                                      \-> Home bundle -> Beacon/wallet application
+ ```
+ 
+ There is no `await` or promise chain between the two loader calls.
+@@ -59,13 +59,13 @@ Static validation establishes the intended dependency order and isolation, but i
+ 
+ ## Manual runtime validation required
+ 
+-Deployment prerequisite: the shared root `/home.js` is copied from `main`, not `staging`. Promote the complete PERF-2/PERF-2A history to main and require the PERF-2A assembled-artifact guard to pass before treating a staging browser trace as PERF-2 validation. A staging-only PERF-2 merge leaves the browser on main's older shared loader.
++Deployment prerequisite: until PERF-2B is promoted to main, use the temporary root-level `/candidate-home.js` artifact (or `npm run pages:sanity:loader-chain`) to validate the staging-owned environment-loader chain. After promotion, shared root `/home.js` is a main-owned router and normal staging validation reaches `/staging/home-loader.js`. The PERF-2B assembled-artifact guard must pass before treating a browser trace as valid.
+ 
+ Use the same browser, viewport, device-pixel ratio, navigation method, cache policy, and interaction used for PERF-1. On the deployed staging build:
+ 
+ 1. Capture a clean-navigation Performance trace with no throttling; record LCP, INP, CLS, the LCP element, and reveal appearance.
+ 2. Repeat with the same Slow 4G profile; record the same values and the hero resource completion, first-paint bundle completion, ready/fallback class time, Home bundle completion, and LCP time.
+-3. Confirm the root loader starts `/staging/first-paint.js` and `/staging/home.js` as overlapping sibling requests and that first-paint can evaluate before Home completes.
++3. Confirm the root router requests `/staging/home-loader.js`, which starts `/staging/first-paint.js` and `/staging/home.js` as overlapping sibling requests, and that first-paint can evaluate before Home completes.
+ 4. Confirm the testnet banner and reveal look unchanged, the hero never flashes at an improper size or shifts layout, Connect/wallet controls initialize normally, and the console has no duplicate-import or rejected-loader errors during normal loading.
+ 5. For failure-seam spot checks, block only `/staging/home.js` and confirm first-paint still releases/fails open; then block only `/staging/first-paint.js` and confirm Home still boots and its fallback coordinator releases the surface. Expected blocked-request loader errors should be distinguished from errors in the normal runs.
+ 
+diff --git a/docs/performance/PERF-2A.home-loader-deploy-path.md b/docs/performance/PERF-2A.home-loader-deploy-path.md
+index 6cac240..7343a93 100644
+--- a/docs/performance/PERF-2A.home-loader-deploy-path.md
++++ b/docs/performance/PERF-2A.home-loader-deploy-path.md
+@@ -4,6 +4,11 @@ Date: 2026-08-20
+ 
+ Profile: AUDIT / CLOSURE
+ 
++Status: historical pre-PERF-2B audit. The paths and compatibility guard below
++describe the deployment architecture at the time of this audit. PERF-2B
++replaces it with main-owned stable root routers plus branch-owned environment
++loaders; see `PERF-2B.staging-loader-isolation.md`.
++
+ ## Finding
+ 
+ The PERF-2 staging runtime check did not exercise PERF-2. The browser made no `first-paint.js` request and served the old root `home.js`, followed by the large staging `home.js`. Slow-4G LCP was therefore effectively unchanged at about 12.474 seconds versus the 12.471-second PERF-1 baseline.
+diff --git a/docs/performance/PERF-2B.staging-loader-isolation.md b/docs/performance/PERF-2B.staging-loader-isolation.md
+new file mode 100644
+index 0000000..5f34b1c
+--- /dev/null
++++ b/docs/performance/PERF-2B.staging-loader-isolation.md
+@@ -0,0 +1,70 @@
++# PERF-2B — staging loader isolation
++
++Date: 2026-08-20
++
++## Deployment contract
++
++The stable Webflow-facing URLs remain `/home.js`, `/drops.js`, and
++`/exchange.js`. Each is a main-owned root router whose only runtime job is to
++read `window.location.hostname`, select `./prod` for `eatacid.xyz` and
++`www.eatacid.xyz` or `./staging` for every other hostname, and import the
++surface's environment loader.
++
++```text
++main:loaders/root/{surface}.js
++  -> /{surface}.js
++  -> /prod/{surface}-loader.js       from main
++     or /staging/{surface}-loader.js from staging
++  -> same-environment application artifact(s)
++```
++
++Home's environment loader independently starts `./first-paint.js` and
++`./home.js`. Drops and Exchange environment loaders each start their matching
++application bundle. Page bootstrap, first-paint sequencing, Beacon setup, and
++feature behavior stay below the stable router boundary.
++
++Normal validation is staging-first: merge a ticket branch to `staging`, let the
++combined Pages workflow build and publish it, validate the staging hostname's
++root-router/environment-loader/application chain, then promote to `main`.
++Changing a root router is an infrastructure change because the same main-owned
++bytes select both environments; ordinary staging loader work changes only the
++staging environment-loader source and staging-built bundles.
++
++## Additive migration and stable cutover
++
++The workflow detects whether main contains all three new root-router sources.
++While main contains none, it preserves main's legacy stable root bytes and
++publishes staging's new routers at temporary root-level paths:
++
++```text
++/candidate-home.js
++/candidate-drops.js
++/candidate-exchange.js
++```
++
++Those candidate paths resolve relative imports exactly as the future stable
++roots do and are for staging-host validation only. They route to staging-owned
++`/staging/*-loader.js` files. The pre-cutover verifier also confirms the legacy
++stable roots still have their complete prod/staging application paths. It does
++not create a prod environment loader from staging or make production depend on
++the first-paint artifact absent from the old main build.
++
++After this complete change reaches main, a fresh Pages assembly atomically
++copies main's routers to the stable root names, copies main's environment
++loaders to `/prod`, and requires `prod/first-paint.js` plus every other
++referenced prod/staging artifact before upload. Candidate files are not emitted
++after cutover. A partial three-router main state fails assembly and verification.
++
++## Validation and rollback
++
++`npm run pages:sanity:loader-chain` builds staging bundles, creates local
++candidate root/router and staging environment-loader copies, and injects the
++candidate root URLs into the existing Webflow HTML harness. The original
++`npm run pages:sanity` direct-bundle path remains available for bundle-only
++diagnosis.
++
++Rollback before cutover is simply removal/reversion of the additive staging
++candidate change; stable URLs still use legacy main. After cutover, roll back
++the complete main commit/deployment so root routers, prod environment loaders,
++and prod bundles return as one compatible artifact. Do not roll back only a
++root router or only its environment loader.
+diff --git a/docs/webflow-migration/01-custom-code-inventory.md b/docs/webflow-migration/01-custom-code-inventory.md
+index ba330e4..d893a8a 100644
+--- a/docs/webflow-migration/01-custom-code-inventory.md
++++ b/docs/webflow-migration/01-custom-code-inventory.md
+@@ -104,17 +104,18 @@ Purpose: initial wallet-control visibility, marquee presentation, and Exchange r
+ **REPOSITORY directly observed deployment flow:**
+ 
+ 1. `.github/workflows/pages.yml` copies:
+-   - `loaders/home.loader.js` to deployed root `home.js`
+-   - `loaders/drops.loader.js` to deployed root `drops.js`
+-   - `loaders/exchange.loader.js` to deployed root `exchange.js`
+-2. Each loader treats `eatacid.xyz` and `www.eatacid.xyz` as production hosts.
+-3. Production hosts dynamically import `./prod/{home|drops|exchange}.js`; all other hosts dynamically import `./staging/{home|drops|exchange}.js`.
+-4. `package.json` builds the three Parcel entrypoints `webflow/home.js`, `webflow/drops.js`, and `webflow/exchange.js` into `dist/prod` or `dist/staging`.
++   - main's `loaders/root/*.js` to the stable deployed root names;
++   - main's `loaders/environment/*.js` to deployed `prod/*-loader.js`;
++   - staging's `loaders/environment/*.js` to deployed `staging/*-loader.js`.
++2. Each root router treats `eatacid.xyz` and `www.eatacid.xyz` as production hosts.
++3. Root routers dynamically import the selected environment loader. Home's environment loader independently starts `first-paint.js` and `home.js`; Drops and Exchange start their matching application bundle.
++4. `package.json` builds the Parcel entrypoints into `dist/prod` or `dist/staging` without changing the prod/staging bundle layout.
+ 
+ ```text
+ Webflow footer module URL
+-  -> deployed root loader
+-  -> host-selected prod/staging bundle
++  -> main-owned deployed root router
++  -> host-selected branch-owned environment loader
++  -> same-environment application bundle(s)
+   -> webflow/*.js Parcel entry
+   -> shared and page-specific repository runtime
+ ```
+diff --git a/docs/webflow-migration/01-site-architecture.md b/docs/webflow-migration/01-site-architecture.md
+index 83ee889..1763f3c 100644
+--- a/docs/webflow-migration/01-site-architecture.md
++++ b/docs/webflow-migration/01-site-architecture.md
+@@ -123,14 +123,15 @@ Repository loader chain:
+ ```text
+ Webflow page custom code
+   -> https://chokedesigns.github.io/eatacid-xyz/{home|drops|exchange}.js
+-  -> GitHub Pages root loader copied by .github/workflows/pages.yml
+-  -> ./prod/{bundle}.js on eatacid.xyz / www.eatacid.xyz
+-     or ./staging/{bundle}.js on other hosts
++  -> main-owned GitHub Pages root router copied by .github/workflows/pages.yml
++  -> ./prod/{surface}-loader.js from main on eatacid.xyz / www.eatacid.xyz
++     or ./staging/{surface}-loader.js from staging on other hosts
++  -> same-environment application bundle(s)
+   -> Parcel entry webflow/{home|drops|exchange}.js
+   -> shared and page-specific repository modules
+ ```
+ 
+-This chain is **REPOSITORY**-confirmed by `loaders/*.loader.js`, `package.json`, `.github/workflows/pages.yml`, `webflow/*.js`, `drops/js/main.js`, and `exchange/js/main.js`.
++This chain is **REPOSITORY**-confirmed by `loaders/root/*.js`, `loaders/environment/*.js`, `package.json`, `.github/workflows/pages.yml`, `webflow/*.js`, `drops/js/main.js`, and `exchange/js/main.js`.
+ 
+ ## Components and repeated structures
+ 
+diff --git a/docs/webflow-migration/05-static-visual-behavior.md b/docs/webflow-migration/05-static-visual-behavior.md
+index 9c8aa88..03847a5 100644
+--- a/docs/webflow-migration/05-static-visual-behavior.md
++++ b/docs/webflow-migration/05-static-visual-behavior.md
+@@ -234,7 +234,7 @@ Hard dependencies:
+ 
+ Soft dependencies include font readiness (1000ms cap), hero readiness (1200ms cap), and their 1300ms fail-open. Drops has 1s countdown updates, a default 10s supply poll, transaction-status polling around 5s with a 120s limit, and 3s modal timing. Exchange uses a 500ms initial delay, MutationObserver cart handling, chain-operation polling, and 3s modal timing. Wallet initialization depends on Beacon and Shadownet RPC/TzKT availability.
+ 
+-Loaders select `./prod` on `eatacid.xyz`/`www.eatacid.xyz` and `./staging` elsewhere, then dynamically import page bundles and report errors. The current Webflow page custom code bypasses those checked loaders in favor of the absolute GitHub Pages bundle URLs; deployed-bundle equality is unresolved.
++The absolute GitHub Pages URLs in current Webflow custom code are the stable root routers; they do not bypass them. The routers select `./prod` on `eatacid.xyz`/`www.eatacid.xyz` and `./staging` elsewhere, then dynamically import branch-owned environment loaders that start the page bundles and report errors. Deployed-bundle equality remains unresolved.
+ 
+ ## Webflow versus checked-in HTML
+ 
+diff --git a/loaders/environment/drops.js b/loaders/environment/drops.js
+new file mode 100644
+index 0000000..c057de4
+--- /dev/null
++++ b/loaders/environment/drops.js
+@@ -0,0 +1,29 @@
++function importBundle(specifier) {
++  return import(specifier);
++}
++
++function startDropsBundle({
++  importModule = importBundle,
++  logger = console
++} = {}) {
++  const specifier = "./drops.js";
++  let bundleLoad;
++
++  try {
++    bundleLoad = Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error("[EA] drops bundle load failed:", specifier, err);
++      return null;
++    });
++  } catch (err) {
++    logger.error("[EA] drops bundle load failed:", specifier, err);
++    bundleLoad = Promise.resolve(null);
++  }
++
++  return { bundleLoad };
++}
++
++if (typeof window !== "undefined") {
++  startDropsBundle();
++}
++
++export { startDropsBundle };
+diff --git a/loaders/environment/exchange.js b/loaders/environment/exchange.js
+new file mode 100644
+index 0000000..44fc570
+--- /dev/null
++++ b/loaders/environment/exchange.js
+@@ -0,0 +1,29 @@
++function importBundle(specifier) {
++  return import(specifier);
++}
++
++function startExchangeBundle({
++  importModule = importBundle,
++  logger = console
++} = {}) {
++  const specifier = "./exchange.js";
++  let bundleLoad;
++
++  try {
++    bundleLoad = Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error("[EA] exchange bundle load failed:", specifier, err);
++      return null;
++    });
++  } catch (err) {
++    logger.error("[EA] exchange bundle load failed:", specifier, err);
++    bundleLoad = Promise.resolve(null);
++  }
++
++  return { bundleLoad };
++}
++
++if (typeof window !== "undefined") {
++  startExchangeBundle();
++}
++
++export { startExchangeBundle };
+diff --git a/loaders/environment/home.js b/loaders/environment/home.js
+new file mode 100644
+index 0000000..9038ead
+--- /dev/null
++++ b/loaders/environment/home.js
+@@ -0,0 +1,41 @@
++function importBundle(specifier) {
++  return import(specifier);
++}
++
++function startBundleImport(importModule, specifier, label, logger) {
++  try {
++    return Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
++      return null;
++    });
++  } catch (err) {
++    logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
++    return Promise.resolve(null);
++  }
++}
++
++function startHomeBundles({
++  importModule = importBundle,
++  logger = console
++} = {}) {
++  const firstPaintLoad = startBundleImport(
++    importModule,
++    "./first-paint.js",
++    "first-paint",
++    logger
++  );
++  const homeLoad = startBundleImport(
++    importModule,
++    "./home.js",
++    "home",
++    logger
++  );
++
++  return { firstPaintLoad, homeLoad };
++}
++
++if (typeof window !== "undefined") {
++  startHomeBundles();
++}
++
++export { startHomeBundles };
+diff --git a/loaders/loader-architecture.test.mjs b/loaders/loader-architecture.test.mjs
+new file mode 100644
+index 0000000..4b1f7ed
+--- /dev/null
++++ b/loaders/loader-architecture.test.mjs
+@@ -0,0 +1,343 @@
++import assert from 'node:assert/strict';
++
++import {
++  selectHomeLoaderBase,
++  startHomeLoader
++} from './root/home.js';
++import {
++  selectDropsLoaderBase,
++  startDropsLoader
++} from './root/drops.js';
++import {
++  selectExchangeLoaderBase,
++  startExchangeLoader
++} from './root/exchange.js';
++import { startHomeBundles } from './environment/home.js';
++import { startDropsBundle } from './environment/drops.js';
++import { startExchangeBundle } from './environment/exchange.js';
++
++function deferred() {
++  let resolve;
++  let reject;
++  const promise = new Promise((resolvePromise, rejectPromise) => {
++    resolve = resolvePromise;
++    reject = rejectPromise;
++  });
++
++  return { promise, resolve, reject };
++}
++
++function createLogger() {
++  const errors = [];
++  return {
++    errors,
++    error(...args) {
++      errors.push(args);
++    }
++  };
++}
++
++const rootSurfaces = [
++  {
++    name: 'home',
++    selectBase: selectHomeLoaderBase,
++    startLoader: startHomeLoader
++  },
++  {
++    name: 'drops',
++    selectBase: selectDropsLoaderBase,
++    startLoader: startDropsLoader
++  },
++  {
++    name: 'exchange',
++    selectBase: selectExchangeLoaderBase,
++    startLoader: startExchangeLoader
++  }
++];
++
++for (const { name, selectBase, startLoader } of rootSurfaces) {
++  assert.equal(selectBase('eatacid.xyz'), './prod');
++  assert.equal(selectBase('www.eatacid.xyz'), './prod');
++  assert.equal(selectBase('staging.eatacid.xyz'), './staging');
++  assert.equal(selectBase('localhost'), './staging');
++
++  for (const { hostname, base } of [
++    { hostname: 'eatacid.xyz', base: './prod' },
++    { hostname: 'staging.eatacid.xyz', base: './staging' }
++  ]) {
++    const calls = [];
++    const logger = createLogger();
++    const { loaderLoad } = startLoader({
++      hostname,
++      logger,
++      importModule(specifier) {
++        calls.push(specifier);
++        return Promise.resolve(`${name}-loader-ready`);
++      }
++    });
++
++    assert.deepEqual(calls, [`${base}/${name}-loader.js`]);
++    assert.equal(await loaderLoad, `${name}-loader-ready`);
++    assert.deepEqual(logger.errors, []);
++  }
++
++  {
++    const logger = createLogger();
++    const { loaderLoad } = startLoader({
++      hostname: 'staging.eatacid.xyz',
++      logger,
++      importModule() {
++        return Promise.reject(new Error('asynchronous loader failure'));
++      }
++    });
++
++    assert.equal(await loaderLoad, null);
++    assert.equal(logger.errors.length, 1);
++    assert.match(logger.errors[0][0], /environment loader failed/);
++  }
++
++  {
++    const logger = createLogger();
++    const { loaderLoad } = startLoader({
++      hostname: 'eatacid.xyz',
++      logger,
++      importModule() {
++        throw new Error('synchronous loader failure');
++      }
++    });
++
++    assert.equal(await loaderLoad, null);
++    assert.equal(logger.errors.length, 1);
++    assert.match(logger.errors[0][0], /environment loader failed/);
++  }
++}
++
++for (const settleFirst of ['first-paint', 'home']) {
++  const firstPaint = deferred();
++  const home = deferred();
++  const calls = [];
++  const logger = createLogger();
++  const loads = startHomeBundles({
++    logger,
++    importModule(specifier) {
++      calls.push(specifier);
++      return specifier === './first-paint.js'
++        ? firstPaint.promise
++        : home.promise;
++    }
++  });
++
++  assert.deepEqual(calls, ['./first-paint.js', './home.js']);
++
++  const first = settleFirst === 'first-paint' ? firstPaint : home;
++  const second = settleFirst === 'first-paint' ? home : firstPaint;
++  const firstLoad = settleFirst === 'first-paint'
++    ? loads.firstPaintLoad
++    : loads.homeLoad;
++  const secondLoad = settleFirst === 'first-paint'
++    ? loads.homeLoad
++    : loads.firstPaintLoad;
++
++  first.resolve(`${settleFirst}-ready-first`);
++  assert.equal(await firstLoad, `${settleFirst}-ready-first`);
++
++  let secondSettled = false;
++  void secondLoad.then(() => {
++    secondSettled = true;
++  });
++  await Promise.resolve();
++  assert.equal(secondSettled, false);
++
++  second.resolve('second-ready');
++  assert.equal(await secondLoad, 'second-ready');
++  assert.deepEqual(logger.errors, []);
++}
++
++for (const failingBundle of ['first-paint', 'home']) {
++  const firstPaint = deferred();
++  const home = deferred();
++  const logger = createLogger();
++  const loads = startHomeBundles({
++    logger,
++    importModule(specifier) {
++      return specifier === './first-paint.js'
++        ? firstPaint.promise
++        : home.promise;
++    }
++  });
++
++  const failed = failingBundle === 'first-paint' ? firstPaint : home;
++  const surviving = failingBundle === 'first-paint' ? home : firstPaint;
++  const failedLoad = failingBundle === 'first-paint'
++    ? loads.firstPaintLoad
++    : loads.homeLoad;
++  const survivingLoad = failingBundle === 'first-paint'
++    ? loads.homeLoad
++    : loads.firstPaintLoad;
++
++  failed.reject(new Error(`${failingBundle} unavailable`));
++  assert.equal(await failedLoad, null);
++  surviving.resolve('survivor-ready');
++  assert.equal(await survivingLoad, 'survivor-ready');
++  assert.equal(logger.errors.length, 1);
++  assert.match(logger.errors[0][0], new RegExp(`${failingBundle} bundle load failed`));
++}
++
++for (const failingBundle of ['first-paint', 'home']) {
++  const calls = [];
++  const logger = createLogger();
++  const loads = startHomeBundles({
++    logger,
++    importModule(specifier) {
++      calls.push(specifier);
++      if (specifier === `./${failingBundle}.js`) {
++        throw new Error(`synchronous ${failingBundle} failure`);
++      }
++      return Promise.resolve('survivor-ready');
++    }
++  });
++
++  assert.deepEqual(calls, ['./first-paint.js', './home.js']);
++  const failedLoad = failingBundle === 'first-paint'
++    ? loads.firstPaintLoad
++    : loads.homeLoad;
++  const survivingLoad = failingBundle === 'first-paint'
++    ? loads.homeLoad
++    : loads.firstPaintLoad;
++  assert.equal(await failedLoad, null);
++  assert.equal(await survivingLoad, 'survivor-ready');
++  assert.equal(logger.errors.length, 1);
++}
++
++for (const { name, startBundle } of [
++  { name: 'drops', startBundle: startDropsBundle },
++  { name: 'exchange', startBundle: startExchangeBundle }
++]) {
++  const calls = [];
++  const logger = createLogger();
++  const { bundleLoad } = startBundle({
++    logger,
++    importModule(specifier) {
++      calls.push(specifier);
++      return Promise.resolve(`${name}-ready`);
++    }
++  });
++
++  assert.deepEqual(calls, [`./${name}.js`]);
++  assert.equal(await bundleLoad, `${name}-ready`);
++  assert.deepEqual(logger.errors, []);
++
++  const failureLogger = createLogger();
++  const failed = startBundle({
++    logger: failureLogger,
++    importModule() {
++      return Promise.reject(new Error(`${name} unavailable`));
++    }
++  });
++  assert.equal(await failed.bundleLoad, null);
++  assert.equal(failureLogger.errors.length, 1);
++  assert.match(failureLogger.errors[0][0], new RegExp(`${name} bundle load failed`));
++
++  const synchronousFailureLogger = createLogger();
++  const synchronouslyFailed = startBundle({
++    logger: synchronousFailureLogger,
++    importModule() {
++      throw new Error(`synchronous ${name} failure`);
++    }
++  });
++  assert.equal(await synchronouslyFailed.bundleLoad, null);
++  assert.equal(synchronousFailureLogger.errors.length, 1);
++  assert.match(
++    synchronousFailureLogger.errors[0][0],
++    new RegExp(`${name} bundle load failed`)
++  );
++}
++
++{
++  const previous = {
++    window: globalThis.window,
++    document: globalThis.document,
++    requestAnimationFrame: globalThis.requestAnimationFrame,
++    setTimeout: globalThis.setTimeout,
++    clearTimeout: globalThis.clearTimeout
++  };
++  const bodyClasses = new Set(['first-paint-main']);
++  const scheduledTimeouts = [];
++
++  globalThis.window = {};
++  globalThis.document = {
++    body: {
++      classList: {
++        add(...names) {
++          names.forEach(name => bodyClasses.add(name));
++        },
++        contains(name) {
++          return bodyClasses.has(name);
++        },
++        remove(name) {
++          bodyClasses.delete(name);
++        }
++      },
++      querySelector() {
++        return null;
++      },
++      querySelectorAll() {
++        return [];
++      }
++    },
++    getElementById() {
++      return {};
++    }
++  };
++  globalThis.requestAnimationFrame = callback => callback();
++  globalThis.setTimeout = (callback, milliseconds) => {
++    const timer = { callback, milliseconds };
++    scheduledTimeouts.push(timer);
++    return timer;
++  };
++  globalThis.clearTimeout = () => {};
++
++  try {
++    await import(`../webflow/first-paint.js?isolated=${Date.now()}`);
++    assert.equal(globalThis.window.__EA_PUBLIC_FIRST_PAINT__.started, true);
++    assert.equal(
++      scheduledTimeouts.some(timer => timer.milliseconds === 1300),
++      true,
++      'the coordinator fail-open timer should start without importing Home'
++    );
++  } finally {
++    for (const [key, value] of Object.entries(previous)) {
++      if (value === undefined) {
++        delete globalThis[key];
++      } else {
++        globalThis[key] = value;
++      }
++    }
++  }
++}
++
++{
++  const previousWindow = globalThis.window;
++  globalThis.window = {};
++
++  try {
++    const nonce = `${Date.now()}-${Math.random()}`;
++    const earlyEntry = await import(`../shared/public-first-paint.js?early=${nonce}`);
++    const homeFallback = await import(`../shared/public-first-paint.js?home=${nonce}`);
++
++    assert.equal(earlyEntry.publicFirstPaint.started, true);
++    assert.strictEqual(homeFallback.publicFirstPaint, earlyEntry.publicFirstPaint);
++    assert.strictEqual(
++      homeFallback.startPublicFirstPaint(),
++      earlyEntry.publicFirstPaint
++    );
++  } finally {
++    if (previousWindow === undefined) {
++      delete globalThis.window;
++    } else {
++      globalThis.window = previousWindow;
++    }
++  }
++}
++
++console.log('Loader architecture and Home first-paint tests passed.');
+diff --git a/loaders/root/drops.js b/loaders/root/drops.js
+new file mode 100644
+index 0000000..d09d128
+--- /dev/null
++++ b/loaders/root/drops.js
+@@ -0,0 +1,37 @@
++const PROD_HOSTS = new Set(["eatacid.xyz", "www.eatacid.xyz"]);
++
++function selectDropsLoaderBase(hostname) {
++  return PROD_HOSTS.has(hostname) ? "./prod" : "./staging";
++}
++
++function importEnvironmentLoader(specifier) {
++  return import(specifier);
++}
++
++function startDropsLoader({
++  hostname = window.location.hostname,
++  importModule = importEnvironmentLoader,
++  logger = console
++} = {}) {
++  const base = selectDropsLoaderBase(hostname);
++  const specifier = `${base}/drops-loader.js`;
++  let loaderLoad;
++
++  try {
++    loaderLoad = Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error("[EA] drops environment loader failed:", base, err);
++      return null;
++    });
++  } catch (err) {
++    logger.error("[EA] drops environment loader failed:", base, err);
++    loaderLoad = Promise.resolve(null);
++  }
++
++  return { base, loaderLoad };
++}
++
++if (typeof window !== "undefined") {
++  startDropsLoader();
++}
++
++export { selectDropsLoaderBase, startDropsLoader };
+diff --git a/loaders/root/exchange.js b/loaders/root/exchange.js
+new file mode 100644
+index 0000000..7957d18
+--- /dev/null
++++ b/loaders/root/exchange.js
+@@ -0,0 +1,37 @@
++const PROD_HOSTS = new Set(["eatacid.xyz", "www.eatacid.xyz"]);
++
++function selectExchangeLoaderBase(hostname) {
++  return PROD_HOSTS.has(hostname) ? "./prod" : "./staging";
++}
++
++function importEnvironmentLoader(specifier) {
++  return import(specifier);
++}
++
++function startExchangeLoader({
++  hostname = window.location.hostname,
++  importModule = importEnvironmentLoader,
++  logger = console
++} = {}) {
++  const base = selectExchangeLoaderBase(hostname);
++  const specifier = `${base}/exchange-loader.js`;
++  let loaderLoad;
++
++  try {
++    loaderLoad = Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error("[EA] exchange environment loader failed:", base, err);
++      return null;
++    });
++  } catch (err) {
++    logger.error("[EA] exchange environment loader failed:", base, err);
++    loaderLoad = Promise.resolve(null);
++  }
++
++  return { base, loaderLoad };
++}
++
++if (typeof window !== "undefined") {
++  startExchangeLoader();
++}
++
++export { selectExchangeLoaderBase, startExchangeLoader };
+diff --git a/loaders/root/home.js b/loaders/root/home.js
+new file mode 100644
+index 0000000..70ea0c4
+--- /dev/null
++++ b/loaders/root/home.js
+@@ -0,0 +1,37 @@
++const PROD_HOSTS = new Set(["eatacid.xyz", "www.eatacid.xyz"]);
++
++function selectHomeLoaderBase(hostname) {
++  return PROD_HOSTS.has(hostname) ? "./prod" : "./staging";
++}
++
++function importEnvironmentLoader(specifier) {
++  return import(specifier);
++}
++
++function startHomeLoader({
++  hostname = window.location.hostname,
++  importModule = importEnvironmentLoader,
++  logger = console
++} = {}) {
++  const base = selectHomeLoaderBase(hostname);
++  const specifier = `${base}/home-loader.js`;
++  let loaderLoad;
++
++  try {
++    loaderLoad = Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error("[EA] home environment loader failed:", base, err);
++      return null;
++    });
++  } catch (err) {
++    logger.error("[EA] home environment loader failed:", base, err);
++    loaderLoad = Promise.resolve(null);
++  }
++
++  return { base, loaderLoad };
++}
++
++if (typeof window !== "undefined") {
++  startHomeLoader();
++}
++
++export { selectHomeLoaderBase, startHomeLoader };
+diff --git a/package.json b/package.json
+index ee34d34..afeb606 100644
+--- a/package.json
++++ b/package.json
+@@ -21,12 +21,14 @@
+     "test:thumbs": "node assets/thumbs/scripts/thumbs.test.mjs",
+     "test:webflow-cms": "node assets/webflow-cms/webflow-cms.test.mjs",
+     "test:hen-identity": "node shared/hen-identity.test.mjs",
+-    "test:home-first-paint": "node loaders/home.loader.test.mjs",
+-    "test:pages-home-loader-artifacts": "node scripts/verify-pages-home-loader-artifacts.test.mjs",
++    "test:home-first-paint": "node loaders/loader-architecture.test.mjs",
++    "test:loader-architecture": "node loaders/loader-architecture.test.mjs",
++    "test:pages-loader-artifacts": "node scripts/verify-pages-loader-artifacts.test.mjs",
+     "verify:home-first-paint-build": "node scripts/verify-home-first-paint-build.mjs",
+     "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
+     "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
+     "pages:sanity": "npm run build:pages:staging && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs",
++    "pages:sanity:loader-chain": "npm run build:pages:staging && node scripts/sync-test-harness.mjs --loader-chain && node scripts/run-sanity-server.mjs",
+     "ticket:diff": "powershell -ExecutionPolicy Bypass -File admin-ui/scripts/export-ticket-diff.ps1"
+   },
+   "keywords": [],
+diff --git a/scripts/sync-test-harness.mjs b/scripts/sync-test-harness.mjs
+index b79c0f7..6fbae1a 100644
+--- a/scripts/sync-test-harness.mjs
++++ b/scripts/sync-test-harness.mjs
+@@ -34,7 +34,7 @@ function removeMarkedBlock(html) {
+ // - Drops/Exchange: js/main.js (within each folder)
+ // - Your previous harness injections: dist/(home|drops|exchange).js
+ // - NEW: staging/prod subfolder injections: dist/(staging|prod)/(home|drops|exchange).js
+-// - Optional: wrapper entrypoints (/home.js, /drops.js, /exchange.js) if they ever appear
++// - Stable or candidate wrapper entrypoints when loader-chain mode is used
+ function stripAppScripts(html) {
+   const patterns = [
+     // Webflow-exported module entrypoints for Drops/Exchange
+@@ -60,6 +60,10 @@ function stripAppScripts(html) {
+     // Optional: if you ever put these stable entrypoints directly in HTML
+     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+     /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
++
++    // Temporary root-level candidate routers used before stable cutover
++    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?candidate-(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
++    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?candidate-(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+   ];
+ 
+   let out = html;
+@@ -101,26 +105,57 @@ function buildOne({ src, dest, bundleSrc }) {
+ 
+ const root = process.cwd();
+ const testDir = path.join(root, "test");
++const loaderChain = process.argv.includes("--loader-chain");
+ ensureDir(testDir);
+ 
++if (loaderChain) {
++  for (const surface of ["home", "drops", "exchange"]) {
++    const rootRouterSource = path.join(root, "loaders", "root", `${surface}.js`);
++    const environmentLoaderSource = path.join(
++      root,
++      "loaders",
++      "environment",
++      `${surface}.js`
++    );
++    const candidateRouter = path.join(root, "dist", `candidate-${surface}.js`);
++    const stagingLoader = path.join(
++      root,
++      "dist",
++      "staging",
++      `${surface}-loader.js`
++    );
++
++    ensureDir(path.dirname(candidateRouter));
++    ensureDir(path.dirname(stagingLoader));
++    fs.copyFileSync(rootRouterSource, candidateRouter);
++    fs.copyFileSync(environmentLoaderSource, stagingLoader);
++  }
++}
++
++function harnessBundle(surface) {
++  return loaderChain
++    ? `../dist/candidate-${surface}.js`
++    : `../dist/staging/${surface}.js`;
++}
++
+ // Copies your current Webflow HTML shells from the repo,
+ // strips app module loader scripts, injects dist bundles.
+ buildOne({
+   src: path.join(root, "index.html"),
+   dest: path.join(testDir, "home.html"),
+-  bundleSrc: "../dist/staging/home.js",
++  bundleSrc: harnessBundle("home"),
+ });
+ 
+ buildOne({
+   src: path.join(root, "drops", "index.html"),
+   dest: path.join(testDir, "drops.html"),
+-  bundleSrc: "../dist/staging/drops.js",
++  bundleSrc: harnessBundle("drops"),
+ });
+ 
+ buildOne({
+   src: path.join(root, "exchange", "index.html"),
+   dest: path.join(testDir, "exchange.html"),
+-  bundleSrc: "../dist/staging/exchange.js",
++  bundleSrc: harnessBundle("exchange"),
+ });
+ 
+-console.log("done.");
+\ No newline at end of file
++console.log(`done (${loaderChain ? "loader-chain" : "direct-bundle"} mode).`);
+diff --git a/scripts/verify-pages-loader-artifacts.mjs b/scripts/verify-pages-loader-artifacts.mjs
+new file mode 100644
+index 0000000..03fe1ca
+--- /dev/null
++++ b/scripts/verify-pages-loader-artifacts.mjs
+@@ -0,0 +1,460 @@
++import { readFile, stat } from 'node:fs/promises';
++import { join, resolve } from 'node:path';
++import { pathToFileURL } from 'node:url';
++
++const SURFACES = ['home', 'drops', 'exchange'];
++const ENVIRONMENTS = ['prod', 'staging'];
++const PROD_HOST_DECLARATION =
++  'new Set(["eatacid.xyz", "www.eatacid.xyz"])';
++const FIRST_PAINT_MARKER = '__EA_PUBLIC_FIRST_PAINT__';
++
++function fail(message) {
++  throw new Error(`[pages-loaders] ${message}`);
++}
++
++async function pathIsFile(path) {
++  try {
++    return (await stat(path)).isFile();
++  } catch (error) {
++    if (error?.code === 'ENOENT') {
++      return false;
++    }
++    throw error;
++  }
++}
++
++async function readRequiredFile(path, description) {
++  let fileStat;
++
++  try {
++    fileStat = await stat(path);
++  } catch (error) {
++    if (error?.code === 'ENOENT') {
++      fail(`missing ${description}: ${path}`);
++    }
++    throw error;
++  }
++
++  if (!fileStat.isFile()) {
++    fail(`${description} is not a file: ${path}`);
++  }
++
++  const contents = await readFile(path);
++  if (contents.byteLength === 0) {
++    fail(`${description} is empty: ${path}`);
++  }
++
++  return contents;
++}
++
++async function requireEqualFiles(
++  deployedPath,
++  sourcePath,
++  deployedDescription,
++  sourceDescription
++) {
++  const [deployed, source] = await Promise.all([
++    readRequiredFile(deployedPath, deployedDescription),
++    readRequiredFile(sourcePath, sourceDescription)
++  ]);
++
++  if (!deployed.equals(source)) {
++    fail(`${deployedDescription} differs from ${sourceDescription}: ` +
++      `${deployedPath} != ${sourcePath}`);
++  }
++
++  return deployed;
++}
++
++function requireReference(text, reference, description) {
++  if (!text.includes(reference)) {
++    fail(`${description} is missing required reference: ${reference}`);
++  }
++}
++
++function verifyRootRouterText(contents, surface, description) {
++  const text = contents.toString('utf8');
++
++  requireReference(text, PROD_HOST_DECLARATION, description);
++  requireReference(text, 'window.location.hostname', description);
++  requireReference(text, '"./prod"', description);
++  requireReference(text, '"./staging"', description);
++  requireReference(text, `\`${'${base}'}/${surface}-loader.js\``, description);
++
++  if (text.includes('first-paint.js')) {
++    fail(`${description} must not own Home first-paint sequencing`);
++  }
++  if (text.includes(`\`${'${base}'}/${surface}.js\``)) {
++    fail(`${description} must import the environment loader, not the application bundle`);
++  }
++}
++
++function verifyLegacyRootText(contents, surface, description) {
++  const text = contents.toString('utf8');
++
++  requireReference(text, PROD_HOST_DECLARATION, description);
++  requireReference(text, 'window.location.hostname', description);
++  requireReference(text, '"./prod"', description);
++  requireReference(text, '"./staging"', description);
++  requireReference(text, `\`${'${base}'}/${surface}.js\``, description);
++}
++
++function verifyEnvironmentLoaderText(contents, surface, description) {
++  const text = contents.toString('utf8');
++
++  if (surface === 'home') {
++    requireReference(text, '"./first-paint.js"', description);
++    requireReference(text, '"./home.js"', description);
++  } else {
++    requireReference(text, `"./${surface}.js"`, description);
++  }
++
++  requireReference(text, 'bundle load failed:', description);
++}
++
++async function verifyApplicationArtifacts(
++  artifactRoot,
++  mainRoot,
++  stagingRoot,
++  environments
++) {
++  const artifacts = [];
++
++  for (const environment of environments) {
++    for (const surface of SURFACES) {
++      const applicationPath = join(artifactRoot, environment, `${surface}.js`);
++      const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
++      const sourcePath = join(
++        ownerRoot,
++        'dist',
++        environment,
++        `${surface}.js`
++      );
++      const application = await requireEqualFiles(
++        applicationPath,
++        sourcePath,
++        `${environment} ${surface} application artifact`,
++        `${environment === 'prod' ? 'main' : 'staging'} build output`
++      );
++      artifacts.push({
++        environment,
++        surface,
++        path: applicationPath,
++        bytes: application.byteLength
++      });
++    }
++
++    const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
++    const firstPaintPath = join(artifactRoot, environment, 'first-paint.js');
++    const firstPaintSourcePath = join(
++      ownerRoot,
++      'dist',
++      environment,
++      'first-paint.js'
++    );
++    const firstPaint = await requireEqualFiles(
++      firstPaintPath,
++      firstPaintSourcePath,
++      `${environment} first-paint artifact referenced by Home environment loader`,
++      `${environment === 'prod' ? 'main' : 'staging'} first-paint build output`
++    );
++    if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
++      fail(`${environment} first-paint artifact lacks coordinator marker ` +
++        `${FIRST_PAINT_MARKER}: ${firstPaintPath}`);
++    }
++    artifacts.push({
++      environment,
++      surface: 'first-paint',
++      path: firstPaintPath,
++      bytes: firstPaint.byteLength
++    });
++  }
++
++  return artifacts;
++}
++
++async function verifyLegacyApplicationArtifacts(
++  artifactRoot,
++  mainRoot,
++  stagingRoot
++) {
++  const artifacts = [];
++  for (const environment of ENVIRONMENTS) {
++    for (const surface of SURFACES) {
++      const applicationPath = join(artifactRoot, environment, `${surface}.js`);
++      const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
++      const sourcePath = join(
++        ownerRoot,
++        'dist',
++        environment,
++        `${surface}.js`
++      );
++      const application = await requireEqualFiles(
++        applicationPath,
++        sourcePath,
++        `${environment} ${surface} application artifact referenced by legacy root loader`,
++        `${environment === 'prod' ? 'main' : 'staging'} build output`
++      );
++      artifacts.push({
++        environment,
++        surface,
++        path: applicationPath,
++        bytes: application.byteLength
++      });
++    }
++  }
++  return artifacts;
++}
++
++async function detectMode(mainRoot) {
++  const rootPaths = SURFACES.map(surface =>
++    join(mainRoot, 'loaders', 'root', `${surface}.js`)
++  );
++  const present = await Promise.all(rootPaths.map(pathIsFile));
++
++  if (present.every(Boolean)) {
++    return 'stable-cutover';
++  }
++  if (present.some(Boolean)) {
++    fail('main contains only part of the root-router source set');
++  }
++  return 'candidate';
++}
++
++async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
++  const roots = [];
++  const environmentLoaders = [];
++
++  for (const surface of SURFACES) {
++    const deployedPath = join(artifactRoot, `${surface}.js`);
++    const sourcePath = join(mainRoot, 'loaders', 'root', `${surface}.js`);
++    const contents = await requireEqualFiles(
++      deployedPath,
++      sourcePath,
++      `root ${surface} router`,
++      `authoritative main ${surface} root-router source`
++    );
++    verifyRootRouterText(contents, surface, `root ${surface} router`);
++    roots.push({ surface, path: deployedPath, bytes: contents.byteLength });
++
++    const candidatePath = join(artifactRoot, `candidate-${surface}.js`);
++    if (await pathIsFile(candidatePath)) {
++      fail(`temporary candidate router remains after stable cutover: ${candidatePath}`);
++    }
++
++    for (const environment of ENVIRONMENTS) {
++      const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
++      const deployedLoaderPath = join(
++        artifactRoot,
++        environment,
++        `${surface}-loader.js`
++      );
++      const sourceLoaderPath = join(
++        ownerRoot,
++        'loaders',
++        'environment',
++        `${surface}.js`
++      );
++      const loader = await requireEqualFiles(
++        deployedLoaderPath,
++        sourceLoaderPath,
++        `${environment} ${surface} environment loader`,
++        `authoritative ${environment === 'prod' ? 'main' : 'staging'} ` +
++          `${surface} environment-loader source`
++      );
++      verifyEnvironmentLoaderText(
++        loader,
++        surface,
++        `${environment} ${surface} environment loader`
++      );
++      environmentLoaders.push({
++        environment,
++        surface,
++        path: deployedLoaderPath,
++        bytes: loader.byteLength
++      });
++    }
++  }
++
++  const artifacts = await verifyApplicationArtifacts(
++    artifactRoot,
++    mainRoot,
++    stagingRoot,
++    ENVIRONMENTS
++  );
++
++  return { roots, environmentLoaders, artifacts };
++}
++
++async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
++  const roots = [];
++  const environmentLoaders = [];
++
++  for (const surface of SURFACES) {
++    const unexpectedProdLoader = join(
++      artifactRoot,
++      'prod',
++      `${surface}-loader.js`
++    );
++    if (await pathIsFile(unexpectedProdLoader)) {
++      fail(`pre-cutover artifact must not synthesize a prod environment loader: ` +
++        unexpectedProdLoader);
++    }
++
++    const stablePath = join(artifactRoot, `${surface}.js`);
++    const legacySourcePath = join(
++      mainRoot,
++      'loaders',
++      `${surface}.loader.js`
++    );
++    const stable = await requireEqualFiles(
++      stablePath,
++      legacySourcePath,
++      `pre-cutover stable ${surface} loader`,
++      `authoritative legacy main ${surface} loader source`
++    );
++    verifyLegacyRootText(stable, surface, `pre-cutover stable ${surface} loader`);
++    roots.push({
++      kind: 'stable-legacy',
++      surface,
++      path: stablePath,
++      bytes: stable.byteLength
++    });
++
++    const candidatePath = join(artifactRoot, `candidate-${surface}.js`);
++    const candidateSourcePath = join(
++      stagingRoot,
++      'loaders',
++      'root',
++      `${surface}.js`
++    );
++    const candidate = await requireEqualFiles(
++      candidatePath,
++      candidateSourcePath,
++      `temporary staging ${surface} candidate router`,
++      `authoritative staging ${surface} root-router source`
++    );
++    verifyRootRouterText(
++      candidate,
++      surface,
++      `temporary staging ${surface} candidate router`
++    );
++    roots.push({
++      kind: 'staging-candidate',
++      surface,
++      path: candidatePath,
++      bytes: candidate.byteLength
++    });
++
++    const deployedLoaderPath = join(
++      artifactRoot,
++      'staging',
++      `${surface}-loader.js`
++    );
++    const sourceLoaderPath = join(
++      stagingRoot,
++      'loaders',
++      'environment',
++      `${surface}.js`
++    );
++    const loader = await requireEqualFiles(
++      deployedLoaderPath,
++      sourceLoaderPath,
++      `staging ${surface} environment loader`,
++      `authoritative staging ${surface} environment-loader source`
++    );
++    verifyEnvironmentLoaderText(
++      loader,
++      surface,
++      `staging ${surface} environment loader`
++    );
++    environmentLoaders.push({
++      environment: 'staging',
++      surface,
++      path: deployedLoaderPath,
++      bytes: loader.byteLength
++    });
++  }
++
++  const artifacts = await verifyLegacyApplicationArtifacts(
++    artifactRoot,
++    mainRoot,
++    stagingRoot
++  );
++  const firstPaintPath = join(artifactRoot, 'staging', 'first-paint.js');
++  const firstPaintSourcePath = join(
++    stagingRoot,
++    'dist',
++    'staging',
++    'first-paint.js'
++  );
++  const firstPaint = await requireEqualFiles(
++    firstPaintPath,
++    firstPaintSourcePath,
++    'staging first-paint artifact referenced by Home environment loader',
++    'staging first-paint build output'
++  );
++  if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
++    fail(`staging first-paint artifact lacks coordinator marker ` +
++      `${FIRST_PAINT_MARKER}: ${firstPaintPath}`);
++  }
++  artifacts.push({
++    environment: 'staging',
++    surface: 'first-paint',
++    path: firstPaintPath,
++    bytes: firstPaint.byteLength
++  });
++
++  return { roots, environmentLoaders, artifacts };
++}
++
++async function verifyPagesLoaderArtifacts(
++  artifactDirectory,
++  mainRepositoryDirectory,
++  stagingRepositoryDirectory,
++  { log = console.log } = {}
++) {
++  const artifactRoot = resolve(artifactDirectory);
++  const mainRoot = resolve(mainRepositoryDirectory);
++  const stagingRoot = resolve(stagingRepositoryDirectory);
++  const mode = await detectMode(mainRoot);
++  const graph = mode === 'stable-cutover'
++    ? await verifyStableCutover(artifactRoot, mainRoot, stagingRoot)
++    : await verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot);
++
++  const result = { artifactRoot, mainRoot, stagingRoot, mode, ...graph };
++  log(`[pages-loaders] verified ${mode} graph: ${artifactRoot}`);
++  log(`[pages-loaders] roots=${result.roots.length}, ` +
++    `environment-loaders=${result.environmentLoaders.length}, ` +
++    `referenced-artifacts=${result.artifacts.length}`);
++  return result;
++}
++
++const isCli = process.argv[1] &&
++  import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
++
++if (isCli) {
++  const [artifactDirectory, mainRepositoryDirectory, stagingRepositoryDirectory] =
++    process.argv.slice(2);
++
++  if (!artifactDirectory || !mainRepositoryDirectory || !stagingRepositoryDirectory) {
++    console.error(
++      'Usage: node scripts/verify-pages-loader-artifacts.mjs ' +
++      '<assembled-pages-directory> <main-repository> <staging-repository>'
++    );
++    process.exitCode = 2;
++  } else {
++    try {
++      await verifyPagesLoaderArtifacts(
++        artifactDirectory,
++        mainRepositoryDirectory,
++        stagingRepositoryDirectory
++      );
++    } catch (error) {
++      console.error(error instanceof Error ? error.message : error);
++      process.exitCode = 1;
++    }
++  }
++}
++
++export { verifyPagesLoaderArtifacts };
+diff --git a/scripts/verify-pages-loader-artifacts.test.mjs b/scripts/verify-pages-loader-artifacts.test.mjs
+new file mode 100644
+index 0000000..023d73d
+--- /dev/null
++++ b/scripts/verify-pages-loader-artifacts.test.mjs
+@@ -0,0 +1,337 @@
++import assert from 'node:assert/strict';
++import {
++  copyFile,
++  mkdtemp,
++  mkdir,
++  readFile,
++  rm,
++  writeFile
++} from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++
++import { verifyPagesLoaderArtifacts } from './verify-pages-loader-artifacts.mjs';
++
++const SURFACES = ['home', 'drops', 'exchange'];
++const FIRST_PAINT_BUNDLE =
++  `const STATE_KEY = '__EA_PUBLIC_FIRST_PAINT__';\n`;
++const APPLICATION_BUNDLE = `console.log('[EA] application fixture');\n`;
++const LEGACY_LOADERS = Object.fromEntries(SURFACES.map(surface => [surface,
++  `const PROD_HOSTS = new Set(["eatacid.xyz", "www.eatacid.xyz"]);\n\n` +
++  `const base = PROD_HOSTS.has(window.location.hostname) ? "./prod" : "./staging";\n\n` +
++  `import(\`\${base}/${surface}.js\`).catch((err) => {\n` +
++  `  console.error("[EA] ${surface} bundle load failed:", base, err);\n` +
++  `});\n`
++]));
++
++const sourceRoot = new URL('..', import.meta.url);
++const ROOT_SOURCES = Object.fromEntries(await Promise.all(SURFACES.map(
++  async surface => [surface, await readFile(
++    new URL(`loaders/root/${surface}.js`, sourceRoot),
++    'utf8'
++  )]
++)));
++const ENVIRONMENT_SOURCES = Object.fromEntries(await Promise.all(SURFACES.map(
++  async surface => [surface, await readFile(
++    new URL(`loaders/environment/${surface}.js`, sourceRoot),
++    'utf8'
++  )]
++)));
++const PAGES_WORKFLOW = await readFile(
++  new URL('.github/workflows/pages.yml', sourceRoot),
++  'utf8'
++);
++
++async function createFixture(mode) {
++  const directory = await mkdtemp(join(tmpdir(), 'ea-pages-loaders-'));
++  const artifact = join(directory, 'dist');
++  const main = join(directory, 'repo-main');
++  const staging = join(directory, 'repo-staging');
++
++  await Promise.all([
++    mkdir(artifact, { recursive: true }),
++    mkdir(join(main, 'loaders'), { recursive: true }),
++    mkdir(join(main, 'dist', 'prod'), { recursive: true }),
++    mkdir(join(staging, 'loaders', 'root'), { recursive: true }),
++    mkdir(join(staging, 'loaders', 'environment'), { recursive: true }),
++    mkdir(join(staging, 'dist', 'staging'), { recursive: true }),
++    ...['prod', 'staging'].map(environment =>
++      mkdir(join(artifact, environment), { recursive: true })
++    )
++  ]);
++
++  for (const surface of SURFACES) {
++    await Promise.all([
++      writeFile(
++        join(staging, 'loaders', 'root', `${surface}.js`),
++        ROOT_SOURCES[surface]
++      ),
++      writeFile(
++        join(staging, 'loaders', 'environment', `${surface}.js`),
++        ENVIRONMENT_SOURCES[surface]
++      ),
++      writeFile(join(artifact, 'prod', `${surface}.js`), APPLICATION_BUNDLE),
++      writeFile(join(artifact, 'staging', `${surface}.js`), APPLICATION_BUNDLE),
++      writeFile(
++        join(main, 'dist', 'prod', `${surface}.js`),
++        APPLICATION_BUNDLE
++      ),
++      writeFile(
++        join(staging, 'dist', 'staging', `${surface}.js`),
++        APPLICATION_BUNDLE
++      ),
++      writeFile(
++        join(artifact, 'staging', `${surface}-loader.js`),
++        ENVIRONMENT_SOURCES[surface]
++      )
++    ]);
++  }
++  await writeFile(join(artifact, 'staging', 'first-paint.js'), FIRST_PAINT_BUNDLE);
++  await writeFile(
++    join(staging, 'dist', 'staging', 'first-paint.js'),
++    FIRST_PAINT_BUNDLE
++  );
++
++  if (mode === 'stable-cutover') {
++    await Promise.all([
++      mkdir(join(main, 'loaders', 'root'), { recursive: true }),
++      mkdir(join(main, 'loaders', 'environment'), { recursive: true })
++    ]);
++    for (const surface of SURFACES) {
++      await Promise.all([
++        writeFile(
++          join(main, 'loaders', 'root', `${surface}.js`),
++          ROOT_SOURCES[surface]
++        ),
++        writeFile(
++          join(main, 'loaders', 'environment', `${surface}.js`),
++          ENVIRONMENT_SOURCES[surface]
++        ),
++        writeFile(join(artifact, `${surface}.js`), ROOT_SOURCES[surface]),
++        writeFile(
++          join(artifact, 'prod', `${surface}-loader.js`),
++          ENVIRONMENT_SOURCES[surface]
++        )
++      ]);
++    }
++    await writeFile(join(artifact, 'prod', 'first-paint.js'), FIRST_PAINT_BUNDLE);
++    await writeFile(
++      join(main, 'dist', 'prod', 'first-paint.js'),
++      FIRST_PAINT_BUNDLE
++    );
++  } else {
++    for (const surface of SURFACES) {
++      await Promise.all([
++        writeFile(
++          join(main, 'loaders', `${surface}.loader.js`),
++          LEGACY_LOADERS[surface]
++        ),
++        writeFile(join(artifact, `${surface}.js`), LEGACY_LOADERS[surface]),
++        writeFile(
++          join(artifact, `candidate-${surface}.js`),
++          ROOT_SOURCES[surface]
++        )
++      ]);
++    }
++  }
++
++  return { directory, artifact, main, staging };
++}
++
++async function withFixture(mode, run) {
++  const fixture = await createFixture(mode);
++  try {
++    await run(fixture);
++  } finally {
++    await rm(fixture.directory, { recursive: true, force: true });
++  }
++}
++
++const quiet = { log() {} };
++
++await withFixture('stable-cutover', async fixture => {
++  const result = await verifyPagesLoaderArtifacts(
++    fixture.artifact,
++    fixture.main,
++    fixture.staging,
++    quiet
++  );
++  assert.equal(result.mode, 'stable-cutover');
++  assert.equal(result.roots.length, 3);
++  assert.equal(result.environmentLoaders.length, 6);
++  assert.equal(result.artifacts.length, 8);
++});
++
++await withFixture('candidate', async fixture => {
++  const result = await verifyPagesLoaderArtifacts(
++    fixture.artifact,
++    fixture.main,
++    fixture.staging,
++    quiet
++  );
++  assert.equal(result.mode, 'candidate');
++  assert.equal(result.roots.length, 6);
++  assert.equal(result.environmentLoaders.length, 3);
++  assert.equal(result.artifacts.length, 7);
++  await assert.rejects(
++    readFile(join(fixture.artifact, 'prod', 'home-loader.js')),
++    /ENOENT/
++  );
++  await assert.rejects(
++    readFile(join(fixture.artifact, 'prod', 'first-paint.js')),
++    /ENOENT/
++  );
++});
++
++await withFixture('stable-cutover', async fixture => {
++  await rm(join(fixture.artifact, 'staging', 'home.js'));
++  await assert.rejects(
++    verifyPagesLoaderArtifacts(
++      fixture.artifact,
++      fixture.main,
++      fixture.staging,
++      quiet
++    ),
++    /missing staging home application artifact/
++  );
++});
++
++await withFixture('stable-cutover', async fixture => {
++  await writeFile(
++    join(fixture.artifact, 'prod', 'drops-loader.js'),
++    ENVIRONMENT_SOURCES.exchange
++  );
++  await assert.rejects(
++    verifyPagesLoaderArtifacts(
++      fixture.artifact,
++      fixture.main,
++      fixture.staging,
++      quiet
++    ),
++    /prod drops environment loader differs/
++  );
++});
++
++await withFixture('stable-cutover', async fixture => {
++  await writeFile(
++    join(fixture.artifact, 'staging', 'exchange.js'),
++    'console.log("not the staging build output");\n'
++  );
++  await assert.rejects(
++    verifyPagesLoaderArtifacts(
++      fixture.artifact,
++      fixture.main,
++      fixture.staging,
++      quiet
++    ),
++    /staging exchange application artifact differs from staging build output/
++  );
++});
++
++await withFixture('stable-cutover', async fixture => {
++  await writeFile(
++    join(fixture.artifact, 'prod', 'first-paint.js'),
++    'console.log("wrong artifact");\n'
++  );
++  await writeFile(
++    join(fixture.main, 'dist', 'prod', 'first-paint.js'),
++    'console.log("wrong artifact");\n'
++  );
++  await assert.rejects(
++    verifyPagesLoaderArtifacts(
++      fixture.artifact,
++      fixture.main,
++      fixture.staging,
++      quiet
++    ),
++    /prod first-paint artifact lacks coordinator marker/
++  );
++});
++
++await withFixture('candidate', async fixture => {
++  await copyFile(
++    join(fixture.artifact, 'candidate-home.js'),
++    join(fixture.artifact, 'candidate-drops.js')
++  );
++  await assert.rejects(
++    verifyPagesLoaderArtifacts(
++      fixture.artifact,
++      fixture.main,
++      fixture.staging,
++      quiet
++    ),
++    /temporary staging drops candidate router differs/
++  );
++});
++
++await withFixture('stable-cutover', async fixture => {
++  const invalidRoot = ROOT_SOURCES.home.replace(
++    'window.location.hostname',
++    '"hard-coded-host"'
++  );
++  await Promise.all([
++    writeFile(join(fixture.main, 'loaders', 'root', 'home.js'), invalidRoot),
++    writeFile(join(fixture.artifact, 'home.js'), invalidRoot)
++  ]);
++  await assert.rejects(
++    verifyPagesLoaderArtifacts(
++      fixture.artifact,
++      fixture.main,
++      fixture.staging,
++      quiet
++    ),
++    /root home router is missing required reference: window\.location\.hostname/
++  );
++});
++
++await withFixture('candidate', async fixture => {
++  await mkdir(join(fixture.main, 'loaders', 'root'), { recursive: true });
++  await writeFile(
++    join(fixture.main, 'loaders', 'root', 'home.js'),
++    ROOT_SOURCES.home
++  );
++  await assert.rejects(
++    verifyPagesLoaderArtifacts(
++      fixture.artifact,
++      fixture.main,
++      fixture.staging,
++      quiet
++    ),
++    /main contains only part of the root-router source set/
++  );
++});
++
++{
++  const assemblyMarker = '- name: Assemble dist for Pages';
++  const verificationCommand =
++    'node repo-staging/scripts/verify-pages-loader-artifacts.mjs ' +
++    'dist repo-main repo-staging';
++  const uploadStep = 'uses: actions/upload-pages-artifact@v3';
++  const assemblyIndex = PAGES_WORKFLOW.indexOf(assemblyMarker);
++  const verificationIndex = PAGES_WORKFLOW.indexOf(verificationCommand);
++  const uploadIndex = PAGES_WORKFLOW.indexOf(uploadStep);
++
++  assert.ok(assemblyIndex >= 0, 'workflow must assemble the Pages graph');
++  assert.ok(
++    verificationIndex > assemblyIndex,
++    'workflow must verify after all Pages assembly copies'
++  );
++  assert.ok(
++    uploadIndex > verificationIndex,
++    'workflow must verify before uploading the Pages artifact'
++  );
++
++  const postVerificationWorkflow = PAGES_WORKFLOW.slice(
++    verificationIndex + verificationCommand.length,
++    uploadIndex
++  );
++  assert.equal(
++    /\b(?:cp|mv|rm|sed|install|rsync|truncate)\b[^\n]*\bdist(?:[\/\\]|(?=\s|$))/.test(
++      postVerificationWorkflow
++    ),
++    false,
++    'workflow must not mutate any verified Pages graph file after validation'
++  );
++}
++
++console.log('Pages loader artifact graph tests passed.');

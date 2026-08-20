@@ -234,7 +234,7 @@ Hard dependencies:
 
 Soft dependencies include font readiness (1000ms cap), hero readiness (1200ms cap), and their 1300ms fail-open. Drops has 1s countdown updates, a default 10s supply poll, transaction-status polling around 5s with a 120s limit, and 3s modal timing. Exchange uses a 500ms initial delay, MutationObserver cart handling, chain-operation polling, and 3s modal timing. Wallet initialization depends on Beacon and Shadownet RPC/TzKT availability.
 
-Loaders select `./prod` on `eatacid.xyz`/`www.eatacid.xyz` and `./staging` elsewhere, then dynamically import page bundles and report errors. The current Webflow page custom code bypasses those checked loaders in favor of the absolute GitHub Pages bundle URLs; deployed-bundle equality is unresolved.
+The absolute GitHub Pages URLs in current Webflow custom code are the stable root routers; they do not bypass them. The routers select `./prod` on `eatacid.xyz`/`www.eatacid.xyz` and `./staging` elsewhere, then dynamically import branch-owned environment loaders that start the page bundles and report errors. Deployed-bundle equality remains unresolved.
 
 ## Webflow versus checked-in HTML
 

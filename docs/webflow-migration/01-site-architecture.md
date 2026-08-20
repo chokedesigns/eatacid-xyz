@@ -123,14 +123,15 @@ Repository loader chain:
 ```text
 Webflow page custom code
   -> https://chokedesigns.github.io/eatacid-xyz/{home|drops|exchange}.js
-  -> GitHub Pages root loader copied by .github/workflows/pages.yml
-  -> ./prod/{bundle}.js on eatacid.xyz / www.eatacid.xyz
-     or ./staging/{bundle}.js on other hosts
+  -> main-owned GitHub Pages root router copied by .github/workflows/pages.yml
+  -> ./prod/{surface}-loader.js from main on eatacid.xyz / www.eatacid.xyz
+     or ./staging/{surface}-loader.js from staging on other hosts
+  -> same-environment application bundle(s)
   -> Parcel entry webflow/{home|drops|exchange}.js
   -> shared and page-specific repository modules
 ```
 
-This chain is **REPOSITORY**-confirmed by `loaders/*.loader.js`, `package.json`, `.github/workflows/pages.yml`, `webflow/*.js`, `drops/js/main.js`, and `exchange/js/main.js`.
+This chain is **REPOSITORY**-confirmed by `loaders/root/*.js`, `loaders/environment/*.js`, `package.json`, `.github/workflows/pages.yml`, `webflow/*.js`, `drops/js/main.js`, and `exchange/js/main.js`.
 
 ## Components and repeated structures
 

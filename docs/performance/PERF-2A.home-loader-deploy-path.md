@@ -4,6 +4,11 @@ Date: 2026-08-20
 
 Profile: AUDIT / CLOSURE
 
+Status: historical pre-PERF-2B audit. The paths and compatibility guard below
+describe the deployment architecture at the time of this audit. PERF-2B
+replaces it with main-owned stable root routers plus branch-owned environment
+loaders; see `PERF-2B.staging-loader-isolation.md`.
+
 ## Finding
 
 The PERF-2 staging runtime check did not exercise PERF-2. The browser made no `first-paint.js` request and served the old root `home.js`, followed by the large staging `home.js`. Slow-4G LCP was therefore effectively unchanged at about 12.474 seconds versus the 12.471-second PERF-1 baseline.

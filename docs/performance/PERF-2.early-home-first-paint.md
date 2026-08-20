@@ -8,7 +8,7 @@ Profile: AUDIT / CLOSURE
 
 `webflow/first-paint.js` is a dedicated Parcel entry that imports only the existing `shared/public-first-paint.js` coordinator. The coordinator itself is unchanged, preserving its network state, image/font readiness gates, bounded timeouts, animation-frame sequencing, ready/fallback classes, fail-open path, reveal choreography, banner presentation, and global duplicate-start guard.
 
-`loaders/home.loader.js` now selects production or staging once and immediately starts two sibling dynamic imports. Each import has its own rejection handling, so neither load is sequenced behind or blocked by the other. `webflow/home.js` retains its coordinator import as a fallback; the coordinator's global state prevents a second initialization regardless of which bundle evaluates first.
+`loaders/environment/home.js` immediately starts two sibling dynamic imports after the stable root router selects the environment loader. Each import has its own rejection handling, so neither load is sequenced behind or blocked by the other. `webflow/home.js` retains its coordinator import as a fallback; the coordinator's global state prevents a second initialization regardless of which bundle evaluates first.
 
 Old dependency chain:
 
@@ -20,9 +20,9 @@ HTML -> root Home loader -> Home bundle -> first-paint coordinator -> reveal
 New dependency chain:
 
 ```text
-                         /-> first-paint entry -> coordinator -> reveal
-HTML -> root Home loader
-                         \-> Home bundle -> Beacon/wallet application
+HTML -> root Home router -> environment Home loader
+                                      /-> first-paint entry -> coordinator -> reveal
+                                      \-> Home bundle -> Beacon/wallet application
 ```
 
 There is no `await` or promise chain between the two loader calls.
@@ -59,13 +59,13 @@ Static validation establishes the intended dependency order and isolation, but i
 
 ## Manual runtime validation required
 
-Deployment prerequisite: the shared root `/home.js` is copied from `main`, not `staging`. Promote the complete PERF-2/PERF-2A history to main and require the PERF-2A assembled-artifact guard to pass before treating a staging browser trace as PERF-2 validation. A staging-only PERF-2 merge leaves the browser on main's older shared loader.
+Deployment prerequisite: until PERF-2B is promoted to main, use the temporary root-level `/candidate-home.js` artifact (or `npm run pages:sanity:loader-chain`) to validate the staging-owned environment-loader chain. After promotion, shared root `/home.js` is a main-owned router and normal staging validation reaches `/staging/home-loader.js`. The PERF-2B assembled-artifact guard must pass before treating a browser trace as valid.
 
 Use the same browser, viewport, device-pixel ratio, navigation method, cache policy, and interaction used for PERF-1. On the deployed staging build:
 
 1. Capture a clean-navigation Performance trace with no throttling; record LCP, INP, CLS, the LCP element, and reveal appearance.
 2. Repeat with the same Slow 4G profile; record the same values and the hero resource completion, first-paint bundle completion, ready/fallback class time, Home bundle completion, and LCP time.
-3. Confirm the root loader starts `/staging/first-paint.js` and `/staging/home.js` as overlapping sibling requests and that first-paint can evaluate before Home completes.
+3. Confirm the root router requests `/staging/home-loader.js`, which starts `/staging/first-paint.js` and `/staging/home.js` as overlapping sibling requests, and that first-paint can evaluate before Home completes.
 4. Confirm the testnet banner and reveal look unchanged, the hero never flashes at an improper size or shifts layout, Connect/wallet controls initialize normally, and the console has no duplicate-import or rejected-loader errors during normal loading.
 5. For failure-seam spot checks, block only `/staging/home.js` and confirm first-paint still releases/fails open; then block only `/staging/first-paint.js` and confirm Home still boots and its fallback coordinator releases the surface. Expected blocked-request loader errors should be distinguished from errors in the normal runs.
 
