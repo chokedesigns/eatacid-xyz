@@ -59,6 +59,8 @@ Static validation establishes the intended dependency order and isolation, but i
 
 ## Manual runtime validation required
 
+Deployment prerequisite: the shared root `/home.js` is copied from `main`, not `staging`. Promote the complete PERF-2/PERF-2A history to main and require the PERF-2A assembled-artifact guard to pass before treating a staging browser trace as PERF-2 validation. A staging-only PERF-2 merge leaves the browser on main's older shared loader.
+
 Use the same browser, viewport, device-pixel ratio, navigation method, cache policy, and interaction used for PERF-1. On the deployed staging build:
 
 1. Capture a clean-navigation Performance trace with no throttling; record LCP, INP, CLS, the LCP element, and reveal appearance.

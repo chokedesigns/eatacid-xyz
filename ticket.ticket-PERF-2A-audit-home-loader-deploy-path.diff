@@ -1,0 +1,449 @@
+﻿diff --git a/.github/workflows/pages.yml b/.github/workflows/pages.yml
+index e2d8488..fce0cc6 100644
+--- a/.github/workflows/pages.yml
++++ b/.github/workflows/pages.yml
+@@ -89,6 +89,9 @@ jobs:
+           cp repo-main/loaders/drops.loader.js dist/drops.js
+           cp repo-main/loaders/exchange.loader.js dist/exchange.js
+ 
++      - name: Verify Pages Home loader compatibility
++        run: node repo-main/scripts/verify-pages-home-loader-artifacts.mjs dist repo-main/loaders/home.loader.js
++
+       - name: Upload Pages artifact
+         uses: actions/upload-pages-artifact@v3
+         with:
+@@ -100,4 +103,4 @@ jobs:
+     environment:
+       name: github-pages
+     steps:
+-      - uses: actions/deploy-pages@v4
+\ No newline at end of file
++      - uses: actions/deploy-pages@v4
+diff --git a/docs/performance/PERF-2.early-home-first-paint.md b/docs/performance/PERF-2.early-home-first-paint.md
+index 4cabad7..abec225 100644
+--- a/docs/performance/PERF-2.early-home-first-paint.md
++++ b/docs/performance/PERF-2.early-home-first-paint.md
+@@ -59,6 +59,8 @@ Static validation establishes the intended dependency order and isolation, but i
+ 
+ ## Manual runtime validation required
+ 
++Deployment prerequisite: the shared root `/home.js` is copied from `main`, not `staging`. Promote the complete PERF-2/PERF-2A history to main and require the PERF-2A assembled-artifact guard to pass before treating a staging browser trace as PERF-2 validation. A staging-only PERF-2 merge leaves the browser on main's older shared loader.
++
+ Use the same browser, viewport, device-pixel ratio, navigation method, cache policy, and interaction used for PERF-1. On the deployed staging build:
+ 
+ 1. Capture a clean-navigation Performance trace with no throttling; record LCP, INP, CLS, the LCP element, and reveal appearance.
+diff --git a/docs/performance/PERF-2A.home-loader-deploy-path.md b/docs/performance/PERF-2A.home-loader-deploy-path.md
+new file mode 100644
+index 0000000..6cac240
+--- /dev/null
++++ b/docs/performance/PERF-2A.home-loader-deploy-path.md
+@@ -0,0 +1,87 @@
++# PERF-2A — Home loader deploy path
++
++Date: 2026-08-20
++
++Profile: AUDIT / CLOSURE
++
++## Finding
++
++The PERF-2 staging runtime check did not exercise PERF-2. The browser made no `first-paint.js` request and served the old root `home.js`, followed by the large staging `home.js`. Slow-4G LCP was therefore effectively unchanged at about 12.474 seconds versus the 12.471-second PERF-1 baseline.
++
++The browser response was not a stale generated file in this checkout. It exactly matched the loader on `origin/main`.
++
++## Authoritative provenance and source matrix
++
++The Pages workflow always checks out both branches and assembles one shared artifact:
++
++```text
++main:loaders/home.loader.js
++-> .github/workflows/pages.yml copy
++-> assembled dist/home.js
++-> actions/upload-pages-artifact
++-> actions/deploy-pages
++-> https://chokedesigns.github.io/eatacid-xyz/home.js
++```
++
++| Published path | Authoritative input before assembly |
++| --- | --- |
++| `/home.js` | `main:loaders/home.loader.js` |
++| `/prod/home.js` | Parcel `webflow/home.js` build from `main` |
++| `/prod/first-paint.js` | Parcel `webflow/first-paint.js` build from `main`, after PERF-2 promotion |
++| `/staging/home.js` | Parcel `webflow/home.js` build from `staging` |
++| `/staging/first-paint.js` | Parcel `webflow/first-paint.js` build from `staging` |
++
++At the failed runtime-validation point, `main` was commit `6da2599`: its loader was old and its build did not contain the PERF-2 entry. `staging` was commit `17870e8` and contained PERF-2. The workflow correctly copied the production-authoritative main loader, so the staging-only PERF-2 change could not alter shared `/home.js`.
++
++Deployment invariant:
++
++```text
++Shared root loaders must not be ahead of the production artifact set they may select.
++```
++
++Copying the shared loader from staging would violate that invariant: production could request `/prod/first-paint.js` before main emits it. The fix therefore keeps main authoritative and requires promotion of the complete staging history containing PERF-2.
++
++## Compatibility guard
++
++`scripts/verify-pages-home-loader-artifacts.mjs` validates the final assembled Pages tree and the authoritative main loader source. It fails before upload when:
++
++- root `home.js` or the supplied authoritative main loader is absent, empty, or not a file;
++- assembled `home.js` is not byte-identical to `repo-main/loaders/home.loader.js`;
++- the root loader lacks production/staging selection, the first-paint reference, or the Home reference;
++- either `/prod` or `/staging` lacks the referenced `first-paint.js` or `home.js`;
++- a first-paint artifact lacks the coordinator state marker.
++
++The workflow runs the verifier after every build and copy operation and immediately before `actions/upload-pages-artifact`. There is no intervening or later `dist/home.js` copy. The validated tree is therefore the uploaded tree. The verifier itself is invoked from `repo-main`, so a staging-only push while main lacks the guard/PERF-2 fails closed rather than publishing another incompatible artifact.
++
++## Local artifact validation
++
++Workflow-equivalent `--no-optimize` Parcel builds from the current branch produced:
++
++| Representative published path | Raw bytes | Local gzip bytes |
++| --- | ---: | ---: |
++| `/home.js` on this Windows checkout | 1,233 | 495 |
++| `/prod/first-paint.js` | 30,404 | 7,527 |
++| `/prod/home.js` | 4,992,426 | 1,538,295 |
++| `/staging/first-paint.js` | 30,404 | 7,527 |
++| `/staging/home.js` | 4,992,426 | 1,538,295 |
++
++The representative promoted artifact used those actual outputs and passed. Removing actual `/prod/first-paint.js` made the verifier exit nonzero with a missing-production-artifact diagnostic. Focused tests also reject the exact old root-loader shape, a missing staging first-paint file, either missing Home bundle, wrong first-paint content, and a stale root overwrite after an earlier successful check.
++
++## Required promotion
++
++Current local ancestry shows `main` is an ancestor of this branch, with no main-only commits. After committing PERF-2A, the safe promotion is a fast-forward of this complete branch to main, not cherry-picking PERF-2/PERF-2A. Cherry-picking would risk omitting the earlier staging commits that introduced the coordinator and its supporting runtime.
++
++Re-fetch and re-check ancestry before promotion. If it remains unchanged:
++
++```text
++git switch main
++git pull --ff-only origin main
++git merge --ff-only ticket-PERF-2A-audit-home-loader-deploy-path
++git push origin main
++```
++
++After the main Pages deployment succeeds, fast-forward `staging` to the same branch commit and push it so both long-lived refs contain the compatibility guard. Do not push staging first: before main promotion, the new fail-closed step intentionally cannot pass from `repo-main`.
++
++## Runtime validation still required
++
++After the main-triggered Pages run completes, inspect root `/home.js`, confirm it contains independent `${base}/first-paint.js` and `${base}/home.js` loads, and confirm Network requests `/staging/first-paint.js` on the staging Home page. Then repeat the PERF-1 no-throttling and Slow-4G traces and visual/wallet checks. The previous 12.474-second trace is not a PERF-2 result, and this static/deployment validation makes no LCP-success claim.
+diff --git a/package.json b/package.json
+index d5124f2..ee34d34 100644
+--- a/package.json
++++ b/package.json
+@@ -22,6 +22,7 @@
+     "test:webflow-cms": "node assets/webflow-cms/webflow-cms.test.mjs",
+     "test:hen-identity": "node shared/hen-identity.test.mjs",
+     "test:home-first-paint": "node loaders/home.loader.test.mjs",
++    "test:pages-home-loader-artifacts": "node scripts/verify-pages-home-loader-artifacts.test.mjs",
+     "verify:home-first-paint-build": "node scripts/verify-home-first-paint-build.mjs",
+     "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
+     "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
+diff --git a/scripts/verify-pages-home-loader-artifacts.mjs b/scripts/verify-pages-home-loader-artifacts.mjs
+new file mode 100644
+index 0000000..04431fe
+--- /dev/null
++++ b/scripts/verify-pages-home-loader-artifacts.mjs
+@@ -0,0 +1,145 @@
++import { readFile, stat } from 'node:fs/promises';
++import { join, resolve } from 'node:path';
++import { pathToFileURL } from 'node:url';
++
++const REQUIRED_LOADER_REFERENCES = [
++  '"./prod"',
++  '"./staging"',
++  '`${base}/first-paint.js`',
++  '`${base}/home.js`'
++];
++const ENVIRONMENTS = ['prod', 'staging'];
++const FIRST_PAINT_MARKER = '__EA_PUBLIC_FIRST_PAINT__';
++
++function fail(message) {
++  throw new Error(`[pages-home-loader] ${message}`);
++}
++
++async function readRequiredFile(path, description) {
++  let fileStat;
++
++  try {
++    fileStat = await stat(path);
++  } catch (error) {
++    if (error?.code === 'ENOENT') {
++      fail(`missing ${description}: ${path}`);
++    }
++    throw error;
++  }
++
++  if (!fileStat.isFile()) {
++    fail(`${description} is not a file: ${path}`);
++  }
++
++  const contents = await readFile(path);
++  if (contents.byteLength === 0) {
++    fail(`${description} is empty: ${path}`);
++  }
++
++  return contents;
++}
++
++async function verifyPagesHomeLoaderArtifacts(
++  artifactDirectory,
++  authoritativeLoaderPath,
++  { log = console.log } = {}
++) {
++  const artifactRoot = resolve(artifactDirectory);
++  const loaderSource = resolve(authoritativeLoaderPath);
++  const deployedLoaderPath = join(artifactRoot, 'home.js');
++  const [deployedLoader, authoritativeLoader] = await Promise.all([
++    readRequiredFile(deployedLoaderPath, 'root Home loader'),
++    readRequiredFile(loaderSource, 'authoritative main Home loader source')
++  ]);
++
++  if (!deployedLoader.equals(authoritativeLoader)) {
++    fail(
++      `root Home loader differs from authoritative main source: ` +
++      `${deployedLoaderPath} != ${loaderSource}`
++    );
++  }
++
++  const loaderText = deployedLoader.toString('utf8');
++  for (const reference of REQUIRED_LOADER_REFERENCES) {
++    if (!loaderText.includes(reference)) {
++      fail(`root Home loader is missing required reference: ${reference}`);
++    }
++  }
++
++  const artifacts = [];
++  for (const environment of ENVIRONMENTS) {
++    const firstPaintPath = join(artifactRoot, environment, 'first-paint.js');
++    const homePath = join(artifactRoot, environment, 'home.js');
++    const [firstPaint, home] = await Promise.all([
++      readRequiredFile(
++        firstPaintPath,
++        `${environment} first-paint artifact referenced by root Home loader`
++      ),
++      readRequiredFile(
++        homePath,
++        `${environment} Home application artifact referenced by root Home loader`
++      )
++    ]);
++
++    if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
++      fail(
++        `${environment} first-paint artifact lacks coordinator marker ` +
++        `${FIRST_PAINT_MARKER}: ${firstPaintPath}`
++      );
++    }
++
++    artifacts.push({
++      environment,
++      firstPaintPath,
++      firstPaintBytes: firstPaint.byteLength,
++      homePath,
++      homeBytes: home.byteLength
++    });
++  }
++
++  const result = {
++    artifactRoot,
++    deployedLoaderPath,
++    authoritativeLoaderPath: loaderSource,
++    loaderBytes: deployedLoader.byteLength,
++    artifacts
++  };
++
++  log(`[pages-home-loader] compatible Pages artifact: ${artifactRoot}`);
++  for (const artifact of artifacts) {
++    log(
++      `[pages-home-loader] ${artifact.environment}: ` +
++      `first-paint=${artifact.firstPaintBytes} bytes, ` +
++      `home=${artifact.homeBytes} bytes`
++    );
++  }
++
++  return result;
++}
++
++const isCli = process.argv[1] &&
++  import.meta.url === pathToFileURL(resolve(process.argv[1])).href;
++
++if (isCli) {
++  const [artifactDirectory, authoritativeLoaderPath] = process.argv.slice(2);
++
++  if (!artifactDirectory || !authoritativeLoaderPath) {
++    console.error(
++      'Usage: node scripts/verify-pages-home-loader-artifacts.mjs ' +
++      '<assembled-pages-directory> <authoritative-main-home-loader>'
++    );
++    process.exitCode = 2;
++  } else {
++    try {
++      await verifyPagesHomeLoaderArtifacts(
++        artifactDirectory,
++        authoritativeLoaderPath
++      );
++    } catch (error) {
++      console.error(error instanceof Error ? error.message : error);
++      process.exitCode = 1;
++    }
++  }
++}
++
++export { verifyPagesHomeLoaderArtifacts };
+diff --git a/scripts/verify-pages-home-loader-artifacts.test.mjs b/scripts/verify-pages-home-loader-artifacts.test.mjs
+new file mode 100644
+index 0000000..c4e126c
+--- /dev/null
++++ b/scripts/verify-pages-home-loader-artifacts.test.mjs
+@@ -0,0 +1,153 @@
++import assert from 'node:assert/strict';
++import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
++import { tmpdir } from 'node:os';
++import { join } from 'node:path';
++
++import { verifyPagesHomeLoaderArtifacts } from './verify-pages-home-loader-artifacts.mjs';
++
++const CURRENT_LOADER = await readFile(
++  new URL('../loaders/home.loader.js', import.meta.url),
++  'utf8'
++);
++const PAGES_WORKFLOW = await readFile(
++  new URL('../.github/workflows/pages.yml', import.meta.url),
++  'utf8'
++);
++const OLD_LOADER = `const PROD_HOSTS = new Set(["eatacid.xyz", "www.eatacid.xyz"]);
++
++const base = PROD_HOSTS.has(window.location.hostname) ? "./prod" : "./staging";
++
++import(\`${'${base}'}/home.js\`).catch((err) => {
++  console.error("[EA] home bundle load failed:", base, err);
++});
++`;
++const FIRST_PAINT_BUNDLE = `const STATE_KEY = '__EA_PUBLIC_FIRST_PAINT__';\n`;
++const HOME_BUNDLE = `console.log('[EA] Home application fixture');\n`;
++
++async function createArtifactTree(loader = CURRENT_LOADER) {
++  const directory = await mkdtemp(join(tmpdir(), 'ea-pages-home-loader-'));
++  const artifact = join(directory, 'dist');
++  const source = join(directory, 'main-home.loader.js');
++
++  await Promise.all([
++    mkdir(join(artifact, 'prod'), { recursive: true }),
++    mkdir(join(artifact, 'staging'), { recursive: true })
++  ]);
++  await Promise.all([
++    writeFile(source, loader),
++    writeFile(join(artifact, 'home.js'), loader),
++    writeFile(join(artifact, 'prod', 'first-paint.js'), FIRST_PAINT_BUNDLE),
++    writeFile(join(artifact, 'prod', 'home.js'), HOME_BUNDLE),
++    writeFile(join(artifact, 'staging', 'first-paint.js'), FIRST_PAINT_BUNDLE),
++    writeFile(join(artifact, 'staging', 'home.js'), HOME_BUNDLE)
++  ]);
++
++  return { directory, artifact, source };
++}
++
++async function withArtifactTree(loader, run) {
++  const tree = await createArtifactTree(loader);
++  try {
++    await run(tree);
++  } finally {
++    await rm(tree.directory, { recursive: true, force: true });
++  }
++}
++
++const quiet = { log() {} };
++
++await withArtifactTree(CURRENT_LOADER, async ({ artifact, source }) => {
++  const result = await verifyPagesHomeLoaderArtifacts(artifact, source, quiet);
++  assert.equal(result.loaderBytes, Buffer.byteLength(CURRENT_LOADER));
++  assert.deepEqual(
++    result.artifacts.map(({ environment }) => environment),
++    ['prod', 'staging']
++  );
++});
++
++await withArtifactTree(OLD_LOADER, async ({ artifact, source }) => {
++  await assert.rejects(
++    verifyPagesHomeLoaderArtifacts(artifact, source, quiet),
++    /missing required reference: `\$\{base\}\/first-paint\.js`/
++  );
++});
++
++for (const environment of ['prod', 'staging']) {
++  await withArtifactTree(CURRENT_LOADER, async ({ artifact, source }) => {
++    await rm(join(artifact, environment, 'first-paint.js'));
++    await assert.rejects(
++      verifyPagesHomeLoaderArtifacts(artifact, source, quiet),
++      new RegExp(`missing ${environment} first-paint artifact`)
++    );
++  });
++}
++
++await withArtifactTree(CURRENT_LOADER, async ({ artifact, source }) => {
++  await rm(join(artifact, 'staging', 'home.js'));
++  await assert.rejects(
++    verifyPagesHomeLoaderArtifacts(artifact, source, quiet),
++    /missing staging Home application artifact/
++  );
++});
++
++await withArtifactTree(CURRENT_LOADER, async ({ artifact, source }) => {
++  await writeFile(join(artifact, 'home.js'), OLD_LOADER);
++  await assert.rejects(
++    verifyPagesHomeLoaderArtifacts(artifact, source, quiet),
++    /root Home loader differs from authoritative main source/
++  );
++});
++
++await withArtifactTree(CURRENT_LOADER, async ({ artifact, source }) => {
++  await verifyPagesHomeLoaderArtifacts(artifact, source, quiet);
++  await writeFile(join(artifact, 'home.js'), OLD_LOADER);
++  await assert.rejects(
++    verifyPagesHomeLoaderArtifacts(artifact, source, quiet),
++    /root Home loader differs from authoritative main source/
++  );
++});
++
++await withArtifactTree(CURRENT_LOADER, async ({ artifact, source }) => {
++  await writeFile(
++    join(artifact, 'prod', 'first-paint.js'),
++    'console.log("wrong artifact");\n'
++  );
++  await assert.rejects(
++    verifyPagesHomeLoaderArtifacts(artifact, source, quiet),
++    /prod first-paint artifact lacks coordinator marker/
++  );
++});
++
++{
++  const loaderCopy =
++    'cp repo-main/loaders/home.loader.js dist/home.js';
++  const compatibilityCheck =
++    'node repo-main/scripts/verify-pages-home-loader-artifacts.mjs ' +
++    'dist repo-main/loaders/home.loader.js';
++  const uploadStep = 'uses: actions/upload-pages-artifact@v3';
++  const loaderCopyIndex = PAGES_WORKFLOW.indexOf(loaderCopy);
++  const compatibilityCheckIndex = PAGES_WORKFLOW.indexOf(compatibilityCheck);
++  const uploadIndex = PAGES_WORKFLOW.indexOf(uploadStep);
++
++  assert.ok(loaderCopyIndex >= 0, 'workflow must copy the Home loader from main');
++  assert.ok(
++    compatibilityCheckIndex > loaderCopyIndex,
++    'workflow must verify after copying the authoritative Home loader'
++  );
++  assert.ok(
++    uploadIndex > compatibilityCheckIndex,
++    'workflow must verify before uploading the Pages artifact'
++  );
++
++  const postValidationWorkflow = PAGES_WORKFLOW.slice(
++    compatibilityCheckIndex + compatibilityCheck.length,
++    uploadIndex
++  );
++  assert.equal(
++    /(?:cp|mv|rm|sed)\s+[^\n]*dist(?:\/|\\)home\.js/.test(postValidationWorkflow),
++    false,
++    'workflow must not mutate dist/home.js after compatibility validation'
++  );
++}
++
++console.log('Pages Home loader artifact compatibility tests passed.');
