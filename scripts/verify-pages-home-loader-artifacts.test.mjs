@@ -122,7 +122,7 @@ await withArtifactTree(CURRENT_LOADER, async ({ artifact, source }) => {
   const loaderCopy =
     'cp repo-main/loaders/home.loader.js dist/home.js';
   const compatibilityCheck =
-    'node repo-main/scripts/verify-pages-home-loader-artifacts.mjs ' +
+    'node repo-staging/scripts/verify-pages-home-loader-artifacts.mjs ' +
     'dist repo-main/loaders/home.loader.js';
   const uploadStep = 'uses: actions/upload-pages-artifact@v3';
   const loaderCopyIndex = PAGES_WORKFLOW.indexOf(loaderCopy);

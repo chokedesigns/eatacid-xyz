@@ -90,7 +90,7 @@ jobs:
           cp repo-main/loaders/exchange.loader.js dist/exchange.js
 
       - name: Verify Pages Home loader compatibility
-        run: node repo-main/scripts/verify-pages-home-loader-artifacts.mjs dist repo-main/loaders/home.loader.js
+        run: node repo-staging/scripts/verify-pages-home-loader-artifacts.mjs dist repo-main/loaders/home.loader.js
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
