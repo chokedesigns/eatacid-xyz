@@ -1,0 +1,545 @@
+﻿diff --git a/docs/performance/PERF-2.early-home-first-paint.md b/docs/performance/PERF-2.early-home-first-paint.md
+new file mode 100644
+index 0000000..4cabad7
+--- /dev/null
++++ b/docs/performance/PERF-2.early-home-first-paint.md
+@@ -0,0 +1,70 @@
++# PERF-2 — Early Home first paint
++
++Date: 2026-08-20
++
++Profile: AUDIT / CLOSURE
++
++## Implementation
++
++`webflow/first-paint.js` is a dedicated Parcel entry that imports only the existing `shared/public-first-paint.js` coordinator. The coordinator itself is unchanged, preserving its network state, image/font readiness gates, bounded timeouts, animation-frame sequencing, ready/fallback classes, fail-open path, reveal choreography, banner presentation, and global duplicate-start guard.
++
++`loaders/home.loader.js` now selects production or staging once and immediately starts two sibling dynamic imports. Each import has its own rejection handling, so neither load is sequenced behind or blocked by the other. `webflow/home.js` retains its coordinator import as a fallback; the coordinator's global state prevents a second initialization regardless of which bundle evaluates first.
++
++Old dependency chain:
++
++```text
++HTML -> root Home loader -> Home bundle -> first-paint coordinator -> reveal
++                                 `-> Beacon/wallet graph
++```
++
++New dependency chain:
++
++```text
++                         /-> first-paint entry -> coordinator -> reveal
++HTML -> root Home loader
++                         \-> Home bundle -> Beacon/wallet application
++```
++
++There is no `await` or promise chain between the two loader calls.
++
++## Emitted output
++
++Workflow-equivalent Parcel builds used `--no-optimize`, `--no-content-hash`, and `--no-scope-hoist`.
++
++| Artifact | Raw bytes | Local gzip bytes |
++| --- | ---: | ---: |
++| Root `home.loader.js` | 1,181 | 488 |
++| Staging `first-paint.js` | 30,404 | 7,527 |
++| Staging `home.js` | 4,992,426 | 1,538,295 |
++| Production `first-paint.js` | 30,404 | 7,527 |
++| Production `home.js` | 4,992,426 | 1,538,295 |
++
++The source-map-backed early dependency graph contains exactly:
++
++- `webflow/first-paint.js`
++- `shared/public-first-paint.js`
++- `shared/network.js`
++- `shared/chain-registry.js`
++- Parcel's ES-module helper
++
++The early artifact is self-contained and imports no emitted shared chunk. It contains no Beacon SDK, Beacon setup, `DAppClient`, `WalletClient`, or WalletConnect source/marker. The Home source map provides the positive comparison: it contains `shared/beacon-setup.js`, `@airgap/beacon-sdk`, and the wallet graph. Retaining the Home fallback import therefore did not compromise early-path isolation.
++
++## Failure and static validation
++
++Focused tests cover staging/production selection, immediate sibling import initiation, either import resolving first, near-simultaneous resolution, asynchronous and synchronous first-paint failure, Home failure, independent fail-open timer startup, and duplicate coordinator evaluation. A successful early entry starts the existing 1,300 ms fail-open protection without waiting for Home. If the early entry fails, Home still attempts to load and its retained import can start the coordinator. If Home fails or never evaluates, a successful early entry still owns readiness and fail-open release.
++
++`scripts/verify-home-first-paint-build.mjs` checks both emitted variants, rejects shared-chunk imports or Beacon/wallet markers in the early graph, confirms the expected small source graph, and verifies the early output remains substantially smaller than Home.
++
++Static validation establishes the intended dependency order and isolation, but it is not a new browser LCP measurement. Directionally, Slow-4G LCP should move toward hero availability/decode plus the existing bounded reveal choreography instead of waiting for Home application delivery. The PERF-1 trace's hero response completed around 4.35 seconds; no final LCP is predicted here.
++
++## Manual runtime validation required
++
++Use the same browser, viewport, device-pixel ratio, navigation method, cache policy, and interaction used for PERF-1. On the deployed staging build:
++
++1. Capture a clean-navigation Performance trace with no throttling; record LCP, INP, CLS, the LCP element, and reveal appearance.
++2. Repeat with the same Slow 4G profile; record the same values and the hero resource completion, first-paint bundle completion, ready/fallback class time, Home bundle completion, and LCP time.
++3. Confirm the root loader starts `/staging/first-paint.js` and `/staging/home.js` as overlapping sibling requests and that first-paint can evaluate before Home completes.
++4. Confirm the testnet banner and reveal look unchanged, the hero never flashes at an improper size or shifts layout, Connect/wallet controls initialize normally, and the console has no duplicate-import or rejected-loader errors during normal loading.
++5. For failure-seam spot checks, block only `/staging/home.js` and confirm first-paint still releases/fails open; then block only `/staging/first-paint.js` and confirm Home still boots and its fallback coordinator releases the surface. Expected blocked-request loader errors should be distinguished from errors in the normal runs.
++
++Do not declare PERF-2 performance success until those browser traces are complete.
+diff --git a/loaders/home.loader.js b/loaders/home.loader.js
+index 2859ae5..583e700 100644
+--- a/loaders/home.loader.js
++++ b/loaders/home.loader.js
+@@ -1,7 +1,52 @@
+ const PROD_HOSTS = new Set(["eatacid.xyz", "www.eatacid.xyz"]);
+ 
+-const base = PROD_HOSTS.has(window.location.hostname) ? "./prod" : "./staging";
++function selectHomeBase(hostname) {
++  return PROD_HOSTS.has(hostname) ? "./prod" : "./staging";
++}
+ 
+-import(`${base}/home.js`).catch((err) => {
+-  console.error("[EA] home bundle load failed:", base, err);
+-});
+\ No newline at end of file
++function importBundle(specifier) {
++  return import(specifier);
++}
++
++function startBundleImport(importModule, specifier, label, base, logger) {
++  try {
++    return Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error(`[EA] ${label} bundle load failed:`, base, err);
++      return null;
++    });
++  } catch (err) {
++    logger.error(`[EA] ${label} bundle load failed:`, base, err);
++    return Promise.resolve(null);
++  }
++}
++
++function startHomeBundles({
++  hostname = window.location.hostname,
++  importModule = importBundle,
++  logger = console
++} = {}) {
++  const base = selectHomeBase(hostname);
++
++  const firstPaintLoad = startBundleImport(
++    importModule,
++    `${base}/first-paint.js`,
++    "first-paint",
++    base,
++    logger
++  );
++  const homeLoad = startBundleImport(
++    importModule,
++    `${base}/home.js`,
++    "home",
++    base,
++    logger
++  );
++
++  return { base, firstPaintLoad, homeLoad };
++}
++
++if (typeof window !== "undefined") {
++  startHomeBundles();
++}
++
++export { selectHomeBase, startHomeBundles };
+diff --git a/loaders/home.loader.test.mjs b/loaders/home.loader.test.mjs
+new file mode 100644
+index 0000000..c7fc744
+--- /dev/null
++++ b/loaders/home.loader.test.mjs
+@@ -0,0 +1,273 @@
++import assert from 'node:assert/strict';
++
++import { selectHomeBase, startHomeBundles } from './home.loader.js';
++
++function deferred() {
++  let resolve;
++  let reject;
++  const promise = new Promise((resolvePromise, rejectPromise) => {
++    resolve = resolvePromise;
++    reject = rejectPromise;
++  });
++
++  return { promise, resolve, reject };
++}
++
++function createLogger() {
++  const errors = [];
++  return {
++    errors,
++    error(...args) {
++      errors.push(args);
++    }
++  };
++}
++
++assert.equal(selectHomeBase('eatacid.xyz'), './prod');
++assert.equal(selectHomeBase('www.eatacid.xyz'), './prod');
++assert.equal(selectHomeBase('staging.eatacid.xyz'), './staging');
++assert.equal(selectHomeBase('localhost'), './staging');
++
++for (const { hostname, base } of [
++  { hostname: 'eatacid.xyz', base: './prod' },
++  { hostname: 'staging.eatacid.xyz', base: './staging' }
++]) {
++  const firstPaint = deferred();
++  const home = deferred();
++  const calls = [];
++  const logger = createLogger();
++  const importModule = (specifier) => {
++    calls.push(specifier);
++    return specifier.endsWith('/first-paint.js')
++      ? firstPaint.promise
++      : home.promise;
++  };
++
++  const loads = startHomeBundles({ hostname, importModule, logger });
++
++  assert.equal(loads.base, base);
++  assert.deepEqual(calls, [
++    `${base}/first-paint.js`,
++    `${base}/home.js`
++  ]);
++
++  firstPaint.resolve('first-paint-ready');
++  assert.equal(await loads.firstPaintLoad, 'first-paint-ready');
++
++  let homeSettled = false;
++  void loads.homeLoad.then(() => {
++    homeSettled = true;
++  });
++  await Promise.resolve();
++  assert.equal(homeSettled, false);
++
++  home.resolve('home-ready');
++  assert.equal(await loads.homeLoad, 'home-ready');
++  assert.deepEqual(logger.errors, []);
++}
++
++{
++  const firstPaint = deferred();
++  const home = deferred();
++  const logger = createLogger();
++  const loads = startHomeBundles({
++    hostname: 'staging.eatacid.xyz',
++    logger,
++    importModule(specifier) {
++      return specifier.endsWith('/first-paint.js')
++        ? firstPaint.promise
++        : home.promise;
++    }
++  });
++
++  firstPaint.reject(new Error('first-paint unavailable'));
++  assert.equal(await loads.firstPaintLoad, null);
++
++  home.resolve('home-ready');
++  assert.equal(await loads.homeLoad, 'home-ready');
++  assert.equal(logger.errors.length, 1);
++  assert.match(logger.errors[0][0], /first-paint bundle load failed/);
++}
++
++{
++  const firstPaint = deferred();
++  const home = deferred();
++  const logger = createLogger();
++  const loads = startHomeBundles({
++    hostname: 'eatacid.xyz',
++    logger,
++    importModule(specifier) {
++      return specifier.endsWith('/first-paint.js')
++        ? firstPaint.promise
++        : home.promise;
++    }
++  });
++
++  home.reject(new Error('home unavailable'));
++  assert.equal(await loads.homeLoad, null);
++
++  firstPaint.resolve('first-paint-ready');
++  assert.equal(await loads.firstPaintLoad, 'first-paint-ready');
++  assert.equal(logger.errors.length, 1);
++  assert.match(logger.errors[0][0], /home bundle load failed/);
++}
++
++{
++  const calls = [];
++  const logger = createLogger();
++  const loads = startHomeBundles({
++    hostname: 'staging.eatacid.xyz',
++    logger,
++    importModule(specifier) {
++      calls.push(specifier);
++      if (specifier.endsWith('/first-paint.js')) {
++        throw new Error('synchronous first-paint failure');
++      }
++      return Promise.resolve('home-ready');
++    }
++  });
++
++  assert.deepEqual(calls, [
++    './staging/first-paint.js',
++    './staging/home.js'
++  ]);
++  assert.equal(await loads.firstPaintLoad, null);
++  assert.equal(await loads.homeLoad, 'home-ready');
++}
++
++{
++  const firstPaint = deferred();
++  const home = deferred();
++  const loads = startHomeBundles({
++    hostname: 'staging.eatacid.xyz',
++    logger: createLogger(),
++    importModule(specifier) {
++      return specifier.endsWith('/first-paint.js')
++        ? firstPaint.promise
++        : home.promise;
++    }
++  });
++
++  home.resolve('home-ready-first');
++  assert.equal(await loads.homeLoad, 'home-ready-first');
++
++  let firstPaintSettled = false;
++  void loads.firstPaintLoad.then(() => {
++    firstPaintSettled = true;
++  });
++  await Promise.resolve();
++  assert.equal(firstPaintSettled, false);
++
++  firstPaint.resolve('first-paint-ready-second');
++  assert.equal(await loads.firstPaintLoad, 'first-paint-ready-second');
++}
++
++{
++  const firstPaint = deferred();
++  const home = deferred();
++  const loads = startHomeBundles({
++    hostname: 'eatacid.xyz',
++    logger: createLogger(),
++    importModule(specifier) {
++      return specifier.endsWith('/first-paint.js')
++        ? firstPaint.promise
++        : home.promise;
++    }
++  });
++
++  firstPaint.resolve('first-paint-ready');
++  home.resolve('home-ready');
++  assert.deepEqual(await Promise.all([
++    loads.firstPaintLoad,
++    loads.homeLoad
++  ]), ['first-paint-ready', 'home-ready']);
++}
++
++{
++  const previous = {
++    window: globalThis.window,
++    document: globalThis.document,
++    requestAnimationFrame: globalThis.requestAnimationFrame,
++    setTimeout: globalThis.setTimeout,
++    clearTimeout: globalThis.clearTimeout
++  };
++  const bodyClasses = new Set(['first-paint-main']);
++  const scheduledTimeouts = [];
++
++  globalThis.window = {};
++  globalThis.document = {
++    body: {
++      classList: {
++        add(...names) {
++          names.forEach(name => bodyClasses.add(name));
++        },
++        contains(name) {
++          return bodyClasses.has(name);
++        },
++        remove(name) {
++          bodyClasses.delete(name);
++        }
++      },
++      querySelector() {
++        return null;
++      },
++      querySelectorAll() {
++        return [];
++      }
++    },
++    getElementById() {
++      return {};
++    }
++  };
++  globalThis.requestAnimationFrame = callback => callback();
++  globalThis.setTimeout = (callback, milliseconds) => {
++    const timer = { callback, milliseconds };
++    scheduledTimeouts.push(timer);
++    return timer;
++  };
++  globalThis.clearTimeout = () => {};
++
++  try {
++    await import(`../webflow/first-paint.js?isolated=${Date.now()}`);
++    assert.equal(globalThis.window.__EA_PUBLIC_FIRST_PAINT__.started, true);
++    assert.equal(
++      scheduledTimeouts.some(timer => timer.milliseconds === 1300),
++      true,
++      'the coordinator fail-open timer should start without importing Home'
++    );
++  } finally {
++    for (const [key, value] of Object.entries(previous)) {
++      if (value === undefined) {
++        delete globalThis[key];
++      } else {
++        globalThis[key] = value;
++      }
++    }
++  }
++}
++
++{
++  const previousWindow = globalThis.window;
++  globalThis.window = {};
++
++  try {
++    const nonce = `${Date.now()}-${Math.random()}`;
++    const earlyEntry = await import(`../shared/public-first-paint.js?early=${nonce}`);
++    const homeFallback = await import(`../shared/public-first-paint.js?home=${nonce}`);
++
++    assert.equal(earlyEntry.publicFirstPaint.started, true);
++    assert.strictEqual(homeFallback.publicFirstPaint, earlyEntry.publicFirstPaint);
++    assert.strictEqual(
++      homeFallback.startPublicFirstPaint(),
++      earlyEntry.publicFirstPaint
++    );
++  } finally {
++    if (previousWindow === undefined) {
++      delete globalThis.window;
++    } else {
++      globalThis.window = previousWindow;
++    }
++  }
++}
++
++console.log('Home first-paint loader tests passed.');
+diff --git a/package.json b/package.json
+index 029373b..d5124f2 100644
+--- a/package.json
++++ b/package.json
+@@ -21,8 +21,10 @@
+     "test:thumbs": "node assets/thumbs/scripts/thumbs.test.mjs",
+     "test:webflow-cms": "node assets/webflow-cms/webflow-cms.test.mjs",
+     "test:hen-identity": "node shared/hen-identity.test.mjs",
+-    "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
+-    "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
++    "test:home-first-paint": "node loaders/home.loader.test.mjs",
++    "verify:home-first-paint-build": "node scripts/verify-home-first-paint-build.mjs",
++    "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
++    "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
+     "pages:sanity": "npm run build:pages:staging && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs",
+     "ticket:diff": "powershell -ExecutionPolicy Bypass -File admin-ui/scripts/export-ticket-diff.ps1"
+   },
+diff --git a/scripts/verify-home-first-paint-build.mjs b/scripts/verify-home-first-paint-build.mjs
+new file mode 100644
+index 0000000..39020eb
+--- /dev/null
++++ b/scripts/verify-home-first-paint-build.mjs
+@@ -0,0 +1,98 @@
++import assert from 'node:assert/strict';
++import { readFile, stat } from 'node:fs/promises';
++import { gzipSync } from 'node:zlib';
++
++const BUILD_VARIANTS = ['staging', 'prod'];
++const EXPECTED_EARLY_SOURCES = [
++  'webflow/first-paint.js',
++  'shared/public-first-paint.js',
++  'shared/network.js',
++  'shared/chain-registry.js',
++  'node_modules/@parcel/transformer-js/src/esmodule-helpers.js'
++];
++const FORBIDDEN_EARLY_MARKERS = [
++  '@airgap/beacon',
++  '@walletconnect/',
++  'shared/beacon-setup.js',
++  'DAppClient',
++  'WalletClient'
++];
++
++async function fileSizes(path) {
++  const contents = await readFile(path);
++  return {
++    rawBytes: contents.byteLength,
++    gzipBytes: gzipSync(contents).byteLength
++  };
++}
++
++for (const variant of BUILD_VARIANTS) {
++  const firstPaintPath = `dist/${variant}/first-paint.js`;
++  const homePath = `dist/${variant}/home.js`;
++  const firstPaintSourceMapPath = `${firstPaintPath}.map`;
++  const homeSourceMapPath = `${homePath}.map`;
++
++  await Promise.all([
++    stat(firstPaintPath),
++    stat(homePath),
++    stat(firstPaintSourceMapPath),
++    stat(homeSourceMapPath)
++  ]);
++
++  const [firstPaintCode, firstPaintSourceMap, homeSourceMap] = await Promise.all([
++    readFile(firstPaintPath, 'utf8'),
++    readFile(firstPaintSourceMapPath, 'utf8').then(JSON.parse),
++    readFile(homeSourceMapPath, 'utf8').then(JSON.parse)
++  ]);
++
++  assert.deepEqual(
++    firstPaintSourceMap.sources,
++    EXPECTED_EARLY_SOURCES,
++    `${variant} first-paint dependency graph changed`
++  );
++  assert.equal(
++    /(?:^|\n)\s*import\s*(?:\(|["'{*])/m.test(firstPaintCode),
++    false,
++    `${variant} first-paint entry unexpectedly requires another emitted chunk`
++  );
++
++  const earlyGraphText = `${firstPaintSourceMap.sources.join('\n')}\n${firstPaintCode}`;
++  for (const marker of FORBIDDEN_EARLY_MARKERS) {
++    assert.equal(
++      earlyGraphText.includes(marker),
++      false,
++      `${variant} first-paint graph contains forbidden marker: ${marker}`
++    );
++  }
++
++  assert.equal(
++    homeSourceMap.sources.includes('shared/beacon-setup.js'),
++    true,
++    `${variant} Home graph no longer contains the expected Beacon setup fallback`
++  );
++  assert.equal(
++    homeSourceMap.sources.some(source => source.includes('@airgap/beacon-sdk')),
++    true,
++    `${variant} Home graph should provide a positive Beacon-control comparison`
++  );
++
++  const [firstPaintSizes, homeSizes] = await Promise.all([
++    fileSizes(firstPaintPath),
++    fileSizes(homePath)
++  ]);
++  assert.ok(
++    firstPaintSizes.rawBytes < homeSizes.rawBytes / 10,
++    `${variant} first-paint output is not substantially smaller than Home`
++  );
++
++  console.log(JSON.stringify({
++    variant,
++    firstPaint: firstPaintSizes,
++    home: homeSizes,
++    earlySources: firstPaintSourceMap.sources,
++    sharedChunks: [],
++    beaconInEarlyGraph: false
++  }, null, 2));
++}
++
++console.log('Home first-paint build graph verification passed.');
+diff --git a/webflow/first-paint.js b/webflow/first-paint.js
+new file mode 100644
+index 0000000..4a077a8
+--- /dev/null
++++ b/webflow/first-paint.js
+@@ -0,0 +1 @@
++import '../shared/public-first-paint.js';

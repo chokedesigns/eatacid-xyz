@@ -1,0 +1,7 @@
+﻿ docs/performance/PERF-2.early-home-first-paint.md |  70 ++++++
+ loaders/home.loader.js                            |  53 ++++-
+ loaders/home.loader.test.mjs                      | 273 ++++++++++++++++++++++
+ package.json                                      |   6 +-
+ scripts/verify-home-first-paint-build.mjs         |  98 ++++++++
+ webflow/first-paint.js                            |   1 +
+ 6 files changed, 495 insertions(+), 6 deletions(-)
