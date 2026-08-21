@@ -2,28 +2,40 @@ function importBundle(specifier) {
   return import(specifier);
 }
 
-function startDropsBundle({
-  importModule = importBundle,
-  logger = console
-} = {}) {
-  const specifier = "./drops.js";
-  let bundleLoad;
-
+function startBundleImport(importModule, specifier, label, logger) {
   try {
-    bundleLoad = Promise.resolve(importModule(specifier)).catch((err) => {
-      logger.error("[EA] drops bundle load failed:", specifier, err);
+    return Promise.resolve(importModule(specifier)).catch((err) => {
+      logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
       return null;
     });
   } catch (err) {
-    logger.error("[EA] drops bundle load failed:", specifier, err);
-    bundleLoad = Promise.resolve(null);
+    logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
+    return Promise.resolve(null);
   }
+}
 
-  return { bundleLoad };
+function startDropsBundles({
+  importModule = importBundle,
+  logger = console
+} = {}) {
+  const firstPaintLoad = startBundleImport(
+    importModule,
+    "./drops-first-paint.js",
+    "drops first-paint",
+    logger
+  );
+  const dropsLoad = startBundleImport(
+    importModule,
+    "./drops.js",
+    "drops",
+    logger
+  );
+
+  return { firstPaintLoad, dropsLoad };
 }
 
 if (typeof window !== "undefined") {
-  startDropsBundle();
+  startDropsBundles();
 }
 
-export { startDropsBundle };
+export { startDropsBundles };

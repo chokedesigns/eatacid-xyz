@@ -25,8 +25,9 @@
     "test:loader-architecture": "node loaders/loader-architecture.test.mjs",
     "test:pages-loader-artifacts": "node scripts/verify-pages-loader-artifacts.test.mjs",
     "verify:home-first-paint-build": "node scripts/verify-home-first-paint-build.mjs",
-    "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
-    "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
+    "verify:drops-first-paint-build": "node scripts/verify-drops-first-paint-build.mjs",
+    "build:pages:prod": "npm run dropparams:json && npm run clean:cache && npm run clean:prod && parcel build webflow/first-paint.js webflow/drops-first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/prod --public-url ./ --no-content-hash --no-scope-hoist",
+    "build:pages:staging": "npm run dropparams:json && npm run clean:cache && npm run clean:staging && parcel build webflow/first-paint.js webflow/drops-first-paint.js webflow/home.js webflow/drops.js webflow/exchange.js --dist-dir dist/staging --public-url ./ --no-content-hash --no-scope-hoist",
     "pages:sanity": "npm run build:pages:staging && node scripts/sync-test-harness.mjs && node scripts/run-sanity-server.mjs",
     "pages:sanity:loader-chain": "npm run build:pages:staging && node scripts/sync-test-harness.mjs --loader-chain && node scripts/run-sanity-server.mjs",
     "ticket:diff": "powershell -ExecutionPolicy Bypass -File admin-ui/scripts/export-ticket-diff.ps1"

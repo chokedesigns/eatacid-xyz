@@ -7,6 +7,7 @@ const ENVIRONMENTS = ['prod', 'staging'];
 const PROD_HOST_DECLARATION =
   'new Set(["eatacid.xyz", "www.eatacid.xyz"])';
 const FIRST_PAINT_MARKER = '__EA_PUBLIC_FIRST_PAINT__';
+const DROPS_FIRST_PAINT_MARKER = '__EA_DROPS_EARLY_FIRST_PAINT__';
 const JAVASCRIPT_REFERENCE = /(["'])([^"'`\s]+\.js)\1/g;
 const LOCAL_ARTIFACT_REFERENCE = /^\.\/[A-Za-z0-9][A-Za-z0-9._-]*\.js$/;
 
@@ -183,8 +184,8 @@ async function verifyReferencedArtifacts(
       const artifactPath = join(artifactRoot, environment, artifactName);
       const sourcePath = join(ownerRoot, 'dist', environment, artifactName);
       const surface = artifactName.replace(/\.js$/, '');
-      const artifactDescription = artifactName === 'first-paint.js'
-        ? `${environment} first-paint artifact referenced by ` +
+      const artifactDescription = artifactName.endsWith('first-paint.js')
+        ? `${environment} ${surface} artifact referenced by ` +
           `${[...referencingSurfaces].join('/')} environment loader(s)`
         : `${environment} ${surface} application artifact`;
       const artifact = await requireEqualFiles(
@@ -197,6 +198,16 @@ async function verifyReferencedArtifacts(
           !artifact.includes(FIRST_PAINT_MARKER)) {
         fail(`${environment} first-paint artifact lacks coordinator marker ` +
           `${FIRST_PAINT_MARKER}: ${artifactPath}`);
+      }
+      if (artifactName === 'drops-first-paint.js') {
+        if (!artifact.includes(DROPS_FIRST_PAINT_MARKER)) {
+          fail(`${environment} drops first-paint artifact lacks identity marker ` +
+            `${DROPS_FIRST_PAINT_MARKER}: ${artifactPath}`);
+        }
+        if (!artifact.includes(FIRST_PAINT_MARKER)) {
+          fail(`${environment} drops first-paint artifact lacks coordinator marker ` +
+            `${FIRST_PAINT_MARKER}: ${artifactPath}`);
+        }
       }
       artifacts.push({
         environment,

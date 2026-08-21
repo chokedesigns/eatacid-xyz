@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 
 import {
   selectHomeLoaderBase,
@@ -13,7 +14,7 @@ import {
   startExchangeLoader
 } from './root/exchange.js';
 import { startHomeBundles } from './environment/home.js';
-import { startDropsBundle } from './environment/drops.js';
+import { startDropsBundles } from './environment/drops.js';
 import { startExchangeBundles } from './environment/exchange.js';
 
 function deferred() {
@@ -306,47 +307,113 @@ for (const failingBundle of ['first-paint', 'exchange']) {
   assert.equal(logger.errors.length, 1);
 }
 
-for (const { name, startBundle } of [
-  { name: 'drops', startBundle: startDropsBundle }
-]) {
+for (const settleFirst of ['drops first-paint', 'drops']) {
+  const firstPaint = deferred();
+  const drops = deferred();
   const calls = [];
   const logger = createLogger();
-  const { bundleLoad } = startBundle({
+  const loads = startDropsBundles({
     logger,
     importModule(specifier) {
       calls.push(specifier);
-      return Promise.resolve(`${name}-ready`);
+      return specifier === './drops-first-paint.js'
+        ? firstPaint.promise
+        : drops.promise;
     }
   });
 
-  assert.deepEqual(calls, [`./${name}.js`]);
-  assert.equal(await bundleLoad, `${name}-ready`);
+  assert.deepEqual(calls, ['./drops-first-paint.js', './drops.js']);
+
+  const first = settleFirst === 'drops first-paint' ? firstPaint : drops;
+  const second = settleFirst === 'drops first-paint' ? drops : firstPaint;
+  const firstLoad = settleFirst === 'drops first-paint'
+    ? loads.firstPaintLoad
+    : loads.dropsLoad;
+  const secondLoad = settleFirst === 'drops first-paint'
+    ? loads.dropsLoad
+    : loads.firstPaintLoad;
+
+  first.resolve(`${settleFirst}-ready-first`);
+  assert.equal(await firstLoad, `${settleFirst}-ready-first`);
+
+  let secondSettled = false;
+  void secondLoad.then(() => {
+    secondSettled = true;
+  });
+  await Promise.resolve();
+  assert.equal(secondSettled, false);
+
+  second.resolve('second-ready');
+  assert.equal(await secondLoad, 'second-ready');
   assert.deepEqual(logger.errors, []);
+}
 
-  const failureLogger = createLogger();
-  const failed = startBundle({
-    logger: failureLogger,
-    importModule() {
-      return Promise.reject(new Error(`${name} unavailable`));
+for (const failingBundle of ['drops first-paint', 'drops']) {
+  const firstPaint = deferred();
+  const drops = deferred();
+  const logger = createLogger();
+  const loads = startDropsBundles({
+    logger,
+    importModule(specifier) {
+      return specifier === './drops-first-paint.js'
+        ? firstPaint.promise
+        : drops.promise;
     }
   });
-  assert.equal(await failed.bundleLoad, null);
-  assert.equal(failureLogger.errors.length, 1);
-  assert.match(failureLogger.errors[0][0], new RegExp(`${name} bundle load failed`));
 
-  const synchronousFailureLogger = createLogger();
-  const synchronouslyFailed = startBundle({
-    logger: synchronousFailureLogger,
-    importModule() {
-      throw new Error(`synchronous ${name} failure`);
+  const failed = failingBundle === 'drops first-paint' ? firstPaint : drops;
+  const surviving = failingBundle === 'drops first-paint' ? drops : firstPaint;
+  const failedLoad = failingBundle === 'drops first-paint'
+    ? loads.firstPaintLoad
+    : loads.dropsLoad;
+  const survivingLoad = failingBundle === 'drops first-paint'
+    ? loads.dropsLoad
+    : loads.firstPaintLoad;
+
+  failed.reject(new Error(`${failingBundle} unavailable`));
+  assert.equal(await failedLoad, null);
+  surviving.resolve('survivor-ready');
+  assert.equal(await survivingLoad, 'survivor-ready');
+  assert.equal(logger.errors.length, 1);
+  assert.match(logger.errors[0][0], new RegExp(`${failingBundle} bundle load failed`));
+}
+
+for (const failingBundle of ['drops first-paint', 'drops']) {
+  const calls = [];
+  const logger = createLogger();
+  const loads = startDropsBundles({
+    logger,
+    importModule(specifier) {
+      calls.push(specifier);
+      const failingSpecifier = failingBundle === 'drops first-paint'
+        ? './drops-first-paint.js'
+        : './drops.js';
+      if (specifier === failingSpecifier) {
+        throw new Error(`synchronous ${failingBundle} failure`);
+      }
+      return Promise.resolve('survivor-ready');
     }
   });
-  assert.equal(await synchronouslyFailed.bundleLoad, null);
-  assert.equal(synchronousFailureLogger.errors.length, 1);
-  assert.match(
-    synchronousFailureLogger.errors[0][0],
-    new RegExp(`${name} bundle load failed`)
+
+  assert.deepEqual(calls, ['./drops-first-paint.js', './drops.js']);
+  const failedLoad = failingBundle === 'drops first-paint'
+    ? loads.firstPaintLoad
+    : loads.dropsLoad;
+  const survivingLoad = failingBundle === 'drops first-paint'
+    ? loads.dropsLoad
+    : loads.firstPaintLoad;
+  assert.equal(await failedLoad, null);
+  assert.equal(await survivingLoad, 'survivor-ready');
+  assert.equal(logger.errors.length, 1);
+}
+
+{
+  const dropsLoaderSource = await readFile(
+    new URL('./environment/drops.js', import.meta.url),
+    'utf8'
   );
+  assert.match(dropsLoaderSource, /typeof window !== "undefined"/);
+  assert.match(dropsLoaderSource, /startDropsBundles\(\)/);
 }
 
 {
@@ -436,4 +503,53 @@ for (const { name, startBundle } of [
   }
 }
 
-console.log('Loader architecture and Home/Exchange first-paint tests passed.');
+{
+  const previousWindow = globalThis.window;
+  const previousDocument = globalThis.document;
+  const appendedStyles = [];
+  globalThis.window = {};
+  globalThis.document = {
+    getElementById() {
+      return null;
+    },
+    createElement(tagName) {
+      assert.equal(tagName, 'style');
+      return {};
+    },
+    head: {
+      appendChild(style) {
+        appendedStyles.push(style);
+      }
+    }
+  };
+
+  try {
+    const dropsEarlyEntry = await import(
+      `../webflow/drops-first-paint.js?isolated=${Date.now()}`
+    );
+    assert.equal(globalThis.window.__EA_DROPS_EARLY_FIRST_PAINT__.started, true);
+    assert.equal(appendedStyles.length, 1);
+    assert.equal(appendedStyles[0].id, 'ea-drops-early-first-paint-style');
+    assert.match(appendedStyles[0].textContent, /drops-params-pending/);
+    assert.match(appendedStyles[0].textContent, /drops-preview-pending/);
+    assert.match(appendedStyles[0].textContent, /drops-wallet-tokens-pending/);
+    assert.strictEqual(
+      dropsEarlyEntry.installDropsEarlyShell(),
+      dropsEarlyEntry.dropsEarlyShell
+    );
+    assert.equal(appendedStyles.length, 1);
+  } finally {
+    if (previousWindow === undefined) {
+      delete globalThis.window;
+    } else {
+      globalThis.window = previousWindow;
+    }
+    if (previousDocument === undefined) {
+      delete globalThis.document;
+    } else {
+      globalThis.document = previousDocument;
+    }
+  }
+}
+
+console.log('Loader architecture and Home/Drops/Exchange first-paint tests passed.');
