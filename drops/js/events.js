@@ -18,6 +18,11 @@ import {
   getVerifiedPublicActiveAccount
 } from '../../shared/beacon-setup.js';
 import {
+  createInitialRevealBarrier,
+  isCurrentWalletProjection,
+  setRegionPending
+} from './reveal-coordinator.js';
+import {
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
   pollForConfirmation as pollForSharedConfirmation,
@@ -328,16 +333,18 @@ function preloadFlameIcons() {
 // HELPERS: DROP-SCHEDULE GATE
 // =============================================================================
 
-let dropParamsPendingReleased = false;
-
-/** Releases the Webflow-owned parameter shell after one coherent initial render. */
-function releaseDropParamsPending() {
-  if (dropParamsPendingReleased) return;
-
+/** Releases both drop-state masks in the same visual commit. */
+function releaseInitialDropStatePending() {
   document.querySelector('.drops-params-pending')
     ?.classList.remove('drops-params-pending');
-  dropParamsPendingReleased = true;
+  document.querySelector('.drops-preview-pending')
+    ?.classList.remove('drops-preview-pending');
 }
+
+const initialDropStateReveal = createInitialRevealBarrier(
+  ['parameters', 'redeem-metadata'],
+  releaseInitialDropStatePending
+);
 
 /** Renders a deliberate terminal fallback if parameter initialization fails. */
 function renderDropParamsUnavailable() {
@@ -367,16 +374,16 @@ function initializeDropParameterRegion() {
     setEventContractAndTokenAttributes();
     renderDropDetails();
 
-    Promise.resolve(startCountdown())
-      .catch(error => {
-        console.error('Error initializing Drops parameters:', error);
-        renderDropParamsUnavailable();
-      })
-      .finally(releaseDropParamsPending);
+    const countdownTask = startCountdown();
+    initialDropStateReveal.markReady('parameters');
+
+    Promise.resolve(countdownTask).catch(error => {
+      console.error('Error updating Drops countdown state:', error);
+    });
   } catch (error) {
     console.error('Error initializing Drops parameters:', error);
     renderDropParamsUnavailable();
-    releaseDropParamsPending();
+    initialDropStateReveal.markReady('parameters');
   }
 }
 
@@ -427,7 +434,8 @@ function renderNetworkUnavailable() {
     if ('disabled' in exchangeButton) exchangeButton.disabled = true;
   }
 
-  releaseDropParamsPending();
+  initialDropStateReveal.markReady('parameters');
+  initialDropStateReveal.markReady('redeem-metadata');
 }
 
 // =============================================================================
@@ -574,19 +582,10 @@ function showRedeemSpinner(imgWrap, spinner) {
   });
 }
 
-let redeemPreviewPendingReleased = false;
-let redeemPreviewCommitted = false;
+let redeemMetadataCommitted = false;
+let redeemImageCommitted = false;
+let redeemInitialSupplyCommitted = false;
 let redeemInitialSupplyPublishing = false;
-
-/** Completes the one-time redeem-preview lifecycle after a coherent terminal render. */
-function releaseRedeemPreviewPending(spinner) {
-  if (redeemPreviewPendingReleased) return;
-
-  if (spinner) spinner.style.display = 'none';
-  document.querySelector('.drops-preview-pending')
-    ?.classList.remove('drops-preview-pending');
-  redeemPreviewPendingReleased = true;
-}
 
 /** Returns deliberate metadata values when the configured redeem token is unavailable. */
 function getRedeemMetadataUnavailable() {
@@ -619,39 +618,55 @@ function renderRedeemImageUnavailable(imgWrap) {
   }
 }
 
-/** Commits the complete initial preview, then releases its spinner and pending shell. */
-function commitInitialRedeemPreview(container, imgWrap, spinner, preview) {
-  if (redeemPreviewCommitted || !container) return;
+/** Stages authoritative local metadata before the coordinated Phase 2 reveal. */
+function commitInitialRedeemMetadata(container, metadata) {
+  if (redeemMetadataCommitted || !container) return;
 
   const titleEl    = container.querySelector('.collection-item-events-title-text');
   const collEl     = container.querySelector('.collection-item-events-collection-text');
   const editionsEl = container.querySelector('.collection-item-events-editions-text');
   const supplyEl   = container.querySelector('.supply-text-number');
 
-  if (titleEl)    titleEl.textContent    = preview.metadata.title;
-  if (collEl)     collEl.textContent     = preview.metadata.collection;
-  if (editionsEl) editionsEl.textContent = preview.metadata.editions;
+  if (titleEl)    titleEl.textContent    = metadata.title;
+  if (collEl)     collEl.textContent     = metadata.collection;
+  if (editionsEl) editionsEl.textContent = metadata.editions;
+  if (supplyEl)   supplyEl.textContent   = '[PENDING]';
+
+  redeemMetadataCommitted = true;
+  initialDropStateReveal.markReady('redeem-metadata');
+}
+
+/** Replaces the reserved image substate without holding the rest of Phase 2. */
+function commitInitialRedeemImage(imgWrap, spinner, image) {
+  if (redeemImageCommitted) return;
 
   if (imgWrap) {
     imgWrap.querySelector('img.event-cart-redeem-img')?.remove();
     imgWrap.querySelector('.event-cart-redeem-image-unavailable')?.remove();
-    if (preview.image.status === 'loaded') {
-      imgWrap.appendChild(preview.image.element);
+    if (image.status === 'loaded') {
+      imgWrap.appendChild(image.element);
     } else {
       renderRedeemImageUnavailable(imgWrap);
     }
   }
 
-  if (supplyEl) supplyEl.textContent = preview.supply.text;
+  if (spinner) spinner.style.display = 'none';
+  redeemImageCommitted = true;
+}
 
-  releaseRedeemPreviewPending(spinner);
-  redeemPreviewCommitted = true;
+/** Publishes initial supply independently from the image substate. */
+function commitInitialRedeemSupply(container, supply) {
+  if (redeemInitialSupplyCommitted || !container) return;
+
+  const supplyEl = container.querySelector('.supply-text-number');
+  if (supplyEl) supplyEl.textContent = supply.text;
+  redeemInitialSupplyCommitted = true;
 
   // Publish the resolved supply, then reconcile against phase state retained during loading.
   redeemInitialSupplyPublishing = true;
   try {
-    if (preview.supply.available) {
-      updateAppState({ redeemSupply: preview.supply.value });
+    if (supply.available) {
+      updateAppState({ redeemSupply: supply.value });
     }
   } finally {
     redeemInitialSupplyPublishing = false;
@@ -788,6 +803,8 @@ function resetEventsUI() {
  * @param {Array} nfts - Updated list of NFTs.
  */
 function refreshConnectedState(nfts) {
+  renderWalletTokenLoadingState();
+
   // 1) Re‑map CMS rows with correct token IDs & contracts
   setEventContractAndTokenAttributes();
 
@@ -804,8 +821,13 @@ function refreshConnectedState(nfts) {
     }
   });
 
-  // 4) Reset the burn‑token panel
+  // 4) Reset the burn-token panel
   updateEventCartBurnToken();
+
+  const remainingRows = document.querySelectorAll(
+    '.events-wallet-ui-div .w-dyn-list [data-token-id]'
+  ).length;
+  renderConnectedWalletTokenState(remainingRows);
 }
 
 // =============================================================================
@@ -840,7 +862,7 @@ async function fetchRedeemSupply() {
  * and pushes it into AppState for downstream consumers.
  */
 async function updateRedeemSupplyDisplay() {
-  if (!redeemPreviewCommitted) return false;
+  if (!redeemInitialSupplyCommitted) return false;
 
   try {
     const supply = await fetchRedeemSupply();
@@ -884,7 +906,7 @@ async function resolveInitialRedeemSupply() {
  * @param {boolean} [runImmediately=true] Whether to update before the first interval.
  */
 function startRedeemSupplyPolling(intervalMs = 10000, runImmediately = true) {
-  if (!redeemPreviewCommitted || redeemSupplyIntervalId != null) return null;
+  if (!redeemInitialSupplyCommitted || redeemSupplyIntervalId != null) return null;
   const initialUpdate = runImmediately ? updateRedeemSupplyDisplay() : null;
   // then every X seconds
   redeemSupplyIntervalId = setInterval(updateRedeemSupplyDisplay, intervalMs);
@@ -903,7 +925,7 @@ function stopRedeemSupplyPolling() {
 
 /** Reconciles the single supply interval against retained phase, supply, and visibility state. */
 function reconcileRedeemSupplyPolling({ runImmediately = true } = {}) {
-  if (!redeemPreviewCommitted) return;
+  if (!redeemInitialSupplyCommitted) return;
 
   const shouldPoll =
     !document.hidden &&
@@ -1562,7 +1584,6 @@ function updateOwnedTokenCounts(nfts) {
 }
 
 const WALLET_TOKEN_PENDING_CLASS = 'drops-wallet-tokens-pending';
-let walletTokenPendingReleased = false;
 
 function getWalletTokenPanes() {
   return ['hen', 'introductions']
@@ -1588,12 +1609,12 @@ function setWalletTokenPanesVisible(visible) {
   });
 }
 
-function releaseWalletTokenPending() {
-  if (walletTokenPendingReleased) return;
-
-  document.querySelector(`.${WALLET_TOKEN_PENDING_CLASS}`)
-    ?.classList.remove(WALLET_TOKEN_PENDING_CLASS);
-  walletTokenPendingReleased = true;
+function setWalletTokenRegionPending(pending) {
+  setRegionPending(
+    document.querySelector('.events-wallet-ui-div'),
+    WALLET_TOKEN_PENDING_CLASS,
+    pending
+  );
 }
 
 function commitWalletTokenRegion({
@@ -1622,10 +1643,12 @@ function commitWalletTokenRegion({
 
   setWalletTokenPanesVisible(rowsVisible);
 
-  if (terminal) releaseWalletTokenPending();
+  if (terminal) setWalletTokenRegionPending(false);
 }
 
 function renderWalletTokenLoadingState({ clearRows = false } = {}) {
+  setWalletTokenRegionPending(true);
+
   if (clearRows) {
     clearWalletTokenRows();
     renderBalances({});
@@ -1856,7 +1879,8 @@ function updateEventCartBurnToken() {
 
 /**
  * Updates the “Redeem Token” panel in the event cart.
- * Holds the spinner and pending wrapper through one coherent terminal render.
+ * Local metadata participates in Phase 2; image and supply retain explicit,
+ * independently resolving substates so neither delays the authoritative text.
  */
 async function updateEventCartRedeemToken() {
   // 1) Configuration & container
@@ -1865,7 +1889,7 @@ async function updateEventCartRedeemToken() {
   const spinner = container?.querySelector('.loading-spinner-02-redeem-token')
                || document.querySelector('.loading-spinner-02-redeem-token');
   if (!container) {
-    releaseRedeemPreviewPending(spinner);
+    initialDropStateReveal.markReady('redeem-metadata');
     console.warn("Event cart redeem token container not found.");
     return;
   }
@@ -1890,23 +1914,32 @@ async function updateEventCartRedeemToken() {
       metadata = resolveRedeemMetadata(row, cfg, key);
     }
 
-    const [image, supply] = await Promise.all([
-      resolveRedeemImage(row),
-      resolveInitialRedeemSupply()
-    ]);
+    // Start independent work before the visual commit; do not serialize it.
+    const imagePromise = resolveRedeemImage(row);
+    const supplyPromise = resolveInitialRedeemSupply();
 
-    commitInitialRedeemPreview(container, imgWrap, spinner, {
-      metadata,
-      image,
-      supply
-    });
+    commitInitialRedeemMetadata(container, metadata);
+
+    await Promise.all([
+      imagePromise.then(image => {
+        commitInitialRedeemImage(imgWrap, spinner, image);
+      }),
+      supplyPromise.then(supply => {
+        commitInitialRedeemSupply(container, supply);
+      })
+    ]);
   } catch (error) {
     console.error('Error initializing redeem preview:', error);
-    commitInitialRedeemPreview(container, imgWrap, spinner, {
-      metadata: getRedeemMetadataUnavailable(),
-      image: { status: 'unavailable', element: null },
-      supply: { available: false, value: null, text: '[UNAVAILABLE]' }
-    });
+    commitInitialRedeemMetadata(container, getRedeemMetadataUnavailable());
+    commitInitialRedeemImage(
+      imgWrap,
+      spinner,
+      { status: 'unavailable', element: null }
+    );
+    commitInitialRedeemSupply(
+      container,
+      { available: false, value: null, text: '[UNAVAILABLE]' }
+    );
   }
 }
 
@@ -2058,8 +2091,7 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus) {
           if (account) {
             const nfts = await fetchNFTs(account.address);
             if (AppState.activeAccount?.address !== account.address) return;
-            updateTokensWithWalletData(nfts);
-            updateOwnedTokenCounts(nfts);
+            await updateTokensWithWalletData(nfts);
           }
         }
         return;
@@ -2505,21 +2537,23 @@ async function refreshDropsWallet(account, generation, nftsPromise) {
   try {
     const nfts = await (nftsPromise || fetchNFTs(account.address));
 
-    if (
-      generation !== walletRefreshGeneration ||
-      synchronizedWalletAddress !== account.address
-    ) {
+    if (!isCurrentWalletProjection({
+      generation,
+      address: account.address,
+      currentGeneration: walletRefreshGeneration,
+      currentAddress: synchronizedWalletAddress
+    })) {
       return;
     }
 
     await updateTokensWithWalletData(nfts);
-    updateEventCartBurnToken();
-    updateOwnedTokenCounts(nfts);
   } catch (error) {
-    if (
-      generation === walletRefreshGeneration &&
-      synchronizedWalletAddress === account.address
-    ) {
+    if (isCurrentWalletProjection({
+      generation,
+      address: account.address,
+      currentGeneration: walletRefreshGeneration,
+      currentAddress: synchronizedWalletAddress
+    })) {
       console.error('Error refreshing Drops wallet state:', error);
       renderConnectedWalletTokenFailureState();
       updateEventCartBurnToken();
@@ -2529,6 +2563,8 @@ async function refreshDropsWallet(account, generation, nftsPromise) {
 
 function synchronizeDropsWalletState(walletState) {
   if (!walletState || walletState.status === 'pending') {
+    synchronizedWalletAddress = undefined;
+    walletRefreshGeneration++;
     renderWalletTokenLoadingState();
     return;
   }
@@ -2585,7 +2621,8 @@ async function bootDropsPage() {
   //     - Shows either .drops-ui-div or .no-drops-scheduled-div
   //     - Returns early if no drop is scheduled
   if (!applyDropScheduledGate()) {
-    releaseDropParamsPending();
+    initialDropStateReveal.markReady('parameters');
+    initialDropStateReveal.markReady('redeem-metadata');
     return;
   }
 

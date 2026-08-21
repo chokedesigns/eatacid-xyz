@@ -23,6 +23,7 @@
     "test:hen-identity": "node shared/hen-identity.test.mjs",
     "test:home-first-paint": "node loaders/loader-architecture.test.mjs",
     "test:loader-architecture": "node loaders/loader-architecture.test.mjs",
+    "test:drops-reveal": "node drops/js/reveal-coordinator.test.mjs",
     "test:pages-loader-artifacts": "node scripts/verify-pages-loader-artifacts.test.mjs",
     "verify:home-first-paint-build": "node scripts/verify-home-first-paint-build.mjs",
     "verify:drops-first-paint-build": "node scripts/verify-drops-first-paint-build.mjs",
