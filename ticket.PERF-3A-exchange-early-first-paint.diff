@@ -1,0 +1,361 @@
+﻿diff --git a/docs/performance/PERF-2B.staging-loader-isolation.md b/docs/performance/PERF-2B.staging-loader-isolation.md
+index 5f34b1c..7c6767d 100644
+--- a/docs/performance/PERF-2B.staging-loader-isolation.md
++++ b/docs/performance/PERF-2B.staging-loader-isolation.md
+@@ -19,7 +19,8 @@ main:loaders/root/{surface}.js
+ ```
+ 
+ Home's environment loader independently starts `./first-paint.js` and
+-`./home.js`. Drops and Exchange environment loaders each start their matching
++`./home.js`. Exchange follows the same sibling-import pattern for
++`./first-paint.js` and `./exchange.js`, while Drops starts only its matching
+ application bundle. Page bootstrap, first-paint sequencing, Beacon setup, and
+ feature behavior stay below the stable router boundary.
+ 
+diff --git a/docs/performance/PERF-3A.exchange-early-first-paint.md b/docs/performance/PERF-3A.exchange-early-first-paint.md
+new file mode 100644
+index 0000000..26cc4d8
+--- /dev/null
++++ b/docs/performance/PERF-3A.exchange-early-first-paint.md
+@@ -0,0 +1,60 @@
++# PERF-3A — Exchange early first paint
++
++Date: 2026-08-21
++
++## Deployment and runtime contract
++
++Exchange retains the PERF-2B stable-router boundary and now starts the existing
++same-environment first-paint artifact independently from the full application:
++
++```text
++/exchange.js
++-> /prod|staging/exchange-loader.js
++   |-> ./first-paint.js
++   `-> ./exchange.js
++```
++
++The two dynamic imports begin synchronously from the environment-loader call and
++have isolated synchronous and asynchronous failure handling. Neither import is
++awaited before the other starts. The loader-chain harness already copies and
++serves environment loaders generically, so it exercises this graph without an
++Exchange-specific harness path. The direct-bundle sanity path remains available
++for application-bundle diagnosis.
++
++The early entry reuses `webflow/first-paint.js` and the existing
++`shared/public-first-paint.js` coordinator. The full Exchange application keeps
++its fallback import, and `window.__EA_PUBLIC_FIRST_PAINT__` prevents duplicate
++coordinator creation regardless of which bundle evaluates first. No separate
++Exchange first-paint state machine or build entry was added.
++
++The outer/static Exchange shell may reveal before wallet resolution. Wallet and
++account presentation remains pending until Beacon resolves, and connected NFT
++ownership, row visibility, and balance-derived dropdown capacities remain
++pending until the existing TzKT/NFT synchronization resolves. The optimization
++does not change wallet, NFT, cart, dropdown, transaction, CMS, observer, or
++contract authority. Exchange application boot and `INIT_DELAY_MS = 500` remain
++unchanged.
++
++## Manual staging validation
++
++After the normal branch-to-staging merge, push, and Pages deployment, use the
++staging hostname and confirm the following live checks. Local build validation
++does not establish an LCP improvement.
++
++1. In Network, confirm `/exchange.js` requests
++   `/staging/exchange-loader.js`, which starts both
++   `/staging/first-paint.js` and `/staging/exchange.js` as sibling requests.
++2. Capture one clean no-throttling Performance navigation. Record the first
++   visible/static shell, selected LCP element, application-bundle timing, layout
++   shifts, and any blank state.
++3. Capture one clean Slow 4G navigation. Confirm architecturally that the
++   truthful static/pending shell can become visible without waiting for the full
++   Exchange application bundle or wallet/NFT completion; no exact timing target
++   is required.
++4. Test disconnected startup through `pending -> Beacon unconnected -> CONNECT`
++   and connected startup through `pending -> address -> NFT ownership loading ->
++   owned rows/dropdown capacities`.
++5. Confirm there is no false connected/disconnected state, duplicate
++   initialization or `MutationObserver`, cart/dropdown regression, generation
++   guard regression, or unexpected console error. A transaction is unnecessary
++   unless another result is suspicious.
+diff --git a/loaders/environment/exchange.js b/loaders/environment/exchange.js
+index 44fc570..4b41cbc 100644
+--- a/loaders/environment/exchange.js
++++ b/loaders/environment/exchange.js
+@@ -2,28 +2,40 @@ function importBundle(specifier) {
+   return import(specifier);
+ }
+ 
+-function startExchangeBundle({
+-  importModule = importBundle,
+-  logger = console
+-} = {}) {
+-  const specifier = "./exchange.js";
+-  let bundleLoad;
+-
++function startBundleImport(importModule, specifier, label, logger) {
+   try {
+-    bundleLoad = Promise.resolve(importModule(specifier)).catch((err) => {
+-      logger.error("[EA] exchange bundle load failed:", specifier, err);
++    return Promise.resolve(importModule(specifier)).catch((err) => {
++      logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
+       return null;
+     });
+   } catch (err) {
+-    logger.error("[EA] exchange bundle load failed:", specifier, err);
+-    bundleLoad = Promise.resolve(null);
++    logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
++    return Promise.resolve(null);
+   }
++}
++
++function startExchangeBundles({
++  importModule = importBundle,
++  logger = console
++} = {}) {
++  const firstPaintLoad = startBundleImport(
++    importModule,
++    "./first-paint.js",
++    "first-paint",
++    logger
++  );
++  const exchangeLoad = startBundleImport(
++    importModule,
++    "./exchange.js",
++    "exchange",
++    logger
++  );
+ 
+-  return { bundleLoad };
++  return { firstPaintLoad, exchangeLoad };
+ }
+ 
+ if (typeof window !== "undefined") {
+-  startExchangeBundle();
++  startExchangeBundles();
+ }
+ 
+-export { startExchangeBundle };
++export { startExchangeBundles };
+diff --git a/loaders/loader-architecture.test.mjs b/loaders/loader-architecture.test.mjs
+index 4b1f7ed..b2fe6c4 100644
+--- a/loaders/loader-architecture.test.mjs
++++ b/loaders/loader-architecture.test.mjs
+@@ -14,7 +14,7 @@ import {
+ } from './root/exchange.js';
+ import { startHomeBundles } from './environment/home.js';
+ import { startDropsBundle } from './environment/drops.js';
+-import { startExchangeBundle } from './environment/exchange.js';
++import { startExchangeBundles } from './environment/exchange.js';
+ 
+ function deferred() {
+   let resolve;
+@@ -209,9 +209,105 @@ for (const failingBundle of ['first-paint', 'home']) {
+   assert.equal(logger.errors.length, 1);
+ }
+ 
++for (const settleFirst of ['first-paint', 'exchange']) {
++  const firstPaint = deferred();
++  const exchange = deferred();
++  const calls = [];
++  const logger = createLogger();
++  const loads = startExchangeBundles({
++    logger,
++    importModule(specifier) {
++      calls.push(specifier);
++      return specifier === './first-paint.js'
++        ? firstPaint.promise
++        : exchange.promise;
++    }
++  });
++
++  assert.deepEqual(calls, ['./first-paint.js', './exchange.js']);
++
++  const first = settleFirst === 'first-paint' ? firstPaint : exchange;
++  const second = settleFirst === 'first-paint' ? exchange : firstPaint;
++  const firstLoad = settleFirst === 'first-paint'
++    ? loads.firstPaintLoad
++    : loads.exchangeLoad;
++  const secondLoad = settleFirst === 'first-paint'
++    ? loads.exchangeLoad
++    : loads.firstPaintLoad;
++
++  first.resolve(`${settleFirst}-ready-first`);
++  assert.equal(await firstLoad, `${settleFirst}-ready-first`);
++
++  let secondSettled = false;
++  void secondLoad.then(() => {
++    secondSettled = true;
++  });
++  await Promise.resolve();
++  assert.equal(secondSettled, false);
++
++  second.resolve('second-ready');
++  assert.equal(await secondLoad, 'second-ready');
++  assert.deepEqual(logger.errors, []);
++}
++
++for (const failingBundle of ['first-paint', 'exchange']) {
++  const firstPaint = deferred();
++  const exchange = deferred();
++  const logger = createLogger();
++  const loads = startExchangeBundles({
++    logger,
++    importModule(specifier) {
++      return specifier === './first-paint.js'
++        ? firstPaint.promise
++        : exchange.promise;
++    }
++  });
++
++  const failed = failingBundle === 'first-paint' ? firstPaint : exchange;
++  const surviving = failingBundle === 'first-paint' ? exchange : firstPaint;
++  const failedLoad = failingBundle === 'first-paint'
++    ? loads.firstPaintLoad
++    : loads.exchangeLoad;
++  const survivingLoad = failingBundle === 'first-paint'
++    ? loads.exchangeLoad
++    : loads.firstPaintLoad;
++
++  failed.reject(new Error(`${failingBundle} unavailable`));
++  assert.equal(await failedLoad, null);
++  surviving.resolve('survivor-ready');
++  assert.equal(await survivingLoad, 'survivor-ready');
++  assert.equal(logger.errors.length, 1);
++  assert.match(logger.errors[0][0], new RegExp(`${failingBundle} bundle load failed`));
++}
++
++for (const failingBundle of ['first-paint', 'exchange']) {
++  const calls = [];
++  const logger = createLogger();
++  const loads = startExchangeBundles({
++    logger,
++    importModule(specifier) {
++      calls.push(specifier);
++      if (specifier === `./${failingBundle}.js`) {
++        throw new Error(`synchronous ${failingBundle} failure`);
++      }
++      return Promise.resolve('survivor-ready');
++    }
++  });
++
++  assert.deepEqual(calls, ['./first-paint.js', './exchange.js']);
++  const failedLoad = failingBundle === 'first-paint'
++    ? loads.firstPaintLoad
++    : loads.exchangeLoad;
++  const survivingLoad = failingBundle === 'first-paint'
++    ? loads.exchangeLoad
++    : loads.firstPaintLoad;
++  assert.equal(await failedLoad, null);
++  assert.equal(await survivingLoad, 'survivor-ready');
++  assert.equal(logger.errors.length, 1);
++}
++
+ for (const { name, startBundle } of [
+-  { name: 'drops', startBundle: startDropsBundle },
+-  { name: 'exchange', startBundle: startExchangeBundle }
++  { name: 'drops', startBundle: startDropsBundle }
+ ]) {
+   const calls = [];
+   const logger = createLogger();
+@@ -340,4 +436,4 @@ for (const { name, startBundle } of [
+   }
+ }
+ 
+-console.log('Loader architecture and Home first-paint tests passed.');
++console.log('Loader architecture and Home/Exchange first-paint tests passed.');
+diff --git a/scripts/verify-pages-loader-artifacts.mjs b/scripts/verify-pages-loader-artifacts.mjs
+index 03fe1ca..271d405 100644
+--- a/scripts/verify-pages-loader-artifacts.mjs
++++ b/scripts/verify-pages-loader-artifacts.mjs
+@@ -7,6 +7,7 @@ const ENVIRONMENTS = ['prod', 'staging'];
+ const PROD_HOST_DECLARATION =
+   'new Set(["eatacid.xyz", "www.eatacid.xyz"])';
+ const FIRST_PAINT_MARKER = '__EA_PUBLIC_FIRST_PAINT__';
++const FIRST_PAINT_SURFACES = new Set(['home', 'exchange']);
+ 
+ function fail(message) {
+   throw new Error(`[pages-loaders] ${message}`);
+@@ -82,7 +83,7 @@ function verifyRootRouterText(contents, surface, description) {
+   requireReference(text, `\`${'${base}'}/${surface}-loader.js\``, description);
+ 
+   if (text.includes('first-paint.js')) {
+-    fail(`${description} must not own Home first-paint sequencing`);
++    fail(`${description} must not own early first-paint sequencing`);
+   }
+   if (text.includes(`\`${'${base}'}/${surface}.js\``)) {
+     fail(`${description} must import the environment loader, not the application bundle`);
+@@ -102,12 +103,10 @@ function verifyLegacyRootText(contents, surface, description) {
+ function verifyEnvironmentLoaderText(contents, surface, description) {
+   const text = contents.toString('utf8');
+ 
+-  if (surface === 'home') {
++  if (FIRST_PAINT_SURFACES.has(surface)) {
+     requireReference(text, '"./first-paint.js"', description);
+-    requireReference(text, '"./home.js"', description);
+-  } else {
+-    requireReference(text, `"./${surface}.js"`, description);
+   }
++  requireReference(text, `"./${surface}.js"`, description);
+ 
+   requireReference(text, 'bundle load failed:', description);
+ }
+@@ -155,7 +154,7 @@ async function verifyApplicationArtifacts(
+     const firstPaint = await requireEqualFiles(
+       firstPaintPath,
+       firstPaintSourcePath,
+-      `${environment} first-paint artifact referenced by Home environment loader`,
++      `${environment} first-paint artifact referenced by Home/Exchange environment loaders`,
+       `${environment === 'prod' ? 'main' : 'staging'} first-paint build output`
+     );
+     if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
+@@ -391,7 +390,7 @@ async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
+   const firstPaint = await requireEqualFiles(
+     firstPaintPath,
+     firstPaintSourcePath,
+-    'staging first-paint artifact referenced by Home environment loader',
++    'staging first-paint artifact referenced by Home/Exchange environment loaders',
+     'staging first-paint build output'
+   );
+   if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
+diff --git a/scripts/verify-pages-loader-artifacts.test.mjs b/scripts/verify-pages-loader-artifacts.test.mjs
+index 023d73d..bef2554 100644
+--- a/scripts/verify-pages-loader-artifacts.test.mjs
++++ b/scripts/verify-pages-loader-artifacts.test.mjs
+@@ -228,6 +228,36 @@ await withFixture('stable-cutover', async fixture => {
+   );
+ });
+ 
++for (const environment of ['prod', 'staging']) {
++  await withFixture('stable-cutover', async fixture => {
++    const owner = environment === 'prod' ? fixture.main : fixture.staging;
++    const invalidExchangeLoader = ENVIRONMENT_SOURCES.exchange.replace(
++      '"./first-paint.js"',
++      '"./early-shell.js"'
++    );
++    await Promise.all([
++      writeFile(
++        join(owner, 'loaders', 'environment', 'exchange.js'),
++        invalidExchangeLoader
++      ),
++      writeFile(
++        join(fixture.artifact, environment, 'exchange-loader.js'),
++        invalidExchangeLoader
++      )
++    ]);
++    await assert.rejects(
++      verifyPagesLoaderArtifacts(
++        fixture.artifact,
++        fixture.main,
++        fixture.staging,
++        quiet
++      ),
++      new RegExp(`${environment} exchange environment loader is missing ` +
++        'required reference: "\\.\\/first-paint\\.js"')
++    );
++  });
++}
++
+ await withFixture('stable-cutover', async fixture => {
+   await writeFile(
+     join(fixture.artifact, 'prod', 'first-paint.js'),

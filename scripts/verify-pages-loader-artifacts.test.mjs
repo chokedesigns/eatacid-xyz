@@ -228,6 +228,36 @@ await withFixture('stable-cutover', async fixture => {
   );
 });
 
+for (const environment of ['prod', 'staging']) {
+  await withFixture('stable-cutover', async fixture => {
+    const owner = environment === 'prod' ? fixture.main : fixture.staging;
+    const invalidExchangeLoader = ENVIRONMENT_SOURCES.exchange.replace(
+      '"./first-paint.js"',
+      '"./early-shell.js"'
+    );
+    await Promise.all([
+      writeFile(
+        join(owner, 'loaders', 'environment', 'exchange.js'),
+        invalidExchangeLoader
+      ),
+      writeFile(
+        join(fixture.artifact, environment, 'exchange-loader.js'),
+        invalidExchangeLoader
+      )
+    ]);
+    await assert.rejects(
+      verifyPagesLoaderArtifacts(
+        fixture.artifact,
+        fixture.main,
+        fixture.staging,
+        quiet
+      ),
+      new RegExp(`${environment} exchange environment loader is missing ` +
+        'required reference: "\\.\\/first-paint\\.js"')
+    );
+  });
+}
+
 await withFixture('stable-cutover', async fixture => {
   await writeFile(
     join(fixture.artifact, 'prod', 'first-paint.js'),

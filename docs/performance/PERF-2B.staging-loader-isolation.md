@@ -19,7 +19,8 @@ main:loaders/root/{surface}.js
 ```
 
 Home's environment loader independently starts `./first-paint.js` and
-`./home.js`. Drops and Exchange environment loaders each start their matching
+`./home.js`. Exchange follows the same sibling-import pattern for
+`./first-paint.js` and `./exchange.js`, while Drops starts only its matching
 application bundle. Page bootstrap, first-paint sequencing, Beacon setup, and
 feature behavior stay below the stable router boundary.
 

@@ -2,28 +2,40 @@ function importBundle(specifier) {
   return import(specifier);
 }
 
-function startExchangeBundle({
-  importModule = importBundle,
-  logger = console
-} = {}) {
-  const specifier = "./exchange.js";
-  let bundleLoad;
-
+function startBundleImport(importModule, specifier, label, logger) {
   try {
-    bundleLoad = Promise.resolve(importModule(specifier)).catch((err) => {
-      logger.error("[EA] exchange bundle load failed:", specifier, err);
+    return Promise.resolve(importModule(specifier)).catch((err) => {
+      logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
       return null;
     });
   } catch (err) {
-    logger.error("[EA] exchange bundle load failed:", specifier, err);
-    bundleLoad = Promise.resolve(null);
+    logger.error(`[EA] ${label} bundle load failed:`, specifier, err);
+    return Promise.resolve(null);
   }
+}
 
-  return { bundleLoad };
+function startExchangeBundles({
+  importModule = importBundle,
+  logger = console
+} = {}) {
+  const firstPaintLoad = startBundleImport(
+    importModule,
+    "./first-paint.js",
+    "first-paint",
+    logger
+  );
+  const exchangeLoad = startBundleImport(
+    importModule,
+    "./exchange.js",
+    "exchange",
+    logger
+  );
+
+  return { firstPaintLoad, exchangeLoad };
 }
 
 if (typeof window !== "undefined") {
-  startExchangeBundle();
+  startExchangeBundles();
 }
 
-export { startExchangeBundle };
+export { startExchangeBundles };

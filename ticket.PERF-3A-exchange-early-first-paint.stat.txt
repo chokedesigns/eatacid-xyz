@@ -1,0 +1,7 @@
+﻿ .../PERF-2B.staging-loader-isolation.md            |   3 +-
+ .../PERF-3A.exchange-early-first-paint.md          |  60 ++++++++++++
+ loaders/environment/exchange.js                    |  40 +++++---
+ loaders/loader-architecture.test.mjs               | 104 ++++++++++++++++++++-
+ scripts/verify-pages-loader-artifacts.mjs          |  13 ++-
+ scripts/verify-pages-loader-artifacts.test.mjs     |  30 ++++++
+ 6 files changed, 224 insertions(+), 26 deletions(-)

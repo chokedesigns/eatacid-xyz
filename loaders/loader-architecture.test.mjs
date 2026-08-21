@@ -14,7 +14,7 @@ import {
 } from './root/exchange.js';
 import { startHomeBundles } from './environment/home.js';
 import { startDropsBundle } from './environment/drops.js';
-import { startExchangeBundle } from './environment/exchange.js';
+import { startExchangeBundles } from './environment/exchange.js';
 
 function deferred() {
   let resolve;
@@ -209,9 +209,105 @@ for (const failingBundle of ['first-paint', 'home']) {
   assert.equal(logger.errors.length, 1);
 }
 
+for (const settleFirst of ['first-paint', 'exchange']) {
+  const firstPaint = deferred();
+  const exchange = deferred();
+  const calls = [];
+  const logger = createLogger();
+  const loads = startExchangeBundles({
+    logger,
+    importModule(specifier) {
+      calls.push(specifier);
+      return specifier === './first-paint.js'
+        ? firstPaint.promise
+        : exchange.promise;
+    }
+  });
+
+  assert.deepEqual(calls, ['./first-paint.js', './exchange.js']);
+
+  const first = settleFirst === 'first-paint' ? firstPaint : exchange;
+  const second = settleFirst === 'first-paint' ? exchange : firstPaint;
+  const firstLoad = settleFirst === 'first-paint'
+    ? loads.firstPaintLoad
+    : loads.exchangeLoad;
+  const secondLoad = settleFirst === 'first-paint'
+    ? loads.exchangeLoad
+    : loads.firstPaintLoad;
+
+  first.resolve(`${settleFirst}-ready-first`);
+  assert.equal(await firstLoad, `${settleFirst}-ready-first`);
+
+  let secondSettled = false;
+  void secondLoad.then(() => {
+    secondSettled = true;
+  });
+  await Promise.resolve();
+  assert.equal(secondSettled, false);
+
+  second.resolve('second-ready');
+  assert.equal(await secondLoad, 'second-ready');
+  assert.deepEqual(logger.errors, []);
+}
+
+for (const failingBundle of ['first-paint', 'exchange']) {
+  const firstPaint = deferred();
+  const exchange = deferred();
+  const logger = createLogger();
+  const loads = startExchangeBundles({
+    logger,
+    importModule(specifier) {
+      return specifier === './first-paint.js'
+        ? firstPaint.promise
+        : exchange.promise;
+    }
+  });
+
+  const failed = failingBundle === 'first-paint' ? firstPaint : exchange;
+  const surviving = failingBundle === 'first-paint' ? exchange : firstPaint;
+  const failedLoad = failingBundle === 'first-paint'
+    ? loads.firstPaintLoad
+    : loads.exchangeLoad;
+  const survivingLoad = failingBundle === 'first-paint'
+    ? loads.exchangeLoad
+    : loads.firstPaintLoad;
+
+  failed.reject(new Error(`${failingBundle} unavailable`));
+  assert.equal(await failedLoad, null);
+  surviving.resolve('survivor-ready');
+  assert.equal(await survivingLoad, 'survivor-ready');
+  assert.equal(logger.errors.length, 1);
+  assert.match(logger.errors[0][0], new RegExp(`${failingBundle} bundle load failed`));
+}
+
+for (const failingBundle of ['first-paint', 'exchange']) {
+  const calls = [];
+  const logger = createLogger();
+  const loads = startExchangeBundles({
+    logger,
+    importModule(specifier) {
+      calls.push(specifier);
+      if (specifier === `./${failingBundle}.js`) {
+        throw new Error(`synchronous ${failingBundle} failure`);
+      }
+      return Promise.resolve('survivor-ready');
+    }
+  });
+
+  assert.deepEqual(calls, ['./first-paint.js', './exchange.js']);
+  const failedLoad = failingBundle === 'first-paint'
+    ? loads.firstPaintLoad
+    : loads.exchangeLoad;
+  const survivingLoad = failingBundle === 'first-paint'
+    ? loads.exchangeLoad
+    : loads.firstPaintLoad;
+  assert.equal(await failedLoad, null);
+  assert.equal(await survivingLoad, 'survivor-ready');
+  assert.equal(logger.errors.length, 1);
+}
+
 for (const { name, startBundle } of [
-  { name: 'drops', startBundle: startDropsBundle },
-  { name: 'exchange', startBundle: startExchangeBundle }
+  { name: 'drops', startBundle: startDropsBundle }
 ]) {
   const calls = [];
   const logger = createLogger();
@@ -340,4 +436,4 @@ for (const { name, startBundle } of [
   }
 }
 
-console.log('Loader architecture and Home first-paint tests passed.');
+console.log('Loader architecture and Home/Exchange first-paint tests passed.');

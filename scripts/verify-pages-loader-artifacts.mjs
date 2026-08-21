@@ -7,6 +7,7 @@ const ENVIRONMENTS = ['prod', 'staging'];
 const PROD_HOST_DECLARATION =
   'new Set(["eatacid.xyz", "www.eatacid.xyz"])';
 const FIRST_PAINT_MARKER = '__EA_PUBLIC_FIRST_PAINT__';
+const FIRST_PAINT_SURFACES = new Set(['home', 'exchange']);
 
 function fail(message) {
   throw new Error(`[pages-loaders] ${message}`);
@@ -82,7 +83,7 @@ function verifyRootRouterText(contents, surface, description) {
   requireReference(text, `\`${'${base}'}/${surface}-loader.js\``, description);
 
   if (text.includes('first-paint.js')) {
-    fail(`${description} must not own Home first-paint sequencing`);
+    fail(`${description} must not own early first-paint sequencing`);
   }
   if (text.includes(`\`${'${base}'}/${surface}.js\``)) {
     fail(`${description} must import the environment loader, not the application bundle`);
@@ -102,12 +103,10 @@ function verifyLegacyRootText(contents, surface, description) {
 function verifyEnvironmentLoaderText(contents, surface, description) {
   const text = contents.toString('utf8');
 
-  if (surface === 'home') {
+  if (FIRST_PAINT_SURFACES.has(surface)) {
     requireReference(text, '"./first-paint.js"', description);
-    requireReference(text, '"./home.js"', description);
-  } else {
-    requireReference(text, `"./${surface}.js"`, description);
   }
+  requireReference(text, `"./${surface}.js"`, description);
 
   requireReference(text, 'bundle load failed:', description);
 }
@@ -155,7 +154,7 @@ async function verifyApplicationArtifacts(
     const firstPaint = await requireEqualFiles(
       firstPaintPath,
       firstPaintSourcePath,
-      `${environment} first-paint artifact referenced by Home environment loader`,
+      `${environment} first-paint artifact referenced by Home/Exchange environment loaders`,
       `${environment === 'prod' ? 'main' : 'staging'} first-paint build output`
     );
     if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
@@ -391,7 +390,7 @@ async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
   const firstPaint = await requireEqualFiles(
     firstPaintPath,
     firstPaintSourcePath,
-    'staging first-paint artifact referenced by Home environment loader',
+    'staging first-paint artifact referenced by Home/Exchange environment loaders',
     'staging first-paint build output'
   );
   if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
