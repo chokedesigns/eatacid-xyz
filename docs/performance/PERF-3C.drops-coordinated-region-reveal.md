@@ -33,9 +33,9 @@ run:
 - `.drops-preview-pending` is on `.events-cart-token-div-main`.
 - `.drops-wallet-tokens-pending` is on `.events-wallet-ui-div`.
 
-`webflow/drops-first-paint.js` now applies those masks to authoritative
-descendants rather than hiding each complete wrapper. `events.js` removes both
-Phase 2 classes in `releaseInitialDropStatePending()`. Phase 3 uses
+`webflow/drops-first-paint.js` now applies those masks to authoritative text
+rather than hiding each complete wrapper or details pill. `events.js` removes
+both Phase 2 classes in `releaseInitialDropStatePending()`. Phase 3 uses
 `setWalletTokenRegionPending(true|false)`, so account changes and NFT refreshes
 can add the wallet class again before re-committing.
 
@@ -46,10 +46,12 @@ can add the wallet class again before re-committing.
 The early shell reveals shared chrome, the Drops marquee/header, section and
 card frames, static DATE/TIME/BURN/EXCLUSIONS/REDEEM labels, the Burn Token and
 Redeem Token card structure, arrows/flame, the table frame/header, the loading
-substates, and non-authoritative structural controls. The parameter values,
-redeem metadata/supply value, wallet heading/state, CMS rows, owned counts, and
-wallet burn controls remain visibility-masked. `visibility` retains the
-Webflow-owned layout boxes; the page is not globally re-hidden.
+substates, and non-authoritative structural controls. Details value elements
+keep their Webflow backgrounds, dimensions, and flex/grid placement while only
+their text color is transparent. Redeem metadata/supply text, wallet
+heading/state, CMS rows, owned counts, and wallet burn controls remain
+visibility-masked. No Phase 2 element is inserted to complete the details
+geometry, and the page is not globally re-hidden.
 
 As documented in PERF-3B, the checked-in `GHOSTNET DROP //` text is inside a
 Webflow element that the referenced stylesheet keeps at `display: none`; no
@@ -60,14 +62,18 @@ stale title is exposed by the early shell.
 One initial barrier requires exactly:
 
 1. local `dropParams` presentation (date, time, burn mechanics, exclusions,
-   redeem mechanics) plus the synchronous initial countdown state; and
-2. locally authoritative redeem metadata resolved from the configured token
-   and stamped CMS lookup.
+   and redeem mechanics);
+2. the synchronous initial countdown/drop-state seed;
+3. locally authoritative redeem metadata resolved from the configured token
+   and stamped CMS lookup; and
+4. initial redeem supply settled to either a numeric authoritative value or the
+   existing explicit `[UNAVAILABLE]` fallback.
 
-When both are staged, the parameter and preview masks are removed in the same
-commit. The region can truthfully show pre-drop countdown, `STANDBY…`, or a
-configuration fallback immediately. It does not wait for the first pause-chain
-response.
+When all four are staged, the parameter and preview masks are removed in the
+same commit. The first visible textual state therefore includes the initial
+supply and never exposes a normal `[PENDING]` step. The region can truthfully
+show pre-drop countdown, `STANDBY…`, or a configuration fallback without
+waiting for the first pause-chain response.
 
 Dependency classification:
 
@@ -77,15 +83,18 @@ Dependency classification:
 | local clock/countdown | Yes, synchronous seed only | Pre-drop countdown or truthful `STANDBY…` is staged before reveal. |
 | pause/LIVE chain state | No | Past drops reveal `STANDBY…`; polling may later update to LIVE or status unavailable. |
 | redeem metadata | Yes | Local title, collection, and editions are staged before reveal; invalid metadata uses `[UNAVAILABLE]`. |
-| redeem supply | No | The reserved supply field shows `[PENDING]`, then publishes the independently resolved value or `[UNAVAILABLE]`. |
+| redeem supply | Yes, settled result | The final numeric value or `[UNAVAILABLE]` is staged before reveal; failure cannot hold the phase indefinitely. |
 | redeem image | No | The existing image box and spinner reserve geometry; the loaded image or fixed-size failure fallback replaces it. |
 | sold-out state | No separate dependency | It follows the normal LIVE + authoritative supply state after supply publication. |
 
-Image and supply promises start before the metadata visual commit and settle
-independently. A slow or failed image cannot delay supply, and a slow or failed
-supply cannot delay the image or local metadata. The initial barrier is
-idempotent; later countdown, pause, supply, sold-out, and image updates use the
-normal render paths and are not frozen by the first reveal.
+Image and supply promises start together before the metadata visual commit and
+settle independently. Phase 2 waits for supply but not image: a slow or failed
+image leaves the fixed image box and spinner/fallback in place without delaying
+the coordinated text reveal. Supply failure resolves to `[UNAVAILABLE]` and
+releases the barrier rather than waiting forever. Pause/LIVE authority and
+wallet/NFT state are also non-blocking. The initial barrier is idempotent;
+later countdown, pause, supply, sold-out, and image updates use the normal
+render paths and are not frozen by the first reveal.
 
 ### Phase 3 — wallet/NFT state
 
@@ -134,9 +143,11 @@ After the PERF-3C branch reaches staging and Pages through the normal workflow:
 1. With no throttling, confirm Phase 1 is effectively immediate, Phase 2
    commits as one region, Phase 3 commits as one wallet projection, and no
    obvious visual regression appears.
-2. Under Slow 4G, capture a filmstrip and confirm the sequence is stable shell,
-   coordinated drop/redeem metadata, then coordinated wallet/NFT projection.
-   Record actual LCP and CLS; do not impose a synthetic target.
+2. Under Slow 4G, capture a filmstrip and confirm the sequence is full stable
+   geometry with empty details pills, coordinated drop/redeem metadata plus
+   final initial supply, then coordinated wallet/NFT projection. Confirm no
+   `[PENDING]` supply flash or details-pill insertion. Record actual LCP and
+   CLS; do not impose a synthetic target.
 3. Test disconnected and connected startup, account change, disconnect, NFT
    refresh, pre-drop countdown, past-drop standby, pause-to-LIVE, supply update,
    sold out, and redeem-image failure.

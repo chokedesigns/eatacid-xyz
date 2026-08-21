@@ -15,7 +15,11 @@ body.first-paint-main .drops-params-pending :is(
   .drop-details-redeem-amount-text,
   .drop-details-redeem-token-title-text,
   .drop-details-redeem-collection-text
-),
+) {
+  color: transparent !important;
+  text-shadow: none !important;
+}
+
 body.first-paint-main .drops-preview-pending .event-cart-redeem-token-div-main :is(
   .collection-item-events-title-text,
   .collection-item-events-editions-text,

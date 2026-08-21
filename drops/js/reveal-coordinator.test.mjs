@@ -38,31 +38,74 @@ function createFakeElement(initialClasses = []) {
   };
 }
 
-// Phase 2 commits exactly once after its minimum local dependencies are ready.
+const PHASE_2_REQUIREMENTS = [
+  'drop-parameters',
+  'countdown-seeded',
+  'redeem-metadata',
+  'initial-supply'
+];
+
+// Supply success releases Phase 2 without waiting for image or pause authority.
 {
   let commits = 0;
   const barrier = createInitialRevealBarrier(
-    ['parameters', 'redeem-metadata'],
+    PHASE_2_REQUIREMENTS,
     () => { commits++; }
   );
   const slowImage = deferred();
   const slowSupply = deferred();
   const slowPause = deferred();
+  let imageSettled = false;
+  let pauseSettled = false;
+  void slowImage.promise.then(() => { imageSettled = true; });
+  void slowPause.promise.then(() => { pauseSettled = true; });
+  const supplyReady = slowSupply.promise.then(() => {
+    barrier.markReady('initial-supply');
+  });
 
   assert.equal(barrier.committed, false);
-  assert.equal(barrier.markReady('parameters'), false);
+  assert.equal(barrier.markReady('drop-parameters'), false);
+  assert.equal(barrier.markReady('countdown-seeded'), false);
+  assert.equal(barrier.markReady('redeem-metadata'), false);
   assert.equal(commits, 0);
-  assert.equal(barrier.markReady('redeem-metadata'), true);
+
+  slowSupply.resolve('supply');
+  await supplyReady;
   assert.equal(barrier.committed, true);
   assert.equal(commits, 1);
+  assert.equal(imageSettled, false);
+  assert.equal(pauseSettled, false);
 
   slowImage.resolve('image');
-  slowSupply.resolve('supply');
   slowPause.resolve('pause');
-  await Promise.all([slowImage.promise, slowSupply.promise, slowPause.promise]);
+  await Promise.all([slowImage.promise, slowPause.promise]);
 
-  assert.equal(barrier.markReady('parameters'), false);
-  assert.equal(barrier.markReady('redeem-metadata'), false);
+  assert.equal(barrier.markReady('initial-supply'), false);
+  assert.equal(commits, 1);
+
+  // Later supply updates are ordinary renders; the initial barrier is not a lock.
+  let renderedSupply = 10;
+  renderedSupply = 9;
+  assert.equal(renderedSupply, 9);
+}
+
+// A renderable supply failure fallback also releases Phase 2 exactly once.
+{
+  let commits = 0;
+  const barrier = createInitialRevealBarrier(
+    PHASE_2_REQUIREMENTS,
+    () => { commits++; }
+  );
+
+  barrier.markReady('drop-parameters');
+  barrier.markReady('countdown-seeded');
+  barrier.markReady('redeem-metadata');
+  assert.equal(commits, 0);
+
+  await Promise.reject(new Error('supply unavailable')).catch(() => {
+    barrier.markReady('initial-supply');
+  });
+  assert.equal(barrier.committed, true);
   assert.equal(commits, 1);
 }
 
@@ -113,6 +156,13 @@ assert.match(earlyShellSource, /import '..\/shared\/public-first-paint\.js'/);
 assert.match(earlyShellSource, /\.drops-params-pending :is\(/);
 assert.match(earlyShellSource, /\.drops-preview-pending \.event-cart-redeem-token-div-main :is\(/);
 assert.match(earlyShellSource, /\.drops-wallet-tokens-pending :is\(/);
+const detailsMask = earlyShellSource.slice(
+  earlyShellSource.indexOf('body.first-paint-main .drops-params-pending :is('),
+  earlyShellSource.indexOf('body.first-paint-main .drops-preview-pending')
+);
+assert.match(detailsMask, /color: transparent !important/);
+assert.doesNotMatch(detailsMask, /visibility:\s*hidden/);
+assert.doesNotMatch(detailsMask, /display:\s*none/);
 assert.doesNotMatch(
   earlyShellSource,
   /\.drops-params-pending,\s*\nbody\.first-paint-main \.drops-preview-pending/
@@ -123,6 +173,19 @@ assert.doesNotMatch(
 );
 assert.doesNotMatch(earlyShellSource, /\.events-header-div/);
 assert.match(dropsHtml, /drop-details-main-container drops-params-pending/);
+for (const valueClass of [
+  'drop-details-drop-date-text',
+  'drop-details-drop-time-text',
+  'drop-details-drop-date-countdown-text',
+  'drop-details-burn-amount-text',
+  'drop-details-burn-collection-text',
+  'drop-details-exclusions-text-none',
+  'drop-details-redeem-amount-text',
+  'drop-details-redeem-token-title-text',
+  'drop-details-redeem-collection-text'
+]) {
+  assert.match(dropsHtml, new RegExp(`class="[^"]*${valueClass}`));
+}
 assert.match(dropsHtml, /events-cart-token-div-main drops-preview-pending/);
 assert.match(dropsHtml, /events-wallet-ui-div drops-wallet-tokens-pending/);
 
@@ -134,22 +197,29 @@ const metadataCommit = eventsSource.indexOf(
   imageStart
 );
 assert.ok(imageStart > -1 && supplyStart > -1 && metadataCommit > supplyStart);
-assert.match(eventsSource, /\['parameters', 'redeem-metadata'\]/);
-assert.match(eventsSource, /supplyEl\.textContent\s+=\s+'\[PENDING\]'/);
+assert.match(
+  eventsSource,
+  /\['drop-parameters', 'countdown-seeded', 'redeem-metadata', 'initial-supply'\]/
+);
+assert.doesNotMatch(eventsSource, /\[PENDING\]/);
 assert.match(eventsSource, /commitInitialRedeemImage[\s\S]*renderRedeemImageUnavailable/);
 assert.doesNotMatch(eventsSource, /await\s+resolveRedeemImage/);
 assert.doesNotMatch(eventsSource, /await\s+resolveInitialRedeemSupply/);
 
 const countdownStart = eventsSource.indexOf('const countdownTask = startCountdown()');
 const parameterReady = eventsSource.indexOf(
-  "initialDropStateReveal.markReady('parameters')",
+  "initialDropStateReveal.markReady('drop-parameters')"
+);
+const countdownReady = eventsSource.indexOf(
+  "initialDropStateReveal.markReady('countdown-seeded')",
   countdownStart
 );
 const metadataFunction = eventsSource.slice(
   eventsSource.indexOf('function commitInitialRedeemMetadata'),
   eventsSource.indexOf('function commitInitialRedeemImage')
 );
-assert.ok(countdownStart > -1 && parameterReady > countdownStart);
+assert.ok(parameterReady > -1 && parameterReady < countdownStart);
+assert.ok(countdownStart > -1 && countdownReady > countdownStart);
 assert.ok(
   metadataFunction.indexOf('titleEl.textContent') <
   metadataFunction.indexOf("initialDropStateReveal.markReady('redeem-metadata')")
@@ -157,6 +227,25 @@ assert.ok(
 assert.match(eventsSource, /async function updateRedeemSupplyDisplay\(\)/);
 assert.match(eventsSource, /setCountdownText\('LIVE NOW!'\)/);
 assert.match(eventsSource, /text: '\[UNAVAILABLE\]'/);
+
+const supplyCommitFunction = eventsSource.slice(
+  eventsSource.indexOf('function commitInitialRedeemSupply'),
+  eventsSource.indexOf('// HELPERS: CMS ROWS')
+);
+assert.ok(
+  supplyCommitFunction.indexOf('supplyEl.textContent = supply.text') <
+  supplyCommitFunction.indexOf("initialDropStateReveal.markReady('initial-supply')")
+);
+assert.ok(
+  supplyCommitFunction.indexOf("initialDropStateReveal.markReady('initial-supply')") <
+  supplyCommitFunction.indexOf('reconcileRedeemSupplyPolling')
+);
+const imageCommitFunction = eventsSource.slice(
+  eventsSource.indexOf('function commitInitialRedeemImage'),
+  eventsSource.indexOf('function commitInitialRedeemSupply')
+);
+assert.doesNotMatch(imageCommitFunction, /initialDropStateReveal\.markReady/);
+assert.match(eventsSource, /if \(!redeemInitialSupplyCommitted\) return false/);
 
 // Beacon pending is not guessed as disconnected, and NFT commits stay guarded.
 const walletPendingBranch = eventsSource.slice(

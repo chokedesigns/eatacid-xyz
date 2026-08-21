@@ -1,7 +1,5 @@
-﻿ .../PERF-3C.drops-coordinated-region-reveal.md     | 149 +++++++++++++++
- drops/js/events.js                                 | 199 ++++++++++++---------
- drops/js/reveal-coordinator.js                     |  56 ++++++
- drops/js/reveal-coordinator.test.mjs               | 197 ++++++++++++++++++++
- package.json                                       |   1 +
- webflow/drops-first-paint.js                       |  29 ++-
- 6 files changed, 548 insertions(+), 83 deletions(-)
+﻿ .../PERF-3C.drops-coordinated-region-reveal.md     |  59 ++++++-----
+ drops/js/events.js                                 |  20 ++--
+ drops/js/reveal-coordinator.test.mjs               | 113 ++++++++++++++++++---
+ webflow/drops-first-paint.js                       |   6 +-
+ 4 files changed, 154 insertions(+), 44 deletions(-)

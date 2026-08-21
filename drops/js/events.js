@@ -342,7 +342,7 @@ function releaseInitialDropStatePending() {
 }
 
 const initialDropStateReveal = createInitialRevealBarrier(
-  ['parameters', 'redeem-metadata'],
+  ['drop-parameters', 'countdown-seeded', 'redeem-metadata', 'initial-supply'],
   releaseInitialDropStatePending
 );
 
@@ -373,9 +373,10 @@ function initializeDropParameterRegion() {
   try {
     setEventContractAndTokenAttributes();
     renderDropDetails();
+    initialDropStateReveal.markReady('drop-parameters');
 
     const countdownTask = startCountdown();
-    initialDropStateReveal.markReady('parameters');
+    initialDropStateReveal.markReady('countdown-seeded');
 
     Promise.resolve(countdownTask).catch(error => {
       console.error('Error updating Drops countdown state:', error);
@@ -383,7 +384,8 @@ function initializeDropParameterRegion() {
   } catch (error) {
     console.error('Error initializing Drops parameters:', error);
     renderDropParamsUnavailable();
-    initialDropStateReveal.markReady('parameters');
+    initialDropStateReveal.markReady('drop-parameters');
+    initialDropStateReveal.markReady('countdown-seeded');
   }
 }
 
@@ -434,8 +436,10 @@ function renderNetworkUnavailable() {
     if ('disabled' in exchangeButton) exchangeButton.disabled = true;
   }
 
-  initialDropStateReveal.markReady('parameters');
+  initialDropStateReveal.markReady('drop-parameters');
+  initialDropStateReveal.markReady('countdown-seeded');
   initialDropStateReveal.markReady('redeem-metadata');
+  initialDropStateReveal.markReady('initial-supply');
 }
 
 // =============================================================================
@@ -625,12 +629,10 @@ function commitInitialRedeemMetadata(container, metadata) {
   const titleEl    = container.querySelector('.collection-item-events-title-text');
   const collEl     = container.querySelector('.collection-item-events-collection-text');
   const editionsEl = container.querySelector('.collection-item-events-editions-text');
-  const supplyEl   = container.querySelector('.supply-text-number');
 
   if (titleEl)    titleEl.textContent    = metadata.title;
   if (collEl)     collEl.textContent     = metadata.collection;
   if (editionsEl) editionsEl.textContent = metadata.editions;
-  if (supplyEl)   supplyEl.textContent   = '[PENDING]';
 
   redeemMetadataCommitted = true;
   initialDropStateReveal.markReady('redeem-metadata');
@@ -670,6 +672,7 @@ function commitInitialRedeemSupply(container, supply) {
     }
   } finally {
     redeemInitialSupplyPublishing = false;
+    initialDropStateReveal.markReady('initial-supply');
     reconcileRedeemSupplyPolling({ runImmediately: false });
   }
 }
@@ -1890,6 +1893,7 @@ async function updateEventCartRedeemToken() {
                || document.querySelector('.loading-spinner-02-redeem-token');
   if (!container) {
     initialDropStateReveal.markReady('redeem-metadata');
+    initialDropStateReveal.markReady('initial-supply');
     console.warn("Event cart redeem token container not found.");
     return;
   }
@@ -2621,8 +2625,10 @@ async function bootDropsPage() {
   //     - Shows either .drops-ui-div or .no-drops-scheduled-div
   //     - Returns early if no drop is scheduled
   if (!applyDropScheduledGate()) {
-    initialDropStateReveal.markReady('parameters');
+    initialDropStateReveal.markReady('drop-parameters');
+    initialDropStateReveal.markReady('countdown-seeded');
     initialDropStateReveal.markReady('redeem-metadata');
+    initialDropStateReveal.markReady('initial-supply');
     return;
   }
 

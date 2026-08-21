@@ -1,865 +1,387 @@
 ﻿diff --git a/docs/performance/PERF-3C.drops-coordinated-region-reveal.md b/docs/performance/PERF-3C.drops-coordinated-region-reveal.md
-new file mode 100644
-index 0000000..eab0b3c
---- /dev/null
+index eab0b3c..bc64ccc 100644
+--- a/docs/performance/PERF-3C.drops-coordinated-region-reveal.md
 +++ b/docs/performance/PERF-3C.drops-coordinated-region-reveal.md
-@@ -0,0 +1,149 @@
-+# PERF-3C — Drops coordinated region reveal
+@@ -33,9 +33,9 @@ run:
+ - `.drops-preview-pending` is on `.events-cart-token-div-main`.
+ - `.drops-wallet-tokens-pending` is on `.events-wallet-ui-div`.
+ 
+-`webflow/drops-first-paint.js` now applies those masks to authoritative
+-descendants rather than hiding each complete wrapper. `events.js` removes both
+-Phase 2 classes in `releaseInitialDropStatePending()`. Phase 3 uses
++`webflow/drops-first-paint.js` now applies those masks to authoritative text
++rather than hiding each complete wrapper or details pill. `events.js` removes
++both Phase 2 classes in `releaseInitialDropStatePending()`. Phase 3 uses
+ `setWalletTokenRegionPending(true|false)`, so account changes and NFT refreshes
+ can add the wallet class again before re-committing.
+ 
+@@ -46,10 +46,12 @@ can add the wallet class again before re-committing.
+ The early shell reveals shared chrome, the Drops marquee/header, section and
+ card frames, static DATE/TIME/BURN/EXCLUSIONS/REDEEM labels, the Burn Token and
+ Redeem Token card structure, arrows/flame, the table frame/header, the loading
+-substates, and non-authoritative structural controls. The parameter values,
+-redeem metadata/supply value, wallet heading/state, CMS rows, owned counts, and
+-wallet burn controls remain visibility-masked. `visibility` retains the
+-Webflow-owned layout boxes; the page is not globally re-hidden.
++substates, and non-authoritative structural controls. Details value elements
++keep their Webflow backgrounds, dimensions, and flex/grid placement while only
++their text color is transparent. Redeem metadata/supply text, wallet
++heading/state, CMS rows, owned counts, and wallet burn controls remain
++visibility-masked. No Phase 2 element is inserted to complete the details
++geometry, and the page is not globally re-hidden.
+ 
+ As documented in PERF-3B, the checked-in `GHOSTNET DROP //` text is inside a
+ Webflow element that the referenced stylesheet keeps at `display: none`; no
+@@ -60,14 +62,18 @@ stale title is exposed by the early shell.
+ One initial barrier requires exactly:
+ 
+ 1. local `dropParams` presentation (date, time, burn mechanics, exclusions,
+-   redeem mechanics) plus the synchronous initial countdown state; and
+-2. locally authoritative redeem metadata resolved from the configured token
+-   and stamped CMS lookup.
+-
+-When both are staged, the parameter and preview masks are removed in the same
+-commit. The region can truthfully show pre-drop countdown, `STANDBY…`, or a
+-configuration fallback immediately. It does not wait for the first pause-chain
+-response.
++   and redeem mechanics);
++2. the synchronous initial countdown/drop-state seed;
++3. locally authoritative redeem metadata resolved from the configured token
++   and stamped CMS lookup; and
++4. initial redeem supply settled to either a numeric authoritative value or the
++   existing explicit `[UNAVAILABLE]` fallback.
 +
-+Date: 2026-08-21
-+
-+## Why PERF-3B exposed the stagger
-+
-+PERF-3B correctly split the tiny Drops first-paint artifact from the full
-+application bundle. That let shared chrome and the Webflow shell paint without
-+Beacon or `drops/js/events.js`, but the three existing pending classes owned
-+separate whole wrappers and were released on different clocks. Parameters
-+waited for the initial pause request, while the redeem preview waited for both
-+TzKT supply and image loading. The wallet region had a one-time release flag,
-+so later account projections relied on scattered inline display mutations.
-+
-+PERF-3C retains the successful loader graph unchanged:
-+
-+```text
-+/drops.js
-+-> drops-loader.js
-+   |-> drops-first-paint.js
-+   `-> drops.js
-+```
-+
-+The early artifact still contains no Beacon, NFT, transaction, or Drops
-+application dependency.
-+
-+## Current reveal ownership
-+
-+The checked-in Webflow HTML supplies all three pending classes before scripts
-+run:
-+
-+- `.drops-params-pending` is on `.drop-details-main-container`.
-+- `.drops-preview-pending` is on `.events-cart-token-div-main`.
-+- `.drops-wallet-tokens-pending` is on `.events-wallet-ui-div`.
-+
-+`webflow/drops-first-paint.js` now applies those masks to authoritative
-+descendants rather than hiding each complete wrapper. `events.js` removes both
-+Phase 2 classes in `releaseInitialDropStatePending()`. Phase 3 uses
-+`setWalletTokenRegionPending(true|false)`, so account changes and NFT refreshes
-+can add the wallet class again before re-committing.
-+
-+## Three-phase visual model
-+
-+### Phase 1 — first paint
-+
-+The early shell reveals shared chrome, the Drops marquee/header, section and
-+card frames, static DATE/TIME/BURN/EXCLUSIONS/REDEEM labels, the Burn Token and
-+Redeem Token card structure, arrows/flame, the table frame/header, the loading
-+substates, and non-authoritative structural controls. The parameter values,
-+redeem metadata/supply value, wallet heading/state, CMS rows, owned counts, and
-+wallet burn controls remain visibility-masked. `visibility` retains the
-+Webflow-owned layout boxes; the page is not globally re-hidden.
-+
-+As documented in PERF-3B, the checked-in `GHOSTNET DROP //` text is inside a
-+Webflow element that the referenced stylesheet keeps at `display: none`; no
-+stale title is exposed by the early shell.
-+
-+### Phase 2 — drop state
-+
-+One initial barrier requires exactly:
-+
-+1. local `dropParams` presentation (date, time, burn mechanics, exclusions,
-+   redeem mechanics) plus the synchronous initial countdown state; and
-+2. locally authoritative redeem metadata resolved from the configured token
-+   and stamped CMS lookup.
-+
-+When both are staged, the parameter and preview masks are removed in the same
-+commit. The region can truthfully show pre-drop countdown, `STANDBY…`, or a
-+configuration fallback immediately. It does not wait for the first pause-chain
-+response.
-+
-+Dependency classification:
-+
-+| Dependency | Required for initial Phase 2? | Pending behavior |
-+| --- | --- | --- |
-+| local `dropParams` | Yes | Values stay masked until staged together. |
-+| local clock/countdown | Yes, synchronous seed only | Pre-drop countdown or truthful `STANDBY…` is staged before reveal. |
-+| pause/LIVE chain state | No | Past drops reveal `STANDBY…`; polling may later update to LIVE or status unavailable. |
-+| redeem metadata | Yes | Local title, collection, and editions are staged before reveal; invalid metadata uses `[UNAVAILABLE]`. |
-+| redeem supply | No | The reserved supply field shows `[PENDING]`, then publishes the independently resolved value or `[UNAVAILABLE]`. |
-+| redeem image | No | The existing image box and spinner reserve geometry; the loaded image or fixed-size failure fallback replaces it. |
-+| sold-out state | No separate dependency | It follows the normal LIVE + authoritative supply state after supply publication. |
-+
-+Image and supply promises start before the metadata visual commit and settle
-+independently. A slow or failed image cannot delay supply, and a slow or failed
-+supply cannot delay the image or local metadata. The initial barrier is
-+idempotent; later countdown, pause, supply, sold-out, and image updates use the
-+normal render paths and are not frozen by the first reveal.
-+
-+### Phase 3 — wallet/NFT state
-+
-+Phase 3 begins with `.drops-wallet-tokens-pending`. The table header and loading
-+geometry remain visible, while the semantic heading, status message, CMS rows,
-+owned counts, and row burn controls are masked.
-+
-+- Pending Beacon authority stays pending. It invalidates any older Drops NFT
-+  generation and never guesses disconnected state.
-+- Authoritative disconnected state builds the complete generic eligible-token
-+  catalog, clears owned counts and selection state, sets `ELIGIBLE BURN
-+  TOKENS`, then removes the pending class.
-+- Authoritative connected state immediately returns the region to pending.
-+  The existing `nftsPromise` (or fallback NFT fetch) continues in the
-+  background. Only the current generation and synchronized address may build
-+  rows, owned counts, restored selection/control state, and `AVAILABLE BURN
-+  TOKENS`; the pending class is removed after those mutations are complete.
-+- NFT failure commits the existing empty connected fallback coherently. Account
-+  change, disconnect, unpause refresh, and post-trade refresh may all re-enter
-+  pending and commit again.
-+
-+The generation/address check remains above rendering, preserving stale-result
-+rejection. Phase 3 coordination layers on top of the shared Beacon authority;
-+it does not replace account validation or the shared `nftsPromise` lifecycle.
-+
-+## Parallel and preserved behavior
-+
-+Countdown setup, pause polling, redeem supply lookup, redeem image loading,
-+Beacon initialization, and wallet NFT fetching are not serialized by the
-+visual barriers. Redeem image and supply explicitly start together. Connected
-+wallet NFT work still starts in `shared/beacon-setup.js` before Drops consumes
-+the promise.
-+
-+Countdown cadence, pause interval/unpause detection, supply interval and
-+visibility reconciliation, sold-out state, image failure semantics, wallet
-+generation guards, ownership/eligibility rules, selection/cart/flame state,
-+button enablement, transaction construction/status flow, and post-trade
-+authority remain unchanged. The only runtime ordering changes are the visual
-+pending mask and removal of duplicate owned/cart writes that previously ran
-+after the connected region had already been revealed.
-+
-+## Browser validation plan
-+
-+After the PERF-3C branch reaches staging and Pages through the normal workflow:
-+
-+1. With no throttling, confirm Phase 1 is effectively immediate, Phase 2
-+   commits as one region, Phase 3 commits as one wallet projection, and no
-+   obvious visual regression appears.
-+2. Under Slow 4G, capture a filmstrip and confirm the sequence is stable shell,
-+   coordinated drop/redeem metadata, then coordinated wallet/NFT projection.
-+   Record actual LCP and CLS; do not impose a synthetic target.
-+3. Test disconnected and connected startup, account change, disconnect, NFT
-+   refresh, pre-drop countdown, past-drop standby, pause-to-LIVE, supply update,
-+   sold out, and redeem-image failure.
-+4. Confirm selection, cart, flame, and button states remain correct; confirm no
-+   duplicate listeners, polls, intervals, stale wallet commits, or console
-+   errors. A real transaction is not required unless another result is
-+   suspicious.
-+
-+Local tests verify class/barrier and build contracts, but do not establish a
-+live visual improvement.
++When all four are staged, the parameter and preview masks are removed in the
++same commit. The first visible textual state therefore includes the initial
++supply and never exposes a normal `[PENDING]` step. The region can truthfully
++show pre-drop countdown, `STANDBY…`, or a configuration fallback without
++waiting for the first pause-chain response.
+ 
+ Dependency classification:
+ 
+@@ -77,15 +83,18 @@ Dependency classification:
+ | local clock/countdown | Yes, synchronous seed only | Pre-drop countdown or truthful `STANDBY…` is staged before reveal. |
+ | pause/LIVE chain state | No | Past drops reveal `STANDBY…`; polling may later update to LIVE or status unavailable. |
+ | redeem metadata | Yes | Local title, collection, and editions are staged before reveal; invalid metadata uses `[UNAVAILABLE]`. |
+-| redeem supply | No | The reserved supply field shows `[PENDING]`, then publishes the independently resolved value or `[UNAVAILABLE]`. |
++| redeem supply | Yes, settled result | The final numeric value or `[UNAVAILABLE]` is staged before reveal; failure cannot hold the phase indefinitely. |
+ | redeem image | No | The existing image box and spinner reserve geometry; the loaded image or fixed-size failure fallback replaces it. |
+ | sold-out state | No separate dependency | It follows the normal LIVE + authoritative supply state after supply publication. |
+ 
+-Image and supply promises start before the metadata visual commit and settle
+-independently. A slow or failed image cannot delay supply, and a slow or failed
+-supply cannot delay the image or local metadata. The initial barrier is
+-idempotent; later countdown, pause, supply, sold-out, and image updates use the
+-normal render paths and are not frozen by the first reveal.
++Image and supply promises start together before the metadata visual commit and
++settle independently. Phase 2 waits for supply but not image: a slow or failed
++image leaves the fixed image box and spinner/fallback in place without delaying
++the coordinated text reveal. Supply failure resolves to `[UNAVAILABLE]` and
++releases the barrier rather than waiting forever. Pause/LIVE authority and
++wallet/NFT state are also non-blocking. The initial barrier is idempotent;
++later countdown, pause, supply, sold-out, and image updates use the normal
++render paths and are not frozen by the first reveal.
+ 
+ ### Phase 3 — wallet/NFT state
+ 
+@@ -134,9 +143,11 @@ After the PERF-3C branch reaches staging and Pages through the normal workflow:
+ 1. With no throttling, confirm Phase 1 is effectively immediate, Phase 2
+    commits as one region, Phase 3 commits as one wallet projection, and no
+    obvious visual regression appears.
+-2. Under Slow 4G, capture a filmstrip and confirm the sequence is stable shell,
+-   coordinated drop/redeem metadata, then coordinated wallet/NFT projection.
+-   Record actual LCP and CLS; do not impose a synthetic target.
++2. Under Slow 4G, capture a filmstrip and confirm the sequence is full stable
++   geometry with empty details pills, coordinated drop/redeem metadata plus
++   final initial supply, then coordinated wallet/NFT projection. Confirm no
++   `[PENDING]` supply flash or details-pill insertion. Record actual LCP and
++   CLS; do not impose a synthetic target.
+ 3. Test disconnected and connected startup, account change, disconnect, NFT
+    refresh, pre-drop countdown, past-drop standby, pause-to-LIVE, supply update,
+    sold out, and redeem-image failure.
 diff --git a/drops/js/events.js b/drops/js/events.js
-index 2031736..bf83a48 100644
+index bf83a48..e9eeb2e 100644
 --- a/drops/js/events.js
 +++ b/drops/js/events.js
-@@ -17,6 +17,11 @@ import {
-   getPublicWalletState,
-   getVerifiedPublicActiveAccount
- } from '../../shared/beacon-setup.js';
-+import {
-+  createInitialRevealBarrier,
-+  isCurrentWalletProjection,
-+  setRegionPending
-+} from './reveal-coordinator.js';
- import {
-   buildApprovalOps as buildSharedApprovalOps,
-   fetchTokenPairId as fetchSharedTokenPairId,
-@@ -328,17 +333,19 @@ function preloadFlameIcons() {
- // HELPERS: DROP-SCHEDULE GATE
- // =============================================================================
- 
--let dropParamsPendingReleased = false;
--
--/** Releases the Webflow-owned parameter shell after one coherent initial render. */
--function releaseDropParamsPending() {
--  if (dropParamsPendingReleased) return;
--
-+/** Releases both drop-state masks in the same visual commit. */
-+function releaseInitialDropStatePending() {
-   document.querySelector('.drops-params-pending')
-     ?.classList.remove('drops-params-pending');
--  dropParamsPendingReleased = true;
-+  document.querySelector('.drops-preview-pending')
-+    ?.classList.remove('drops-preview-pending');
+@@ -342,7 +342,7 @@ function releaseInitialDropStatePending() {
  }
  
-+const initialDropStateReveal = createInitialRevealBarrier(
-+  ['parameters', 'redeem-metadata'],
-+  releaseInitialDropStatePending
-+);
-+
- /** Renders a deliberate terminal fallback if parameter initialization fails. */
- function renderDropParamsUnavailable() {
-   const selectors = [
-@@ -367,16 +374,16 @@ function initializeDropParameterRegion() {
+ const initialDropStateReveal = createInitialRevealBarrier(
+-  ['parameters', 'redeem-metadata'],
++  ['drop-parameters', 'countdown-seeded', 'redeem-metadata', 'initial-supply'],
+   releaseInitialDropStatePending
+ );
+ 
+@@ -373,9 +373,10 @@ function initializeDropParameterRegion() {
+   try {
      setEventContractAndTokenAttributes();
      renderDropDetails();
++    initialDropStateReveal.markReady('drop-parameters');
  
--    Promise.resolve(startCountdown())
--      .catch(error => {
--        console.error('Error initializing Drops parameters:', error);
--        renderDropParamsUnavailable();
--      })
--      .finally(releaseDropParamsPending);
-+    const countdownTask = startCountdown();
-+    initialDropStateReveal.markReady('parameters');
-+
-+    Promise.resolve(countdownTask).catch(error => {
-+      console.error('Error updating Drops countdown state:', error);
-+    });
+     const countdownTask = startCountdown();
+-    initialDropStateReveal.markReady('parameters');
++    initialDropStateReveal.markReady('countdown-seeded');
+ 
+     Promise.resolve(countdownTask).catch(error => {
+       console.error('Error updating Drops countdown state:', error);
+@@ -383,7 +384,8 @@ function initializeDropParameterRegion() {
    } catch (error) {
      console.error('Error initializing Drops parameters:', error);
      renderDropParamsUnavailable();
--    releaseDropParamsPending();
-+    initialDropStateReveal.markReady('parameters');
+-    initialDropStateReveal.markReady('parameters');
++    initialDropStateReveal.markReady('drop-parameters');
++    initialDropStateReveal.markReady('countdown-seeded');
    }
  }
  
-@@ -427,7 +434,8 @@ function renderNetworkUnavailable() {
+@@ -434,8 +436,10 @@ function renderNetworkUnavailable() {
      if ('disabled' in exchangeButton) exchangeButton.disabled = true;
    }
  
--  releaseDropParamsPending();
-+  initialDropStateReveal.markReady('parameters');
-+  initialDropStateReveal.markReady('redeem-metadata');
+-  initialDropStateReveal.markReady('parameters');
++  initialDropStateReveal.markReady('drop-parameters');
++  initialDropStateReveal.markReady('countdown-seeded');
+   initialDropStateReveal.markReady('redeem-metadata');
++  initialDropStateReveal.markReady('initial-supply');
  }
  
  // =============================================================================
-@@ -574,20 +582,11 @@ function showRedeemSpinner(imgWrap, spinner) {
-   });
- }
- 
--let redeemPreviewPendingReleased = false;
--let redeemPreviewCommitted = false;
-+let redeemMetadataCommitted = false;
-+let redeemImageCommitted = false;
-+let redeemInitialSupplyCommitted = false;
- let redeemInitialSupplyPublishing = false;
- 
--/** Completes the one-time redeem-preview lifecycle after a coherent terminal render. */
--function releaseRedeemPreviewPending(spinner) {
--  if (redeemPreviewPendingReleased) return;
--
--  if (spinner) spinner.style.display = 'none';
--  document.querySelector('.drops-preview-pending')
--    ?.classList.remove('drops-preview-pending');
--  redeemPreviewPendingReleased = true;
--}
--
- /** Returns deliberate metadata values when the configured redeem token is unavailable. */
- function getRedeemMetadataUnavailable() {
-   return {
-@@ -619,39 +618,55 @@ function renderRedeemImageUnavailable(imgWrap) {
-   }
- }
- 
--/** Commits the complete initial preview, then releases its spinner and pending shell. */
--function commitInitialRedeemPreview(container, imgWrap, spinner, preview) {
--  if (redeemPreviewCommitted || !container) return;
-+/** Stages authoritative local metadata before the coordinated Phase 2 reveal. */
-+function commitInitialRedeemMetadata(container, metadata) {
-+  if (redeemMetadataCommitted || !container) return;
- 
+@@ -625,12 +629,10 @@ function commitInitialRedeemMetadata(container, metadata) {
    const titleEl    = container.querySelector('.collection-item-events-title-text');
    const collEl     = container.querySelector('.collection-item-events-collection-text');
    const editionsEl = container.querySelector('.collection-item-events-editions-text');
-   const supplyEl   = container.querySelector('.supply-text-number');
+-  const supplyEl   = container.querySelector('.supply-text-number');
  
--  if (titleEl)    titleEl.textContent    = preview.metadata.title;
--  if (collEl)     collEl.textContent     = preview.metadata.collection;
--  if (editionsEl) editionsEl.textContent = preview.metadata.editions;
-+  if (titleEl)    titleEl.textContent    = metadata.title;
-+  if (collEl)     collEl.textContent     = metadata.collection;
-+  if (editionsEl) editionsEl.textContent = metadata.editions;
-+  if (supplyEl)   supplyEl.textContent   = '[PENDING]';
-+
-+  redeemMetadataCommitted = true;
-+  initialDropStateReveal.markReady('redeem-metadata');
-+}
-+
-+/** Replaces the reserved image substate without holding the rest of Phase 2. */
-+function commitInitialRedeemImage(imgWrap, spinner, image) {
-+  if (redeemImageCommitted) return;
+   if (titleEl)    titleEl.textContent    = metadata.title;
+   if (collEl)     collEl.textContent     = metadata.collection;
+   if (editionsEl) editionsEl.textContent = metadata.editions;
+-  if (supplyEl)   supplyEl.textContent   = '[PENDING]';
  
-   if (imgWrap) {
-     imgWrap.querySelector('img.event-cart-redeem-img')?.remove();
-     imgWrap.querySelector('.event-cart-redeem-image-unavailable')?.remove();
--    if (preview.image.status === 'loaded') {
--      imgWrap.appendChild(preview.image.element);
-+    if (image.status === 'loaded') {
-+      imgWrap.appendChild(image.element);
-     } else {
-       renderRedeemImageUnavailable(imgWrap);
-     }
-   }
- 
--  if (supplyEl) supplyEl.textContent = preview.supply.text;
-+  if (spinner) spinner.style.display = 'none';
-+  redeemImageCommitted = true;
-+}
-+
-+/** Publishes initial supply independently from the image substate. */
-+function commitInitialRedeemSupply(container, supply) {
-+  if (redeemInitialSupplyCommitted || !container) return;
- 
--  releaseRedeemPreviewPending(spinner);
--  redeemPreviewCommitted = true;
-+  const supplyEl = container.querySelector('.supply-text-number');
-+  if (supplyEl) supplyEl.textContent = supply.text;
-+  redeemInitialSupplyCommitted = true;
- 
-   // Publish the resolved supply, then reconcile against phase state retained during loading.
-   redeemInitialSupplyPublishing = true;
-   try {
--    if (preview.supply.available) {
--      updateAppState({ redeemSupply: preview.supply.value });
-+    if (supply.available) {
-+      updateAppState({ redeemSupply: supply.value });
+   redeemMetadataCommitted = true;
+   initialDropStateReveal.markReady('redeem-metadata');
+@@ -670,6 +672,7 @@ function commitInitialRedeemSupply(container, supply) {
      }
    } finally {
      redeemInitialSupplyPublishing = false;
-@@ -788,6 +803,8 @@ function resetEventsUI() {
-  * @param {Array} nfts - Updated list of NFTs.
-  */
- function refreshConnectedState(nfts) {
-+  renderWalletTokenLoadingState();
-+
-   // 1) Re‑map CMS rows with correct token IDs & contracts
-   setEventContractAndTokenAttributes();
- 
-@@ -804,8 +821,13 @@ function refreshConnectedState(nfts) {
-     }
-   });
- 
--  // 4) Reset the burn‑token panel
-+  // 4) Reset the burn-token panel
-   updateEventCartBurnToken();
-+
-+  const remainingRows = document.querySelectorAll(
-+    '.events-wallet-ui-div .w-dyn-list [data-token-id]'
-+  ).length;
-+  renderConnectedWalletTokenState(remainingRows);
++    initialDropStateReveal.markReady('initial-supply');
+     reconcileRedeemSupplyPolling({ runImmediately: false });
+   }
  }
- 
- // =============================================================================
-@@ -840,7 +862,7 @@ async function fetchRedeemSupply() {
-  * and pushes it into AppState for downstream consumers.
-  */
- async function updateRedeemSupplyDisplay() {
--  if (!redeemPreviewCommitted) return false;
-+  if (!redeemInitialSupplyCommitted) return false;
- 
-   try {
-     const supply = await fetchRedeemSupply();
-@@ -884,7 +906,7 @@ async function resolveInitialRedeemSupply() {
-  * @param {boolean} [runImmediately=true] Whether to update before the first interval.
-  */
- function startRedeemSupplyPolling(intervalMs = 10000, runImmediately = true) {
--  if (!redeemPreviewCommitted || redeemSupplyIntervalId != null) return null;
-+  if (!redeemInitialSupplyCommitted || redeemSupplyIntervalId != null) return null;
-   const initialUpdate = runImmediately ? updateRedeemSupplyDisplay() : null;
-   // then every X seconds
-   redeemSupplyIntervalId = setInterval(updateRedeemSupplyDisplay, intervalMs);
-@@ -903,7 +925,7 @@ function stopRedeemSupplyPolling() {
- 
- /** Reconciles the single supply interval against retained phase, supply, and visibility state. */
- function reconcileRedeemSupplyPolling({ runImmediately = true } = {}) {
--  if (!redeemPreviewCommitted) return;
-+  if (!redeemInitialSupplyCommitted) return;
- 
-   const shouldPoll =
-     !document.hidden &&
-@@ -1562,7 +1584,6 @@ function updateOwnedTokenCounts(nfts) {
- }
- 
- const WALLET_TOKEN_PENDING_CLASS = 'drops-wallet-tokens-pending';
--let walletTokenPendingReleased = false;
- 
- function getWalletTokenPanes() {
-   return ['hen', 'introductions']
-@@ -1588,12 +1609,12 @@ function setWalletTokenPanesVisible(visible) {
-   });
- }
- 
--function releaseWalletTokenPending() {
--  if (walletTokenPendingReleased) return;
--
--  document.querySelector(`.${WALLET_TOKEN_PENDING_CLASS}`)
--    ?.classList.remove(WALLET_TOKEN_PENDING_CLASS);
--  walletTokenPendingReleased = true;
-+function setWalletTokenRegionPending(pending) {
-+  setRegionPending(
-+    document.querySelector('.events-wallet-ui-div'),
-+    WALLET_TOKEN_PENDING_CLASS,
-+    pending
-+  );
- }
- 
- function commitWalletTokenRegion({
-@@ -1622,10 +1643,12 @@ function commitWalletTokenRegion({
- 
-   setWalletTokenPanesVisible(rowsVisible);
- 
--  if (terminal) releaseWalletTokenPending();
-+  if (terminal) setWalletTokenRegionPending(false);
- }
- 
- function renderWalletTokenLoadingState({ clearRows = false } = {}) {
-+  setWalletTokenRegionPending(true);
-+
-   if (clearRows) {
-     clearWalletTokenRows();
-     renderBalances({});
-@@ -1856,7 +1879,8 @@ function updateEventCartBurnToken() {
- 
- /**
-  * Updates the “Redeem Token” panel in the event cart.
-- * Holds the spinner and pending wrapper through one coherent terminal render.
-+ * Local metadata participates in Phase 2; image and supply retain explicit,
-+ * independently resolving substates so neither delays the authoritative text.
-  */
- async function updateEventCartRedeemToken() {
-   // 1) Configuration & container
-@@ -1865,7 +1889,7 @@ async function updateEventCartRedeemToken() {
-   const spinner = container?.querySelector('.loading-spinner-02-redeem-token')
+@@ -1890,6 +1893,7 @@ async function updateEventCartRedeemToken() {
                 || document.querySelector('.loading-spinner-02-redeem-token');
    if (!container) {
--    releaseRedeemPreviewPending(spinner);
-+    initialDropStateReveal.markReady('redeem-metadata');
+     initialDropStateReveal.markReady('redeem-metadata');
++    initialDropStateReveal.markReady('initial-supply');
      console.warn("Event cart redeem token container not found.");
      return;
    }
-@@ -1890,23 +1914,32 @@ async function updateEventCartRedeemToken() {
-       metadata = resolveRedeemMetadata(row, cfg, key);
-     }
- 
--    const [image, supply] = await Promise.all([
--      resolveRedeemImage(row),
--      resolveInitialRedeemSupply()
--    ]);
-+    // Start independent work before the visual commit; do not serialize it.
-+    const imagePromise = resolveRedeemImage(row);
-+    const supplyPromise = resolveInitialRedeemSupply();
- 
--    commitInitialRedeemPreview(container, imgWrap, spinner, {
--      metadata,
--      image,
--      supply
--    });
-+    commitInitialRedeemMetadata(container, metadata);
-+
-+    await Promise.all([
-+      imagePromise.then(image => {
-+        commitInitialRedeemImage(imgWrap, spinner, image);
-+      }),
-+      supplyPromise.then(supply => {
-+        commitInitialRedeemSupply(container, supply);
-+      })
-+    ]);
-   } catch (error) {
-     console.error('Error initializing redeem preview:', error);
--    commitInitialRedeemPreview(container, imgWrap, spinner, {
--      metadata: getRedeemMetadataUnavailable(),
--      image: { status: 'unavailable', element: null },
--      supply: { available: false, value: null, text: '[UNAVAILABLE]' }
--    });
-+    commitInitialRedeemMetadata(container, getRedeemMetadataUnavailable());
-+    commitInitialRedeemImage(
-+      imgWrap,
-+      spinner,
-+      { status: 'unavailable', element: null }
-+    );
-+    commitInitialRedeemSupply(
-+      container,
-+      { available: false, value: null, text: '[UNAVAILABLE]' }
-+    );
-   }
- }
- 
-@@ -2058,8 +2091,7 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus) {
-           if (account) {
-             const nfts = await fetchNFTs(account.address);
-             if (AppState.activeAccount?.address !== account.address) return;
--            updateTokensWithWalletData(nfts);
--            updateOwnedTokenCounts(nfts);
-+            await updateTokensWithWalletData(nfts);
-           }
-         }
-         return;
-@@ -2505,21 +2537,23 @@ async function refreshDropsWallet(account, generation, nftsPromise) {
-   try {
-     const nfts = await (nftsPromise || fetchNFTs(account.address));
- 
--    if (
--      generation !== walletRefreshGeneration ||
--      synchronizedWalletAddress !== account.address
--    ) {
-+    if (!isCurrentWalletProjection({
-+      generation,
-+      address: account.address,
-+      currentGeneration: walletRefreshGeneration,
-+      currentAddress: synchronizedWalletAddress
-+    })) {
-       return;
-     }
- 
-     await updateTokensWithWalletData(nfts);
--    updateEventCartBurnToken();
--    updateOwnedTokenCounts(nfts);
-   } catch (error) {
--    if (
--      generation === walletRefreshGeneration &&
--      synchronizedWalletAddress === account.address
--    ) {
-+    if (isCurrentWalletProjection({
-+      generation,
-+      address: account.address,
-+      currentGeneration: walletRefreshGeneration,
-+      currentAddress: synchronizedWalletAddress
-+    })) {
-       console.error('Error refreshing Drops wallet state:', error);
-       renderConnectedWalletTokenFailureState();
-       updateEventCartBurnToken();
-@@ -2529,6 +2563,8 @@ async function refreshDropsWallet(account, generation, nftsPromise) {
- 
- function synchronizeDropsWalletState(walletState) {
-   if (!walletState || walletState.status === 'pending') {
-+    synchronizedWalletAddress = undefined;
-+    walletRefreshGeneration++;
-     renderWalletTokenLoadingState();
-     return;
-   }
-@@ -2585,7 +2621,8 @@ async function bootDropsPage() {
+@@ -2621,8 +2625,10 @@ async function bootDropsPage() {
    //     - Shows either .drops-ui-div or .no-drops-scheduled-div
    //     - Returns early if no drop is scheduled
    if (!applyDropScheduledGate()) {
--    releaseDropParamsPending();
-+    initialDropStateReveal.markReady('parameters');
-+    initialDropStateReveal.markReady('redeem-metadata');
+-    initialDropStateReveal.markReady('parameters');
++    initialDropStateReveal.markReady('drop-parameters');
++    initialDropStateReveal.markReady('countdown-seeded');
+     initialDropStateReveal.markReady('redeem-metadata');
++    initialDropStateReveal.markReady('initial-supply');
      return;
    }
  
-diff --git a/drops/js/reveal-coordinator.js b/drops/js/reveal-coordinator.js
-new file mode 100644
-index 0000000..edbc8a5
---- /dev/null
-+++ b/drops/js/reveal-coordinator.js
-@@ -0,0 +1,56 @@
-+// =============================================================================
-+// DROPS VISUAL REVEAL COORDINATION
-+// =============================================================================
-+
-+/**
-+ * Creates a one-time visual barrier without coupling the underlying work.
-+ * Callers start their work independently and mark only the minimum visual
-+ * dependencies ready.
-+ */
-+function createInitialRevealBarrier(requiredKeys, onCommit) {
-+  const pendingKeys = new Set(requiredKeys);
-+  let committed = false;
-+
-+  return {
-+    markReady(key) {
-+      if (committed || !pendingKeys.has(key)) return false;
-+
-+      pendingKeys.delete(key);
-+      if (pendingKeys.size > 0) return false;
-+
-+      committed = true;
-+      onCommit();
-+      return true;
-+    },
-+    get committed() {
-+      return committed;
-+    },
-+    get pendingKeys() {
-+      return new Set(pendingKeys);
-+    }
-+  };
-+}
-+
-+/** Applies a repeatable pending class while retaining the region in layout. */
-+function setRegionPending(element, className, pending) {
-+  if (!element) return;
-+
-+  element.classList.toggle(className, pending);
-+  element.setAttribute('aria-busy', pending ? 'true' : 'false');
-+}
-+
-+/** Keeps late NFT results from committing after the wallet authority changed. */
-+function isCurrentWalletProjection({
-+  generation,
-+  address,
-+  currentGeneration,
-+  currentAddress
-+}) {
-+  return generation === currentGeneration && address === currentAddress;
-+}
-+
-+export {
-+  createInitialRevealBarrier,
-+  isCurrentWalletProjection,
-+  setRegionPending
-+};
 diff --git a/drops/js/reveal-coordinator.test.mjs b/drops/js/reveal-coordinator.test.mjs
-new file mode 100644
-index 0000000..91b44cd
---- /dev/null
+index 91b44cd..c37ca0c 100644
+--- a/drops/js/reveal-coordinator.test.mjs
 +++ b/drops/js/reveal-coordinator.test.mjs
-@@ -0,0 +1,197 @@
-+import assert from 'node:assert/strict';
-+import { readFile } from 'node:fs/promises';
+@@ -38,31 +38,74 @@ function createFakeElement(initialClasses = []) {
+   };
+ }
+ 
+-// Phase 2 commits exactly once after its minimum local dependencies are ready.
++const PHASE_2_REQUIREMENTS = [
++  'drop-parameters',
++  'countdown-seeded',
++  'redeem-metadata',
++  'initial-supply'
++];
 +
-+import {
-+  createInitialRevealBarrier,
-+  isCurrentWalletProjection,
-+  setRegionPending
-+} from './reveal-coordinator.js';
-+
-+function deferred() {
-+  let resolve;
-+  const promise = new Promise(resolvePromise => {
-+    resolve = resolvePromise;
++// Supply success releases Phase 2 without waiting for image or pause authority.
+ {
+   let commits = 0;
+   const barrier = createInitialRevealBarrier(
+-    ['parameters', 'redeem-metadata'],
++    PHASE_2_REQUIREMENTS,
+     () => { commits++; }
+   );
+   const slowImage = deferred();
+   const slowSupply = deferred();
+   const slowPause = deferred();
++  let imageSettled = false;
++  let pauseSettled = false;
++  void slowImage.promise.then(() => { imageSettled = true; });
++  void slowPause.promise.then(() => { pauseSettled = true; });
++  const supplyReady = slowSupply.promise.then(() => {
++    barrier.markReady('initial-supply');
 +  });
-+  return { promise, resolve };
+ 
+   assert.equal(barrier.committed, false);
+-  assert.equal(barrier.markReady('parameters'), false);
++  assert.equal(barrier.markReady('drop-parameters'), false);
++  assert.equal(barrier.markReady('countdown-seeded'), false);
++  assert.equal(barrier.markReady('redeem-metadata'), false);
+   assert.equal(commits, 0);
+-  assert.equal(barrier.markReady('redeem-metadata'), true);
++
++  slowSupply.resolve('supply');
++  await supplyReady;
+   assert.equal(barrier.committed, true);
+   assert.equal(commits, 1);
++  assert.equal(imageSettled, false);
++  assert.equal(pauseSettled, false);
+ 
+   slowImage.resolve('image');
+-  slowSupply.resolve('supply');
+   slowPause.resolve('pause');
+-  await Promise.all([slowImage.promise, slowSupply.promise, slowPause.promise]);
++  await Promise.all([slowImage.promise, slowPause.promise]);
+ 
+-  assert.equal(barrier.markReady('parameters'), false);
+-  assert.equal(barrier.markReady('redeem-metadata'), false);
++  assert.equal(barrier.markReady('initial-supply'), false);
++  assert.equal(commits, 1);
++
++  // Later supply updates are ordinary renders; the initial barrier is not a lock.
++  let renderedSupply = 10;
++  renderedSupply = 9;
++  assert.equal(renderedSupply, 9);
 +}
 +
-+function createFakeElement(initialClasses = []) {
-+  const classes = new Set(initialClasses);
-+  const attributes = new Map();
-+
-+  return {
-+    classList: {
-+      contains(className) {
-+        return classes.has(className);
-+      },
-+      toggle(className, enabled) {
-+        if (enabled) classes.add(className);
-+        else classes.delete(className);
-+      }
-+    },
-+    getAttribute(name) {
-+      return attributes.get(name) ?? null;
-+    },
-+    setAttribute(name, value) {
-+      attributes.set(name, value);
-+    }
-+  };
-+}
-+
-+// Phase 2 commits exactly once after its minimum local dependencies are ready.
++// A renderable supply failure fallback also releases Phase 2 exactly once.
 +{
 +  let commits = 0;
 +  const barrier = createInitialRevealBarrier(
-+    ['parameters', 'redeem-metadata'],
++    PHASE_2_REQUIREMENTS,
 +    () => { commits++; }
 +  );
-+  const slowImage = deferred();
-+  const slowSupply = deferred();
-+  const slowPause = deferred();
 +
-+  assert.equal(barrier.committed, false);
-+  assert.equal(barrier.markReady('parameters'), false);
++  barrier.markReady('drop-parameters');
++  barrier.markReady('countdown-seeded');
++  barrier.markReady('redeem-metadata');
 +  assert.equal(commits, 0);
-+  assert.equal(barrier.markReady('redeem-metadata'), true);
++
++  await Promise.reject(new Error('supply unavailable')).catch(() => {
++    barrier.markReady('initial-supply');
++  });
 +  assert.equal(barrier.committed, true);
-+  assert.equal(commits, 1);
-+
-+  slowImage.resolve('image');
-+  slowSupply.resolve('supply');
-+  slowPause.resolve('pause');
-+  await Promise.all([slowImage.promise, slowSupply.promise, slowPause.promise]);
-+
-+  assert.equal(barrier.markReady('parameters'), false);
-+  assert.equal(barrier.markReady('redeem-metadata'), false);
-+  assert.equal(commits, 1);
+   assert.equal(commits, 1);
+ }
+ 
+@@ -113,6 +156,13 @@ assert.match(earlyShellSource, /import '..\/shared\/public-first-paint\.js'/);
+ assert.match(earlyShellSource, /\.drops-params-pending :is\(/);
+ assert.match(earlyShellSource, /\.drops-preview-pending \.event-cart-redeem-token-div-main :is\(/);
+ assert.match(earlyShellSource, /\.drops-wallet-tokens-pending :is\(/);
++const detailsMask = earlyShellSource.slice(
++  earlyShellSource.indexOf('body.first-paint-main .drops-params-pending :is('),
++  earlyShellSource.indexOf('body.first-paint-main .drops-preview-pending')
++);
++assert.match(detailsMask, /color: transparent !important/);
++assert.doesNotMatch(detailsMask, /visibility:\s*hidden/);
++assert.doesNotMatch(detailsMask, /display:\s*none/);
+ assert.doesNotMatch(
+   earlyShellSource,
+   /\.drops-params-pending,\s*\nbody\.first-paint-main \.drops-preview-pending/
+@@ -123,6 +173,19 @@ assert.doesNotMatch(
+ );
+ assert.doesNotMatch(earlyShellSource, /\.events-header-div/);
+ assert.match(dropsHtml, /drop-details-main-container drops-params-pending/);
++for (const valueClass of [
++  'drop-details-drop-date-text',
++  'drop-details-drop-time-text',
++  'drop-details-drop-date-countdown-text',
++  'drop-details-burn-amount-text',
++  'drop-details-burn-collection-text',
++  'drop-details-exclusions-text-none',
++  'drop-details-redeem-amount-text',
++  'drop-details-redeem-token-title-text',
++  'drop-details-redeem-collection-text'
++]) {
++  assert.match(dropsHtml, new RegExp(`class="[^"]*${valueClass}`));
 +}
-+
-+// Phase 3 can return to pending for account changes and re-commit.
-+{
-+  const element = createFakeElement(['drops-wallet-tokens-pending']);
-+
-+  setRegionPending(element, 'drops-wallet-tokens-pending', false);
-+  assert.equal(element.classList.contains('drops-wallet-tokens-pending'), false);
-+  assert.equal(element.getAttribute('aria-busy'), 'false');
-+
-+  setRegionPending(element, 'drops-wallet-tokens-pending', true);
-+  assert.equal(element.classList.contains('drops-wallet-tokens-pending'), true);
-+  assert.equal(element.getAttribute('aria-busy'), 'true');
-+
-+  setRegionPending(element, 'drops-wallet-tokens-pending', false);
-+  assert.equal(element.classList.contains('drops-wallet-tokens-pending'), false);
-+}
-+
-+// A stale NFT generation/address can never authorize a visual commit.
-+assert.equal(isCurrentWalletProjection({
-+  generation: 4,
-+  address: 'tz1-current',
-+  currentGeneration: 4,
-+  currentAddress: 'tz1-current'
-+}), true);
-+assert.equal(isCurrentWalletProjection({
-+  generation: 3,
-+  address: 'tz1-old',
-+  currentGeneration: 4,
-+  currentAddress: 'tz1-current'
-+}), false);
-+assert.equal(isCurrentWalletProjection({
-+  generation: 4,
-+  address: 'tz1-old',
-+  currentGeneration: 4,
-+  currentAddress: 'tz1-current'
-+}), false);
-+
-+const [earlyShellSource, eventsSource, dropsHtml] = await Promise.all([
-+  readFile(new URL('../../webflow/drops-first-paint.js', import.meta.url), 'utf8'),
-+  readFile(new URL('./events.js', import.meta.url), 'utf8'),
-+  readFile(new URL('../index.html', import.meta.url), 'utf8')
-+]);
-+
-+// PERF-3B remains independent, while its masks now retain Phase 1 structure.
-+assert.match(earlyShellSource, /import '..\/shared\/public-first-paint\.js'/);
-+assert.match(earlyShellSource, /\.drops-params-pending :is\(/);
-+assert.match(earlyShellSource, /\.drops-preview-pending \.event-cart-redeem-token-div-main :is\(/);
-+assert.match(earlyShellSource, /\.drops-wallet-tokens-pending :is\(/);
-+assert.doesNotMatch(
-+  earlyShellSource,
-+  /\.drops-params-pending,\s*\nbody\.first-paint-main \.drops-preview-pending/
+ assert.match(dropsHtml, /events-cart-token-div-main drops-preview-pending/);
+ assert.match(dropsHtml, /events-wallet-ui-div drops-wallet-tokens-pending/);
+ 
+@@ -134,22 +197,29 @@ const metadataCommit = eventsSource.indexOf(
+   imageStart
+ );
+ assert.ok(imageStart > -1 && supplyStart > -1 && metadataCommit > supplyStart);
+-assert.match(eventsSource, /\['parameters', 'redeem-metadata'\]/);
+-assert.match(eventsSource, /supplyEl\.textContent\s+=\s+'\[PENDING\]'/);
++assert.match(
++  eventsSource,
++  /\['drop-parameters', 'countdown-seeded', 'redeem-metadata', 'initial-supply'\]/
 +);
-+assert.doesNotMatch(
-+  earlyShellSource,
-+  /\.drops-wallet-tokens-pending \{\s*\n\s*visibility: hidden/
++assert.doesNotMatch(eventsSource, /\[PENDING\]/);
+ assert.match(eventsSource, /commitInitialRedeemImage[\s\S]*renderRedeemImageUnavailable/);
+ assert.doesNotMatch(eventsSource, /await\s+resolveRedeemImage/);
+ assert.doesNotMatch(eventsSource, /await\s+resolveInitialRedeemSupply/);
+ 
+ const countdownStart = eventsSource.indexOf('const countdownTask = startCountdown()');
+ const parameterReady = eventsSource.indexOf(
+-  "initialDropStateReveal.markReady('parameters')",
++  "initialDropStateReveal.markReady('drop-parameters')"
 +);
-+assert.doesNotMatch(earlyShellSource, /\.events-header-div/);
-+assert.match(dropsHtml, /drop-details-main-container drops-params-pending/);
-+assert.match(dropsHtml, /events-cart-token-div-main drops-preview-pending/);
-+assert.match(dropsHtml, /events-wallet-ui-div drops-wallet-tokens-pending/);
-+
-+// Phase 2 starts image/supply work in parallel, then reveals local authority.
-+const imageStart = eventsSource.indexOf('const imagePromise = resolveRedeemImage(row)');
-+const supplyStart = eventsSource.indexOf('const supplyPromise = resolveInitialRedeemSupply()');
-+const metadataCommit = eventsSource.indexOf(
-+  'commitInitialRedeemMetadata(container, metadata)',
-+  imageStart
-+);
-+assert.ok(imageStart > -1 && supplyStart > -1 && metadataCommit > supplyStart);
-+assert.match(eventsSource, /\['parameters', 'redeem-metadata'\]/);
-+assert.match(eventsSource, /supplyEl\.textContent\s+=\s+'\[PENDING\]'/);
-+assert.match(eventsSource, /commitInitialRedeemImage[\s\S]*renderRedeemImageUnavailable/);
-+assert.doesNotMatch(eventsSource, /await\s+resolveRedeemImage/);
-+assert.doesNotMatch(eventsSource, /await\s+resolveInitialRedeemSupply/);
-+
-+const countdownStart = eventsSource.indexOf('const countdownTask = startCountdown()');
-+const parameterReady = eventsSource.indexOf(
-+  "initialDropStateReveal.markReady('parameters')",
-+  countdownStart
-+);
-+const metadataFunction = eventsSource.slice(
-+  eventsSource.indexOf('function commitInitialRedeemMetadata'),
-+  eventsSource.indexOf('function commitInitialRedeemImage')
-+);
-+assert.ok(countdownStart > -1 && parameterReady > countdownStart);
-+assert.ok(
-+  metadataFunction.indexOf('titleEl.textContent') <
-+  metadataFunction.indexOf("initialDropStateReveal.markReady('redeem-metadata')")
-+);
-+assert.match(eventsSource, /async function updateRedeemSupplyDisplay\(\)/);
-+assert.match(eventsSource, /setCountdownText\('LIVE NOW!'\)/);
-+assert.match(eventsSource, /text: '\[UNAVAILABLE\]'/);
-+
-+// Beacon pending is not guessed as disconnected, and NFT commits stay guarded.
-+const walletPendingBranch = eventsSource.slice(
-+  eventsSource.indexOf("walletState.status === 'pending'"),
-+  eventsSource.indexOf('const account = walletState.status')
-+);
-+assert.match(walletPendingBranch, /walletRefreshGeneration\+\+/);
-+assert.match(walletPendingBranch, /renderWalletTokenLoadingState\(\)/);
-+assert.doesNotMatch(walletPendingBranch, /handleWalletDisconnected/);
-+assert.match(eventsSource, /if \(!isCurrentWalletProjection\(\{/);
-+assert.match(eventsSource, /renderConnectedWalletTokenState\(eligible\.length\)/);
-+
-+const disconnectedRender = eventsSource.slice(
-+  eventsSource.indexOf('function renderDisconnectedWalletTokenState'),
-+  eventsSource.indexOf('function renderConnectedWalletTokenState')
++const countdownReady = eventsSource.indexOf(
++  "initialDropStateReveal.markReady('countdown-seeded')",
+   countdownStart
+ );
+ const metadataFunction = eventsSource.slice(
+   eventsSource.indexOf('function commitInitialRedeemMetadata'),
+   eventsSource.indexOf('function commitInitialRedeemImage')
+ );
+-assert.ok(countdownStart > -1 && parameterReady > countdownStart);
++assert.ok(parameterReady > -1 && parameterReady < countdownStart);
++assert.ok(countdownStart > -1 && countdownReady > countdownStart);
+ assert.ok(
+   metadataFunction.indexOf('titleEl.textContent') <
+   metadataFunction.indexOf("initialDropStateReveal.markReady('redeem-metadata')")
+@@ -158,6 +228,25 @@ assert.match(eventsSource, /async function updateRedeemSupplyDisplay\(\)/);
+ assert.match(eventsSource, /setCountdownText\('LIVE NOW!'\)/);
+ assert.match(eventsSource, /text: '\[UNAVAILABLE\]'/);
+ 
++const supplyCommitFunction = eventsSource.slice(
++  eventsSource.indexOf('function commitInitialRedeemSupply'),
++  eventsSource.indexOf('// HELPERS: CMS ROWS')
 +);
 +assert.ok(
-+  disconnectedRender.indexOf('displayDefaultTokens()') <
-+  disconnectedRender.indexOf('terminal: true')
-+);
-+
-+const connectedProjection = eventsSource.slice(
-+  eventsSource.indexOf('async function updateTokensWithWalletData'),
-+  eventsSource.indexOf('// EVENT CART UPDATES')
++  supplyCommitFunction.indexOf('supplyEl.textContent = supply.text') <
++  supplyCommitFunction.indexOf("initialDropStateReveal.markReady('initial-supply')")
 +);
 +assert.ok(
-+  connectedProjection.indexOf('updateOwnedTokenCounts(nfts)') <
-+  connectedProjection.indexOf('renderConnectedWalletTokenState(eligible.length)')
++  supplyCommitFunction.indexOf("initialDropStateReveal.markReady('initial-supply')") <
++  supplyCommitFunction.indexOf('reconcileRedeemSupplyPolling')
 +);
-+
-+const connectedHandler = eventsSource.slice(
-+  eventsSource.indexOf('function handleWalletConnected'),
-+  eventsSource.indexOf('function handleWalletDisconnected')
++const imageCommitFunction = eventsSource.slice(
++  eventsSource.indexOf('function commitInitialRedeemImage'),
++  eventsSource.indexOf('function commitInitialRedeemSupply')
 +);
-+assert.match(connectedHandler, /renderWalletTokenLoadingState\(\{ clearRows: true \}\)/);
-+assert.match(eventsSource, /if \(terminal\) setWalletTokenRegionPending\(false\)/);
++assert.doesNotMatch(imageCommitFunction, /initialDropStateReveal\.markReady/);
++assert.match(eventsSource, /if \(!redeemInitialSupplyCommitted\) return false/);
 +
-+console.log('Drops coordinated region reveal tests passed.');
-diff --git a/package.json b/package.json
-index ff1778a..7fb9061 100644
---- a/package.json
-+++ b/package.json
-@@ -23,6 +23,7 @@
-     "test:hen-identity": "node shared/hen-identity.test.mjs",
-     "test:home-first-paint": "node loaders/loader-architecture.test.mjs",
-     "test:loader-architecture": "node loaders/loader-architecture.test.mjs",
-+    "test:drops-reveal": "node drops/js/reveal-coordinator.test.mjs",
-     "test:pages-loader-artifacts": "node scripts/verify-pages-loader-artifacts.test.mjs",
-     "verify:home-first-paint-build": "node scripts/verify-home-first-paint-build.mjs",
-     "verify:drops-first-paint-build": "node scripts/verify-drops-first-paint-build.mjs",
+ // Beacon pending is not guessed as disconnected, and NFT commits stay guarded.
+ const walletPendingBranch = eventsSource.slice(
+   eventsSource.indexOf("walletState.status === 'pending'"),
 diff --git a/webflow/drops-first-paint.js b/webflow/drops-first-paint.js
-index 1ed6998..e35deec 100644
+index e35deec..c5b3ef8 100644
 --- a/webflow/drops-first-paint.js
 +++ b/webflow/drops-first-paint.js
-@@ -3,10 +3,35 @@ import '../shared/public-first-paint.js';
- const STATE_KEY = '__EA_DROPS_EARLY_FIRST_PAINT__';
- const STYLE_ID = 'ea-drops-early-first-paint-style';
- const PENDING_REGION_CSS = `
--body.first-paint-main .drops-params-pending,
-+body.first-paint-main .drops-params-pending :is(
-+  .drop-details-drop-date-text,
-+  .drop-details-drop-time-text,
-+  .drop-details-drop-date-countdown-text,
-+  .drop-details-drop-date-countdown-text-mobile,
-+  .drop-details-burn-amount-text,
-+  .drop-details-burn-collection-text,
-+  .drop-details-exclusions-text,
-+  .drop-details-exclusions-text-none,
-+  .drop-details-redeem-amount-text,
-+  .drop-details-redeem-token-title-text,
-+  .drop-details-redeem-collection-text
-+),
-+body.first-paint-main .drops-preview-pending .event-cart-redeem-token-div-main :is(
-+  .collection-item-events-title-text,
-+  .collection-item-events-editions-text,
-+  .collection-item-events-collection-text,
-+  .supply-text-number
-+),
-+body.first-paint-main .drops-wallet-tokens-pending :is(
-+  .available-burn-tokens-tile-div-main,
-+  .no-tokens-in-walet-div---events,
-+  .w-dyn-list
+@@ -15,7 +15,11 @@ body.first-paint-main .drops-params-pending :is(
+   .drop-details-redeem-amount-text,
+   .drop-details-redeem-token-title-text,
+   .drop-details-redeem-collection-text
+-),
 +) {
-+  visibility: hidden;
++  color: transparent !important;
++  text-shadow: none !important;
 +}
 +
- body.first-paint-main .drops-preview-pending,
- body.first-paint-main .drops-wallet-tokens-pending {
--  visibility: hidden;
-   pointer-events: none;
- }
- `;
+ body.first-paint-main .drops-preview-pending .event-cart-redeem-token-div-main :is(
+   .collection-item-events-title-text,
+   .collection-item-events-editions-text,
