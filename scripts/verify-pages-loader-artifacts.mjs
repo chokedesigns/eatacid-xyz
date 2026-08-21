@@ -7,7 +7,8 @@ const ENVIRONMENTS = ['prod', 'staging'];
 const PROD_HOST_DECLARATION =
   'new Set(["eatacid.xyz", "www.eatacid.xyz"])';
 const FIRST_PAINT_MARKER = '__EA_PUBLIC_FIRST_PAINT__';
-const FIRST_PAINT_SURFACES = new Set(['home', 'exchange']);
+const JAVASCRIPT_REFERENCE = /(["'])([^"'`\s]+\.js)\1/g;
+const LOCAL_ARTIFACT_REFERENCE = /^\.\/[A-Za-z0-9][A-Za-z0-9._-]*\.js$/;
 
 function fail(message) {
   throw new Error(`[pages-loaders] ${message}`);
@@ -54,6 +55,21 @@ async function requireEqualFiles(
   deployedDescription,
   sourceDescription
 ) {
+  const { deployed } = await requireEqualFilePair(
+    deployedPath,
+    sourcePath,
+    deployedDescription,
+    sourceDescription
+  );
+  return deployed;
+}
+
+async function requireEqualFilePair(
+  deployedPath,
+  sourcePath,
+  deployedDescription,
+  sourceDescription
+) {
   const [deployed, source] = await Promise.all([
     readRequiredFile(deployedPath, deployedDescription),
     readRequiredFile(sourcePath, sourceDescription)
@@ -64,7 +80,7 @@ async function requireEqualFiles(
       `${deployedPath} != ${sourcePath}`);
   }
 
-  return deployed;
+  return { deployed, source };
 }
 
 function requireReference(text, reference, description) {
@@ -102,106 +118,96 @@ function verifyLegacyRootText(contents, surface, description) {
 
 function verifyEnvironmentLoaderText(contents, surface, description) {
   const text = contents.toString('utf8');
+  const artifactNames = new Set();
+  let match;
 
-  if (FIRST_PAINT_SURFACES.has(surface)) {
-    requireReference(text, '"./first-paint.js"', description);
+  JAVASCRIPT_REFERENCE.lastIndex = 0;
+  while ((match = JAVASCRIPT_REFERENCE.exec(text)) !== null) {
+    const specifier = match[2];
+    if (!LOCAL_ARTIFACT_REFERENCE.test(specifier)) {
+      fail(`${description} contains a non-local artifact reference: ${specifier}`);
+    }
+    artifactNames.add(specifier.slice(2));
   }
-  requireReference(text, `"./${surface}.js"`, description);
+
+  const applicationArtifact = `${surface}.js`;
+  if (!artifactNames.has(applicationArtifact)) {
+    fail(`${description} is missing required local artifact reference: ` +
+      `./${applicationArtifact}`);
+  }
+  if (surface === 'home' && !artifactNames.has('first-paint.js')) {
+    fail(`${description} is missing required local artifact reference: ` +
+      './first-paint.js');
+  }
 
   requireReference(text, 'bundle load failed:', description);
+  return artifactNames;
 }
 
-async function verifyApplicationArtifacts(
+function addArtifactReferences(
+  referencesByEnvironment,
+  environment,
+  surface,
+  artifactNames
+) {
+  let environmentReferences = referencesByEnvironment.get(environment);
+  if (!environmentReferences) {
+    environmentReferences = new Map();
+    referencesByEnvironment.set(environment, environmentReferences);
+  }
+
+  for (const artifactName of artifactNames) {
+    let referencingSurfaces = environmentReferences.get(artifactName);
+    if (!referencingSurfaces) {
+      referencingSurfaces = new Set();
+      environmentReferences.set(artifactName, referencingSurfaces);
+    }
+    referencingSurfaces.add(surface);
+  }
+}
+
+async function verifyReferencedArtifacts(
   artifactRoot,
   mainRoot,
   stagingRoot,
-  environments
+  referencesByEnvironment
 ) {
   const artifacts = [];
 
-  for (const environment of environments) {
-    for (const surface of SURFACES) {
-      const applicationPath = join(artifactRoot, environment, `${surface}.js`);
-      const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
-      const sourcePath = join(
-        ownerRoot,
-        'dist',
-        environment,
-        `${surface}.js`
-      );
-      const application = await requireEqualFiles(
-        applicationPath,
-        sourcePath,
-        `${environment} ${surface} application artifact`,
-        `${environment === 'prod' ? 'main' : 'staging'} build output`
-      );
-      artifacts.push({
-        environment,
-        surface,
-        path: applicationPath,
-        bytes: application.byteLength
-      });
-    }
-
-    const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
-    const firstPaintPath = join(artifactRoot, environment, 'first-paint.js');
-    const firstPaintSourcePath = join(
-      ownerRoot,
-      'dist',
-      environment,
-      'first-paint.js'
-    );
-    const firstPaint = await requireEqualFiles(
-      firstPaintPath,
-      firstPaintSourcePath,
-      `${environment} first-paint artifact referenced by Home/Exchange environment loaders`,
-      `${environment === 'prod' ? 'main' : 'staging'} first-paint build output`
-    );
-    if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
-      fail(`${environment} first-paint artifact lacks coordinator marker ` +
-        `${FIRST_PAINT_MARKER}: ${firstPaintPath}`);
-    }
-    artifacts.push({
-      environment,
-      surface: 'first-paint',
-      path: firstPaintPath,
-      bytes: firstPaint.byteLength
-    });
-  }
-
-  return artifacts;
-}
-
-async function verifyLegacyApplicationArtifacts(
-  artifactRoot,
-  mainRoot,
-  stagingRoot
-) {
-  const artifacts = [];
   for (const environment of ENVIRONMENTS) {
-    for (const surface of SURFACES) {
-      const applicationPath = join(artifactRoot, environment, `${surface}.js`);
-      const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
-      const sourcePath = join(
-        ownerRoot,
-        'dist',
-        environment,
-        `${surface}.js`
-      );
-      const application = await requireEqualFiles(
-        applicationPath,
+    const ownerRoot = environment === 'prod' ? mainRoot : stagingRoot;
+    const environmentReferences = referencesByEnvironment.get(environment) ||
+      new Map();
+
+    for (const [artifactName, referencingSurfaces] of environmentReferences) {
+      const artifactPath = join(artifactRoot, environment, artifactName);
+      const sourcePath = join(ownerRoot, 'dist', environment, artifactName);
+      const surface = artifactName.replace(/\.js$/, '');
+      const artifactDescription = artifactName === 'first-paint.js'
+        ? `${environment} first-paint artifact referenced by ` +
+          `${[...referencingSurfaces].join('/')} environment loader(s)`
+        : `${environment} ${surface} application artifact`;
+      const artifact = await requireEqualFiles(
+        artifactPath,
         sourcePath,
-        `${environment} ${surface} application artifact referenced by legacy root loader`,
+        artifactDescription,
         `${environment === 'prod' ? 'main' : 'staging'} build output`
       );
+      if (artifactName === 'first-paint.js' &&
+          !artifact.includes(FIRST_PAINT_MARKER)) {
+        fail(`${environment} first-paint artifact lacks coordinator marker ` +
+          `${FIRST_PAINT_MARKER}: ${artifactPath}`);
+      }
       artifacts.push({
         environment,
         surface,
-        path: applicationPath,
-        bytes: application.byteLength
+        path: artifactPath,
+        bytes: artifact.byteLength,
+        referencedBy: [...referencingSurfaces]
       });
     }
   }
+
   return artifacts;
 }
 
@@ -223,6 +229,7 @@ async function detectMode(mainRoot) {
 async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
   const roots = [];
   const environmentLoaders = [];
+  const referencesByEnvironment = new Map();
 
   for (const surface of SURFACES) {
     const deployedPath = join(artifactRoot, `${surface}.js`);
@@ -254,17 +261,25 @@ async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
         'environment',
         `${surface}.js`
       );
-      const loader = await requireEqualFiles(
-        deployedLoaderPath,
-        sourceLoaderPath,
-        `${environment} ${surface} environment loader`,
+      const { deployed: loader, source: sourceLoader } =
+        await requireEqualFilePair(
+          deployedLoaderPath,
+          sourceLoaderPath,
+          `${environment} ${surface} environment loader`,
+          `authoritative ${environment === 'prod' ? 'main' : 'staging'} ` +
+            `${surface} environment-loader source`
+        );
+      const artifactNames = verifyEnvironmentLoaderText(
+        sourceLoader,
+        surface,
         `authoritative ${environment === 'prod' ? 'main' : 'staging'} ` +
           `${surface} environment-loader source`
       );
-      verifyEnvironmentLoaderText(
-        loader,
+      addArtifactReferences(
+        referencesByEnvironment,
+        environment,
         surface,
-        `${environment} ${surface} environment loader`
+        artifactNames
       );
       environmentLoaders.push({
         environment,
@@ -275,11 +290,11 @@ async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
     }
   }
 
-  const artifacts = await verifyApplicationArtifacts(
+  const artifacts = await verifyReferencedArtifacts(
     artifactRoot,
     mainRoot,
     stagingRoot,
-    ENVIRONMENTS
+    referencesByEnvironment
   );
 
   return { roots, environmentLoaders, artifacts };
@@ -288,6 +303,7 @@ async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
 async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
   const roots = [];
   const environmentLoaders = [];
+  const referencesByEnvironment = new Map();
 
   for (const surface of SURFACES) {
     const unexpectedProdLoader = join(
@@ -313,6 +329,14 @@ async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
       `authoritative legacy main ${surface} loader source`
     );
     verifyLegacyRootText(stable, surface, `pre-cutover stable ${surface} loader`);
+    for (const environment of ENVIRONMENTS) {
+      addArtifactReferences(
+        referencesByEnvironment,
+        environment,
+        `legacy ${surface} root`,
+        new Set([`${surface}.js`])
+      );
+    }
     roots.push({
       kind: 'stable-legacy',
       surface,
@@ -356,16 +380,23 @@ async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
       'environment',
       `${surface}.js`
     );
-    const loader = await requireEqualFiles(
-      deployedLoaderPath,
-      sourceLoaderPath,
-      `staging ${surface} environment loader`,
+    const { deployed: loader, source: sourceLoader } =
+      await requireEqualFilePair(
+        deployedLoaderPath,
+        sourceLoaderPath,
+        `staging ${surface} environment loader`,
+        `authoritative staging ${surface} environment-loader source`
+      );
+    const artifactNames = verifyEnvironmentLoaderText(
+      sourceLoader,
+      surface,
       `authoritative staging ${surface} environment-loader source`
     );
-    verifyEnvironmentLoaderText(
-      loader,
+    addArtifactReferences(
+      referencesByEnvironment,
+      'staging',
       surface,
-      `staging ${surface} environment loader`
+      artifactNames
     );
     environmentLoaders.push({
       environment: 'staging',
@@ -375,34 +406,12 @@ async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
     });
   }
 
-  const artifacts = await verifyLegacyApplicationArtifacts(
+  const artifacts = await verifyReferencedArtifacts(
     artifactRoot,
     mainRoot,
-    stagingRoot
-  );
-  const firstPaintPath = join(artifactRoot, 'staging', 'first-paint.js');
-  const firstPaintSourcePath = join(
     stagingRoot,
-    'dist',
-    'staging',
-    'first-paint.js'
+    referencesByEnvironment
   );
-  const firstPaint = await requireEqualFiles(
-    firstPaintPath,
-    firstPaintSourcePath,
-    'staging first-paint artifact referenced by Home/Exchange environment loaders',
-    'staging first-paint build output'
-  );
-  if (!firstPaint.includes(FIRST_PAINT_MARKER)) {
-    fail(`staging first-paint artifact lacks coordinator marker ` +
-      `${FIRST_PAINT_MARKER}: ${firstPaintPath}`);
-  }
-  artifacts.push({
-    environment: 'staging',
-    surface: 'first-paint',
-    path: firstPaintPath,
-    bytes: firstPaint.byteLength
-  });
 
   return { roots, environmentLoaders, artifacts };
 }

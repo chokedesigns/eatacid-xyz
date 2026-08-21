@@ -37,12 +37,24 @@ const ENVIRONMENT_SOURCES = Object.fromEntries(await Promise.all(SURFACES.map(
     'utf8'
   )]
 )));
+const LEGACY_EXCHANGE_ENVIRONMENT_SOURCE = ENVIRONMENT_SOURCES.drops
+  .replaceAll('Drops', 'Exchange')
+  .replaceAll('drops', 'exchange');
+const HOME_WITHOUT_FIRST_PAINT_SOURCE = ENVIRONMENT_SOURCES.drops
+  .replaceAll('Drops', 'Home')
+  .replaceAll('drops', 'home');
 const PAGES_WORKFLOW = await readFile(
   new URL('.github/workflows/pages.yml', sourceRoot),
   'utf8'
 );
 
-async function createFixture(mode) {
+async function createFixture(
+  mode,
+  {
+    mainEnvironmentSources = ENVIRONMENT_SOURCES,
+    stagingEnvironmentSources = ENVIRONMENT_SOURCES
+  } = {}
+) {
   const directory = await mkdtemp(join(tmpdir(), 'ea-pages-loaders-'));
   const artifact = join(directory, 'dist');
   const main = join(directory, 'repo-main');
@@ -68,7 +80,7 @@ async function createFixture(mode) {
       ),
       writeFile(
         join(staging, 'loaders', 'environment', `${surface}.js`),
-        ENVIRONMENT_SOURCES[surface]
+        stagingEnvironmentSources[surface]
       ),
       writeFile(join(artifact, 'prod', `${surface}.js`), APPLICATION_BUNDLE),
       writeFile(join(artifact, 'staging', `${surface}.js`), APPLICATION_BUNDLE),
@@ -82,7 +94,7 @@ async function createFixture(mode) {
       ),
       writeFile(
         join(artifact, 'staging', `${surface}-loader.js`),
-        ENVIRONMENT_SOURCES[surface]
+        stagingEnvironmentSources[surface]
       )
     ]);
   }
@@ -105,12 +117,12 @@ async function createFixture(mode) {
         ),
         writeFile(
           join(main, 'loaders', 'environment', `${surface}.js`),
-          ENVIRONMENT_SOURCES[surface]
+          mainEnvironmentSources[surface]
         ),
         writeFile(join(artifact, `${surface}.js`), ROOT_SOURCES[surface]),
         writeFile(
           join(artifact, 'prod', `${surface}-loader.js`),
-          ENVIRONMENT_SOURCES[surface]
+          mainEnvironmentSources[surface]
         )
       ]);
     }
@@ -138,8 +150,8 @@ async function createFixture(mode) {
   return { directory, artifact, main, staging };
 }
 
-async function withFixture(mode, run) {
-  const fixture = await createFixture(mode);
+async function withFixture(mode, run, options) {
+  const fixture = await createFixture(mode, options);
   try {
     await run(fixture);
   } finally {
@@ -148,6 +160,12 @@ async function withFixture(mode, run) {
 }
 
 const quiet = { log() {} };
+const STAGING_FIRST_ROLLOUT = {
+  mainEnvironmentSources: {
+    ...ENVIRONMENT_SOURCES,
+    exchange: LEGACY_EXCHANGE_ENVIRONMENT_SOURCE
+  }
+};
 
 await withFixture('stable-cutover', async fixture => {
   const result = await verifyPagesLoaderArtifacts(
@@ -160,7 +178,42 @@ await withFixture('stable-cutover', async fixture => {
   assert.equal(result.roots.length, 3);
   assert.equal(result.environmentLoaders.length, 6);
   assert.equal(result.artifacts.length, 8);
+  assert.deepEqual(
+    result.artifacts.find(artifact =>
+      artifact.environment === 'prod' && artifact.surface === 'first-paint'
+    ).referencedBy,
+    ['home', 'exchange']
+  );
+  assert.deepEqual(
+    result.artifacts.find(artifact =>
+      artifact.environment === 'staging' && artifact.surface === 'drops'
+    ).referencedBy,
+    ['drops']
+  );
 });
+
+await withFixture('stable-cutover', async fixture => {
+  const result = await verifyPagesLoaderArtifacts(
+    fixture.artifact,
+    fixture.main,
+    fixture.staging,
+    quiet
+  );
+  assert.equal(result.mode, 'stable-cutover');
+  assert.equal(result.artifacts.length, 8);
+  assert.deepEqual(
+    result.artifacts.find(artifact =>
+      artifact.environment === 'prod' && artifact.surface === 'first-paint'
+    ).referencedBy,
+    ['home']
+  );
+  assert.deepEqual(
+    result.artifacts.find(artifact =>
+      artifact.environment === 'staging' && artifact.surface === 'first-paint'
+    ).referencedBy,
+    ['home', 'exchange']
+  );
+}, STAGING_FIRST_ROLLOUT);
 
 await withFixture('candidate', async fixture => {
   const result = await verifyPagesLoaderArtifacts(
@@ -228,35 +281,130 @@ await withFixture('stable-cutover', async fixture => {
   );
 });
 
-for (const environment of ['prod', 'staging']) {
-  await withFixture('stable-cutover', async fixture => {
-    const owner = environment === 'prod' ? fixture.main : fixture.staging;
-    const invalidExchangeLoader = ENVIRONMENT_SOURCES.exchange.replace(
-      '"./first-paint.js"',
-      '"./early-shell.js"'
-    );
-    await Promise.all([
-      writeFile(
-        join(owner, 'loaders', 'environment', 'exchange.js'),
-        invalidExchangeLoader
-      ),
-      writeFile(
-        join(fixture.artifact, environment, 'exchange-loader.js'),
-        invalidExchangeLoader
-      )
-    ]);
-    await assert.rejects(
-      verifyPagesLoaderArtifacts(
-        fixture.artifact,
-        fixture.main,
-        fixture.staging,
-        quiet
-      ),
-      new RegExp(`${environment} exchange environment loader is missing ` +
-        'required reference: "\\.\\/first-paint\\.js"')
-    );
-  });
-}
+await withFixture('stable-cutover', async fixture => {
+  await rm(join(fixture.artifact, 'staging', 'first-paint.js'));
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /missing staging first-paint artifact referenced by home\/exchange environment loader\(s\)/
+  );
+}, STAGING_FIRST_ROLLOUT);
+
+await withFixture('stable-cutover', async fixture => {
+  const invalidFirstPaint = 'console.log("missing coordinator marker");\n';
+  await Promise.all([
+    writeFile(
+      join(fixture.artifact, 'staging', 'first-paint.js'),
+      invalidFirstPaint
+    ),
+    writeFile(
+      join(fixture.staging, 'dist', 'staging', 'first-paint.js'),
+      invalidFirstPaint
+    )
+  ]);
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /staging first-paint artifact lacks coordinator marker/
+  );
+}, STAGING_FIRST_ROLLOUT);
+
+await withFixture('stable-cutover', async fixture => {
+  await writeFile(
+    join(fixture.artifact, 'prod', 'exchange-loader.js'),
+    ENVIRONMENT_SOURCES.exchange
+  );
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /prod exchange environment loader differs from authoritative main/
+  );
+}, STAGING_FIRST_ROLLOUT);
+
+await withFixture('stable-cutover', async fixture => {
+  await writeFile(
+    join(fixture.artifact, 'staging', 'exchange-loader.js'),
+    LEGACY_EXCHANGE_ENVIRONMENT_SOURCE
+  );
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /staging exchange environment loader differs from authoritative staging/
+  );
+}, STAGING_FIRST_ROLLOUT);
+
+await withFixture('stable-cutover', async fixture => {
+  await rm(join(fixture.artifact, 'prod', 'first-paint.js'));
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /missing prod first-paint artifact referenced by home\/exchange environment loader\(s\)/
+  );
+});
+
+await withFixture('stable-cutover', async fixture => {
+  await rm(join(fixture.artifact, 'staging', 'first-paint.js'));
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /missing staging first-paint artifact referenced by home environment loader\(s\)/
+  );
+}, {
+  mainEnvironmentSources: {
+    ...ENVIRONMENT_SOURCES,
+    exchange: LEGACY_EXCHANGE_ENVIRONMENT_SOURCE
+  },
+  stagingEnvironmentSources: {
+    ...ENVIRONMENT_SOURCES,
+    exchange: LEGACY_EXCHANGE_ENVIRONMENT_SOURCE
+  }
+});
+
+await withFixture('stable-cutover', async fixture => {
+  await Promise.all([
+    writeFile(
+      join(fixture.main, 'loaders', 'environment', 'home.js'),
+      HOME_WITHOUT_FIRST_PAINT_SOURCE
+    ),
+    writeFile(
+      join(fixture.artifact, 'prod', 'home-loader.js'),
+      HOME_WITHOUT_FIRST_PAINT_SOURCE
+    )
+  ]);
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /authoritative main home environment-loader source is missing required local artifact reference: \.\/first-paint\.js/
+  );
+});
 
 await withFixture('stable-cutover', async fixture => {
   await writeFile(
