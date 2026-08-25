@@ -1,9 +1,0 @@
-﻿ .../performance/PERF-3B.drops-early-first-paint.md | 104 +++++++++++
- loaders/environment/drops.js                       |  40 ++--
- loaders/loader-architecture.test.mjs               | 172 ++++++++++++++---
- package.json                                       |   5 +-
- scripts/verify-drops-first-paint-build.mjs         | 114 +++++++++++
- scripts/verify-pages-loader-artifacts.mjs          |  15 +-
- scripts/verify-pages-loader-artifacts.test.mjs     | 208 ++++++++++++++++++---
- webflow/drops-first-paint.js                       |  39 ++++
- 8 files changed, 628 insertions(+), 69 deletions(-)

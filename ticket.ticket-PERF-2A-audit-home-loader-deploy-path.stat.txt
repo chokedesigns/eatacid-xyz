@@ -1,7 +1,0 @@
-﻿ .github/workflows/pages.yml                        |   5 +-
- docs/performance/PERF-2.early-home-first-paint.md  |   2 +
- .../performance/PERF-2A.home-loader-deploy-path.md |  87 ++++++++++++
- package.json                                       |   1 +
- scripts/verify-pages-home-loader-artifacts.mjs     | 145 +++++++++++++++++++
- .../verify-pages-home-loader-artifacts.test.mjs    | 153 +++++++++++++++++++++
- 6 files changed, 392 insertions(+), 1 deletion(-)
