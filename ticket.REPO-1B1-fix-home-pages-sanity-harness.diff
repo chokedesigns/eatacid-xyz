@@ -1,0 +1,25 @@
+﻿diff --git a/scripts/sync-test-harness.mjs b/scripts/sync-test-harness.mjs
+index 604c60b..cb07a03 100644
+--- a/scripts/sync-test-harness.mjs
++++ b/scripts/sync-test-harness.mjs
+@@ -30,7 +30,8 @@ function removeMarkedBlock(html) {
+ // Remove ONLY your app-loader module scripts (not Webflow/jQuery scripts).
+ // We intentionally match flexible variants seen in Webflow exports:
+ //
+-// - Home: ./shared/beacon-setup.js (sometimes after </html> in the rip)
++// - Home: ./shared/public-first-paint.js and ./shared/beacon-setup.js
++//   (sometimes after </html> in the rip)
+ // - Drops/Exchange: js/main.js (within each folder)
+ // - Your previous harness injections: dist/(home|drops|exchange).js
+ // - NEW: staging/prod subfolder injections: dist/(staging|prod)/(home|drops|exchange).js
+@@ -41,6 +42,10 @@ function stripAppScripts(html) {
+     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?js\/main\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+     /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?js\/main\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+ 
++    // Home loading shared first paint directly; the built Home bundle owns it
++    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?shared\/public-first-paint\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
++    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?shared\/public-first-paint\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
++
+     // Home (and sometimes other pages) loading shared beacon setup directly
+     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?shared\/beacon-setup\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+     /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/|\.\/)?shared\/beacon-setup\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
