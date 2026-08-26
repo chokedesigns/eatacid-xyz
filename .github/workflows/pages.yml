@@ -80,15 +80,6 @@ jobs:
 
       - name: Assemble dist for Pages
         run: |
-          mkdir -p dist/prod dist/staging
-          cp -R repo-main/dist/prod/* dist/prod/ || true
-          cp -R repo-staging/dist/staging/* dist/staging/ || true
-
-          # Staging environment loaders are always staging-owned.
-          cp repo-staging/loaders/environment/home.js dist/staging/home-loader.js
-          cp repo-staging/loaders/environment/drops.js dist/staging/drops-loader.js
-          cp repo-staging/loaders/environment/exchange.js dist/staging/exchange-loader.js
-
           main_root_count=0
           for source in home drops exchange; do
             if [[ -f "repo-main/loaders/root/${source}.js" ]]; then
@@ -96,27 +87,27 @@ jobs:
             fi
           done
 
-          if [[ "$main_root_count" -eq 3 ]]; then
-            # Stable cutover: root routers and prod environment loaders are main-owned.
-            cp repo-main/loaders/root/home.js dist/home.js
-            cp repo-main/loaders/root/drops.js dist/drops.js
-            cp repo-main/loaders/root/exchange.js dist/exchange.js
-            cp repo-main/loaders/environment/home.js dist/prod/home-loader.js
-            cp repo-main/loaders/environment/drops.js dist/prod/drops-loader.js
-            cp repo-main/loaders/environment/exchange.js dist/prod/exchange-loader.js
-          elif [[ "$main_root_count" -eq 0 ]]; then
-            # Additive pre-cutover: stable roots remain legacy main bytes. Candidate
-            # routers are root-level so their relative staging imports match cutover.
-            cp repo-main/loaders/home.loader.js dist/home.js
-            cp repo-main/loaders/drops.loader.js dist/drops.js
-            cp repo-main/loaders/exchange.loader.js dist/exchange.js
-            cp repo-staging/loaders/root/home.js dist/candidate-home.js
-            cp repo-staging/loaders/root/drops.js dist/candidate-drops.js
-            cp repo-staging/loaders/root/exchange.js dist/candidate-exchange.js
-          else
-            echo "::error title=PARTIAL ROOT ROUTER CUTOVER::main must contain all three root routers or none of them."
+          if [[ "$main_root_count" -ne 3 ]]; then
+            echo "::error title=PERMANENT ROOT ROUTERS REQUIRED::main must contain all three permanent root routers: loaders/root/home.js, loaders/root/drops.js, and loaders/root/exchange.js (found ${main_root_count} of 3)."
             exit 1
           fi
+
+          mkdir -p dist/prod dist/staging
+          cp -R repo-main/dist/prod/* dist/prod/ || true
+          cp -R repo-staging/dist/staging/* dist/staging/ || true
+
+          # Stable root routers and prod environment loaders are main-owned.
+          cp repo-main/loaders/root/home.js dist/home.js
+          cp repo-main/loaders/root/drops.js dist/drops.js
+          cp repo-main/loaders/root/exchange.js dist/exchange.js
+          cp repo-main/loaders/environment/home.js dist/prod/home-loader.js
+          cp repo-main/loaders/environment/drops.js dist/prod/drops-loader.js
+          cp repo-main/loaders/environment/exchange.js dist/prod/exchange-loader.js
+
+          # Staging environment loaders are always staging-owned.
+          cp repo-staging/loaders/environment/home.js dist/staging/home-loader.js
+          cp repo-staging/loaders/environment/drops.js dist/staging/drops-loader.js
+          cp repo-staging/loaders/environment/exchange.js dist/staging/exchange-loader.js
 
       - name: Verify Pages loader graph and provenance
         run: node repo-staging/scripts/verify-pages-loader-artifacts.mjs dist repo-main repo-staging

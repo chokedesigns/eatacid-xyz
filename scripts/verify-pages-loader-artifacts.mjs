@@ -107,16 +107,6 @@ function verifyRootRouterText(contents, surface, description) {
   }
 }
 
-function verifyLegacyRootText(contents, surface, description) {
-  const text = contents.toString('utf8');
-
-  requireReference(text, PROD_HOST_DECLARATION, description);
-  requireReference(text, 'window.location.hostname', description);
-  requireReference(text, '"./prod"', description);
-  requireReference(text, '"./staging"', description);
-  requireReference(text, `\`${'${base}'}/${surface}.js\``, description);
-}
-
 function verifyEnvironmentLoaderText(contents, surface, description) {
   const text = contents.toString('utf8');
   const artifactNames = new Set();
@@ -222,22 +212,20 @@ async function verifyReferencedArtifacts(
   return artifacts;
 }
 
-async function detectMode(mainRoot) {
+async function verifyRequiredRootRouters(mainRoot) {
   const rootPaths = SURFACES.map(surface =>
     join(mainRoot, 'loaders', 'root', `${surface}.js`)
   );
   const present = await Promise.all(rootPaths.map(pathIsFile));
+  const rootCount = present.filter(Boolean).length;
 
-  if (present.every(Boolean)) {
-    return 'stable-cutover';
+  if (rootCount !== SURFACES.length) {
+    fail('main must contain all three permanent root-router sources ' +
+      `(found ${rootCount} of ${SURFACES.length})`);
   }
-  if (present.some(Boolean)) {
-    fail('main contains only part of the root-router source set');
-  }
-  return 'candidate';
 }
 
-async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
+async function verifyPermanentGraph(artifactRoot, mainRoot, stagingRoot) {
   const roots = [];
   const environmentLoaders = [];
   const referencesByEnvironment = new Map();
@@ -256,7 +244,7 @@ async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
 
     const candidatePath = join(artifactRoot, `candidate-${surface}.js`);
     if (await pathIsFile(candidatePath)) {
-      fail(`temporary candidate router remains after stable cutover: ${candidatePath}`);
+      fail(`retired candidate router artifact must not be present: ${candidatePath}`);
     }
 
     for (const environment of ENVIRONMENTS) {
@@ -311,122 +299,6 @@ async function verifyStableCutover(artifactRoot, mainRoot, stagingRoot) {
   return { roots, environmentLoaders, artifacts };
 }
 
-async function verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot) {
-  const roots = [];
-  const environmentLoaders = [];
-  const referencesByEnvironment = new Map();
-
-  for (const surface of SURFACES) {
-    const unexpectedProdLoader = join(
-      artifactRoot,
-      'prod',
-      `${surface}-loader.js`
-    );
-    if (await pathIsFile(unexpectedProdLoader)) {
-      fail(`pre-cutover artifact must not synthesize a prod environment loader: ` +
-        unexpectedProdLoader);
-    }
-
-    const stablePath = join(artifactRoot, `${surface}.js`);
-    const legacySourcePath = join(
-      mainRoot,
-      'loaders',
-      `${surface}.loader.js`
-    );
-    const stable = await requireEqualFiles(
-      stablePath,
-      legacySourcePath,
-      `pre-cutover stable ${surface} loader`,
-      `authoritative legacy main ${surface} loader source`
-    );
-    verifyLegacyRootText(stable, surface, `pre-cutover stable ${surface} loader`);
-    for (const environment of ENVIRONMENTS) {
-      addArtifactReferences(
-        referencesByEnvironment,
-        environment,
-        `legacy ${surface} root`,
-        new Set([`${surface}.js`])
-      );
-    }
-    roots.push({
-      kind: 'stable-legacy',
-      surface,
-      path: stablePath,
-      bytes: stable.byteLength
-    });
-
-    const candidatePath = join(artifactRoot, `candidate-${surface}.js`);
-    const candidateSourcePath = join(
-      stagingRoot,
-      'loaders',
-      'root',
-      `${surface}.js`
-    );
-    const candidate = await requireEqualFiles(
-      candidatePath,
-      candidateSourcePath,
-      `temporary staging ${surface} candidate router`,
-      `authoritative staging ${surface} root-router source`
-    );
-    verifyRootRouterText(
-      candidate,
-      surface,
-      `temporary staging ${surface} candidate router`
-    );
-    roots.push({
-      kind: 'staging-candidate',
-      surface,
-      path: candidatePath,
-      bytes: candidate.byteLength
-    });
-
-    const deployedLoaderPath = join(
-      artifactRoot,
-      'staging',
-      `${surface}-loader.js`
-    );
-    const sourceLoaderPath = join(
-      stagingRoot,
-      'loaders',
-      'environment',
-      `${surface}.js`
-    );
-    const { deployed: loader, source: sourceLoader } =
-      await requireEqualFilePair(
-        deployedLoaderPath,
-        sourceLoaderPath,
-        `staging ${surface} environment loader`,
-        `authoritative staging ${surface} environment-loader source`
-      );
-    const artifactNames = verifyEnvironmentLoaderText(
-      sourceLoader,
-      surface,
-      `authoritative staging ${surface} environment-loader source`
-    );
-    addArtifactReferences(
-      referencesByEnvironment,
-      'staging',
-      surface,
-      artifactNames
-    );
-    environmentLoaders.push({
-      environment: 'staging',
-      surface,
-      path: deployedLoaderPath,
-      bytes: loader.byteLength
-    });
-  }
-
-  const artifacts = await verifyReferencedArtifacts(
-    artifactRoot,
-    mainRoot,
-    stagingRoot,
-    referencesByEnvironment
-  );
-
-  return { roots, environmentLoaders, artifacts };
-}
-
 async function verifyPagesLoaderArtifacts(
   artifactDirectory,
   mainRepositoryDirectory,
@@ -436,13 +308,11 @@ async function verifyPagesLoaderArtifacts(
   const artifactRoot = resolve(artifactDirectory);
   const mainRoot = resolve(mainRepositoryDirectory);
   const stagingRoot = resolve(stagingRepositoryDirectory);
-  const mode = await detectMode(mainRoot);
-  const graph = mode === 'stable-cutover'
-    ? await verifyStableCutover(artifactRoot, mainRoot, stagingRoot)
-    : await verifyCandidateMigration(artifactRoot, mainRoot, stagingRoot);
+  await verifyRequiredRootRouters(mainRoot);
+  const graph = await verifyPermanentGraph(artifactRoot, mainRoot, stagingRoot);
 
-  const result = { artifactRoot, mainRoot, stagingRoot, mode, ...graph };
-  log(`[pages-loaders] verified ${mode} graph: ${artifactRoot}`);
+  const result = { artifactRoot, mainRoot, stagingRoot, ...graph };
+  log(`[pages-loaders] verified permanent loader graph: ${artifactRoot}`);
   log(`[pages-loaders] roots=${result.roots.length}, ` +
     `environment-loaders=${result.environmentLoaders.length}, ` +
     `referenced-artifacts=${result.artifacts.length}`);

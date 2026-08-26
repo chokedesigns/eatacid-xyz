@@ -2,6 +2,13 @@
 
 Date: 2026-08-20
 
+Migration status: completed.
+
+The stable root-router cutover is complete. Candidate URLs and the zero-root/
+pre-cutover deployment mode are retired. Future rollback stays within the
+stable root-router/environment-loader architecture by reverting Git and the
+deployment to a known-good revision that preserves that architecture.
+
 ## Deployment contract
 
 The stable Webflow-facing URLs remain `/home.js`, `/drops.js`, and
@@ -20,9 +27,10 @@ main:loaders/root/{surface}.js
 
 Home's environment loader independently starts `./first-paint.js` and
 `./home.js`. Exchange follows the same sibling-import pattern for
-`./first-paint.js` and `./exchange.js`, while Drops starts only its matching
-application bundle. Page bootstrap, first-paint sequencing, Beacon setup, and
-feature behavior stay below the stable router boundary.
+`./first-paint.js` and `./exchange.js`. Drops independently starts
+`./drops-first-paint.js` and `./drops.js`. Page bootstrap, first-paint
+sequencing, Beacon setup, and feature behavior stay below the stable router
+boundary.
 
 Normal validation is staging-first: merge a ticket branch to `staging`, let the
 combined Pages workflow build and publish it, validate the staging hostname's
@@ -31,11 +39,12 @@ Changing a root router is an infrastructure change because the same main-owned
 bytes select both environments; ordinary staging loader work changes only the
 staging environment-loader source and staging-built bundles.
 
-## Additive migration and stable cutover
+## Historical additive migration and stable cutover
 
-The workflow detects whether main contains all three new root-router sources.
-While main contains none, it preserves main's legacy stable root bytes and
-publishes staging's new routers at temporary root-level paths:
+During migration, the workflow detected whether main contained all three new
+root-router sources. While main contained none, it preserved main's legacy
+stable root bytes and published staging's new routers at temporary root-level
+paths:
 
 ```text
 /candidate-home.js
@@ -43,29 +52,33 @@ publishes staging's new routers at temporary root-level paths:
 /candidate-exchange.js
 ```
 
-Those candidate paths resolve relative imports exactly as the future stable
-roots do and are for staging-host validation only. They route to staging-owned
-`/staging/*-loader.js` files. The pre-cutover verifier also confirms the legacy
-stable roots still have their complete prod/staging application paths. It does
-not create a prod environment loader from staging or make production depend on
-the first-paint artifact absent from the old main build.
+Those retired candidate paths resolved relative imports exactly as the future
+stable roots would and were for staging-host validation only. They routed to
+staging-owned `/staging/*-loader.js` files. The retired pre-cutover verifier
+also confirmed that the legacy stable roots retained their complete
+prod/staging application paths. It did not create a prod environment loader
+from staging or make production depend on the first-paint artifact absent from
+the old main build.
 
-After this complete change reaches main, a fresh Pages assembly atomically
-copies main's routers to the stable root names, copies main's environment
-loaders to `/prod`, and requires `prod/first-paint.js` plus every other
-referenced prod/staging artifact before upload. Candidate files are not emitted
-after cutover. A partial three-router main state fails assembly and verification.
+When the complete change reached main, a fresh Pages assembly atomically copied
+main's routers to the stable root names and main's environment loaders to
+`/prod`, then required `prod/first-paint.js` plus every other referenced
+prod/staging artifact before upload. Candidate files ceased to be emitted at
+cutover. The permanent workflow now requires exactly three main-owned root
+routers and fails assembly and verification if any are missing.
 
 ## Validation and rollback
 
 `npm run pages:sanity:loader-chain` builds staging bundles, creates local
-candidate root/router and staging environment-loader copies, and injects the
-candidate root URLs into the existing Webflow HTML harness. The original
+stable root-router and staging environment-loader copies, and injects the
+stable root URLs into the existing Webflow HTML harness. The original
 `npm run pages:sanity` direct-bundle path remains available for bundle-only
 diagnosis.
 
-Rollback before cutover is simply removal/reversion of the additive staging
-candidate change; stable URLs still use legacy main. After cutover, roll back
-the complete main commit/deployment so root routers, prod environment loaders,
-and prod bundles return as one compatible artifact. Do not roll back only a
-root router or only its environment loader.
+The historical pre-cutover rollback path was removal/reversion of the additive
+staging candidate change while stable URLs still used legacy main. That path is
+now retired. Current rollback reverts Git and deployment to a known-good
+revision where stable root routers, prod environment loaders, staging
+environment loaders, and their bundles remain one compatible permanent
+architecture. Do not roll back only a root router or only its environment
+loader.

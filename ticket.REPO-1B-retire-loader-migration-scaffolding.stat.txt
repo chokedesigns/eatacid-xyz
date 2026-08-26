@@ -1,0 +1,7 @@
+﻿ .github/workflows/pages.yml                        |  47 ++--
+ docs/performance/PERF-2.early-home-first-paint.md  |   2 +-
+ .../PERF-2B.staging-loader-isolation.md            |  63 +++---
+ scripts/sync-test-harness.mjs                      |  13 +-
+ scripts/verify-pages-loader-artifacts.mjs          | 152 +------------
+ scripts/verify-pages-loader-artifacts.test.mjs     | 247 ++++++++++-----------
+ 6 files changed, 186 insertions(+), 338 deletions(-)

@@ -34,7 +34,7 @@ function removeMarkedBlock(html) {
 // - Drops/Exchange: js/main.js (within each folder)
 // - Your previous harness injections: dist/(home|drops|exchange).js
 // - NEW: staging/prod subfolder injections: dist/(staging|prod)/(home|drops|exchange).js
-// - Stable or candidate wrapper entrypoints when loader-chain mode is used
+// - Stable wrapper entrypoints when loader-chain mode is used
 function stripAppScripts(html) {
   const patterns = [
     // Webflow-exported module entrypoints for Drops/Exchange
@@ -61,9 +61,6 @@ function stripAppScripts(html) {
     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
     /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
 
-    // Temporary root-level candidate routers used before stable cutover
-    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?candidate-(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
-    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?candidate-(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
   ];
 
   let out = html;
@@ -117,7 +114,7 @@ if (loaderChain) {
       "environment",
       `${surface}.js`
     );
-    const candidateRouter = path.join(root, "dist", `candidate-${surface}.js`);
+    const stableRouter = path.join(root, "dist", `${surface}.js`);
     const stagingLoader = path.join(
       root,
       "dist",
@@ -125,16 +122,16 @@ if (loaderChain) {
       `${surface}-loader.js`
     );
 
-    ensureDir(path.dirname(candidateRouter));
+    ensureDir(path.dirname(stableRouter));
     ensureDir(path.dirname(stagingLoader));
-    fs.copyFileSync(rootRouterSource, candidateRouter);
+    fs.copyFileSync(rootRouterSource, stableRouter);
     fs.copyFileSync(environmentLoaderSource, stagingLoader);
   }
 }
 
 function harnessBundle(surface) {
   return loaderChain
-    ? `../dist/candidate-${surface}.js`
+    ? `../dist/${surface}.js`
     : `../dist/staging/${surface}.js`;
 }
 

@@ -59,7 +59,7 @@ Static validation establishes the intended dependency order and isolation, but i
 
 ## Manual runtime validation required
 
-Deployment prerequisite: until PERF-2B is promoted to main, use the temporary root-level `/candidate-home.js` artifact (or `npm run pages:sanity:loader-chain`) to validate the staging-owned environment-loader chain. After promotion, shared root `/home.js` is a main-owned router and normal staging validation reaches `/staging/home-loader.js`. The PERF-2B assembled-artifact guard must pass before treating a browser trace as valid.
+PERF-2B migration is complete. The permanent Home entry is `/home.js`; candidate loader URLs have been retired. `npm run pages:sanity:loader-chain` now validates the permanent root-router/environment-loader chain under the stable filename. The historical measurements and results in this document remain preserved, and the PERF-2B assembled-artifact guard must pass before treating a browser trace as valid.
 
 Use the same browser, viewport, device-pixel ratio, navigation method, cache policy, and interaction used for PERF-1. On the deployed staging build:
 
