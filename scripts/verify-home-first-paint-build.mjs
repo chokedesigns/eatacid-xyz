@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile, stat } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 
+import { normalizeParcelSources } from './parcel-source-map-sources.mjs';
+
 const BUILD_VARIANTS = ['staging', 'prod'];
 const EXPECTED_EARLY_SOURCES = [
   'webflow/first-paint.js',
@@ -46,7 +48,7 @@ for (const variant of BUILD_VARIANTS) {
   ]);
 
   assert.deepEqual(
-    firstPaintSourceMap.sources,
+    normalizeParcelSources(firstPaintSourceMap.sources),
     EXPECTED_EARLY_SOURCES,
     `${variant} first-paint dependency graph changed`
   );
