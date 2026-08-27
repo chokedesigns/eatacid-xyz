@@ -17,14 +17,28 @@ logs/
 npm-debug.log*
 
 # ----------------------------------------
+# OS & editor junk
+# ----------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+nul
+
+# ----------------------------------------
 # Local tooling & exports
 # ----------------------------------------
 ZIP/
+ticket.*.diff
+ticket.*.stat.txt
 
 # ----------------------------------------
 # Webflow‑exported CSS & assets
 # ----------------------------------------
-drops/css/
+drops/css/*
+!drops/css/eatacid-xyz-01-webflow.css
 exchange/css/
 
 # ----------------------------------------
