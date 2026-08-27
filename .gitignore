@@ -66,6 +66,9 @@ test/
 # ----------------------------------------
 readme/
 
+# Local Webflow/performance reference assets
+assets/site/
+
 # ----------------------------------------
 # Local thumbnail workflow contents
 # ----------------------------------------
