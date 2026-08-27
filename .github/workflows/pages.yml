@@ -109,6 +109,18 @@ jobs:
           cp repo-staging/loaders/environment/drops.js dist/staging/drops-loader.js
           cp repo-staging/loaders/environment/exchange.js dist/staging/exchange-loader.js
 
+      - name: Remove source maps from Pages artifact
+        run: find dist -type f -name '*.map' -delete
+
+      - name: Assert Pages artifact contains no source maps
+        run: |
+          remaining_map="$(find dist -type f -name '*.map' -print -quit)"
+          if [[ -n "$remaining_map" ]]; then
+            echo "::error title=SOURCE MAPS IN PAGES ARTIFACT::The assembled Pages artifact still contains source maps."
+            find dist -type f -name '*.map' -print
+            exit 1
+          fi
+
       - name: Verify Pages loader graph and provenance
         run: node repo-staging/scripts/verify-pages-loader-artifacts.mjs dist repo-main repo-staging
 

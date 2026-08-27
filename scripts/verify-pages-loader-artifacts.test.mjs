@@ -605,15 +605,53 @@ await withFixture(async fixture => {
 
 {
   const assemblyMarker = '- name: Assemble dist for Pages';
+  const cleanupCommand = "find dist -type f -name '*.map' -delete";
+  const zeroMapAssertion =
+    `remaining_map="$(find dist -type f -name '*.map' -print -quit)"`;
   const verificationCommand =
     'node repo-staging/scripts/verify-pages-loader-artifacts.mjs ' +
     'dist repo-main repo-staging';
   const uploadStep = 'uses: actions/upload-pages-artifact@v3';
-  const assemblyIndex = PAGES_WORKFLOW.indexOf(assemblyMarker);
-  const verificationIndex = PAGES_WORKFLOW.indexOf(verificationCommand);
-  const uploadIndex = PAGES_WORKFLOW.indexOf(uploadStep);
 
-  assert.ok(assemblyIndex >= 0, 'workflow must assemble the Pages graph');
+  function assertWorkflowOrdering(workflow) {
+    const assemblyIndex = workflow.indexOf(assemblyMarker);
+    const cleanupIndex = workflow.indexOf(cleanupCommand);
+    const zeroMapAssertionIndex = workflow.indexOf(zeroMapAssertion);
+    const verificationIndex = workflow.indexOf(verificationCommand);
+    const uploadIndex = workflow.indexOf(uploadStep);
+
+    assert.ok(assemblyIndex >= 0, 'workflow must assemble the Pages graph');
+    assert.ok(
+      cleanupIndex > assemblyIndex,
+      'workflow must remove source maps after Pages assembly'
+    );
+    assert.ok(
+      zeroMapAssertionIndex > cleanupIndex,
+      'workflow must assert zero source maps after source-map cleanup'
+    );
+    assert.ok(
+      verificationIndex > zeroMapAssertionIndex,
+      'workflow must verify provenance after the zero-map assertion'
+    );
+    assert.ok(
+      uploadIndex > verificationIndex,
+      'workflow must verify before uploading the Pages artifact'
+    );
+
+    const postVerificationWorkflow = workflow.slice(
+      verificationIndex + verificationCommand.length,
+      uploadIndex
+    );
+    assert.equal(
+      /\b(?:cp|mv|rm|sed|install|rsync|truncate)\b[^\n]*\bdist(?:[\/\\]|(?=\s|$))/.test(
+        postVerificationWorkflow
+      ),
+      false,
+      'workflow must not mutate any verified Pages graph file after validation'
+    );
+  }
+
+  assertWorkflowOrdering(PAGES_WORKFLOW);
   assert.match(
     PAGES_WORKFLOW,
     /if \[\[ "\$main_root_count" -ne 3 \]\]/,
@@ -629,25 +667,50 @@ await withFixture(async fixture => {
     /dist\/candidate-(?:home|drops|exchange)\.js/,
     'workflow must not generate retired candidate routers'
   );
-  assert.ok(
-    verificationIndex > assemblyIndex,
-    'workflow must verify after all Pages assembly copies'
-  );
-  assert.ok(
-    uploadIndex > verificationIndex,
-    'workflow must verify before uploading the Pages artifact'
+
+  assert.throws(
+    () => assertWorkflowOrdering(PAGES_WORKFLOW.replace(
+      cleanupCommand,
+      'true'
+    ).replace(
+      verificationCommand,
+      `${verificationCommand}\n${cleanupCommand}`
+    )),
+    /remove source maps after Pages assembly|zero source maps after source-map cleanup/,
+    'workflow ordering must reject source-map cleanup after provenance verification'
   );
 
-  const postVerificationWorkflow = PAGES_WORKFLOW.slice(
-    verificationIndex + verificationCommand.length,
-    uploadIndex
+  assert.throws(
+    () => assertWorkflowOrdering(PAGES_WORKFLOW.replace(
+      cleanupCommand,
+      'true'
+    ).replace(
+      uploadStep,
+      `${uploadStep}\n${cleanupCommand}`
+    )),
+    /zero source maps after source-map cleanup|verify before uploading/,
+    'workflow ordering must reject source-map cleanup after upload'
   );
-  assert.equal(
-    /\b(?:cp|mv|rm|sed|install|rsync|truncate)\b[^\n]*\bdist(?:[\/\\]|(?=\s|$))/.test(
-      postVerificationWorkflow
-    ),
-    false,
-    'workflow must not mutate any verified Pages graph file after validation'
+
+  assert.throws(
+    () => assertWorkflowOrdering(PAGES_WORKFLOW.replace(
+      zeroMapAssertion,
+      'remaining_map=""'
+    )),
+    /assert zero source maps/,
+    'workflow ordering must reject a missing zero-map assertion'
+  );
+
+  assert.throws(
+    () => assertWorkflowOrdering(PAGES_WORKFLOW.replace(
+      zeroMapAssertion,
+      'true'
+    ).replace(
+      cleanupCommand,
+      `${zeroMapAssertion}\n${cleanupCommand}`
+    )),
+    /assert zero source maps after source-map cleanup/,
+    'workflow ordering must reject a zero-map assertion before cleanup'
   );
 }
 
