@@ -13,7 +13,7 @@ Repository evidence includes the WF-MIG.1 and WF-MIG.2 committed inputs, current
 - [INFERENCE]: an explicit conclusion joining observed facts.
 - UNRESOLVED: not exposed or not provable through the allowed read surfaces.
 
-The requested root paths src/app.css, src/admin.js, home.js, drops.js, and exchange.js do not exist as root source files. Relevant current paths are drops/css/eatacid-xyz-01-webflow.css, exchange/css/eatacid-xyz-01-webflow.css, admin-ui/src/app.css, admin-ui/src/admin.js, webflow/drops.js, webflow/exchange.js, drops/js/main.js, and exchange/js/main.js. No absent path was treated as evidence.
+The requested root paths src/app.css, src/admin.js, home.js, drops.js, and exchange.js do not exist as root source files. Relevant current paths are docs/webflow-migration/evidence/eatacid-xyz-webflow-reference-snapshot.css, the ignored local duplicate exchange/css/eatacid-xyz-01-webflow.css, admin-ui/src/app.css, admin-ui/src/admin.js, webflow/drops.js, webflow/exchange.js, drops/js/main.js, and exchange/js/main.js. No absent path was treated as evidence.
 
 ## Confirmed Collection List inventory
 
@@ -133,7 +133,7 @@ Current checked-in pages load the remote Webflow CSS:
 
 https://cdn.prod.website-files.com/656cf42faa2b1a7a1582d9d2/css/staging-eatacid-xyz.webflow.shared.f47fa79a6.css
 
-Git also contains page-local Webflow CSS snapshots at drops/css/eatacid-xyz-01-webflow.css and exchange/css/eatacid-xyz-01-webflow.css. Current Webflow style metadata confirms the relevant style identities, including .collection-item-01-div, .collection-item-02-div, .collection-item-01-image, .collection-item-title-text, .collection-item-editions-text-number, .collection-item-collection-text, .collection-item-value-div, .collection-item-owned-text, .token-id-container, .token-id-number, .token-qty, .hen-collection, .intros-collection, .canaan-collection, .exchange-collection-01, and .exchange-ui-div.exchange-wallet-tokens-pending.
+Git retains the older historical Webflow export at docs/webflow-migration/evidence/eatacid-xyz-webflow-reference-snapshot.css as migration, debugging, and reference evidence. The byte-identical exchange/css/eatacid-xyz-01-webflow.css is an ignored local duplicate, not a tracked file. Neither file is a runtime dependency or current Webflow CSS authority; the hosted stylesheet above remains authoritative for browser behavior. Current Webflow style metadata confirms the relevant style identities, including .collection-item-01-div, .collection-item-02-div, .collection-item-01-image, .collection-item-title-text, .collection-item-editions-text-number, .collection-item-collection-text, .collection-item-value-div, .collection-item-owned-text, .token-id-container, .token-id-number, .token-qty, .hen-collection, .intros-collection, .canaan-collection, .exchange-collection-01, and .exchange-ui-div.exchange-wallet-tokens-pending.
 
 | Selectors | Material effect in Git snapshot | Origin | Preservation |
 | --- | --- | --- | --- |
@@ -174,7 +174,7 @@ Differences and reliability limits:
 - Designer exposes one template DynamoItem and DynamoEmpty; compiled HTML bakes every current item and omits the nonactive empty-state node.
 - Compiled rows repeat form/input/select IDs and data-wf-element-id values. Runtime ignores those IDs.
 - Checked-in HTML loads local js/main.js, while current Webflow custom code loads deployed drops.js/exchange.js. Both reach the same Git module graph, but they are different delivery paths.
-- Checked-in HTML loads remote hashed Webflow CSS and Webflow JS. The generated assets are external to Git ownership even though local CSS snapshots exist.
+- Checked-in HTML loads remote hashed Webflow CSS and Webflow JS. The generated assets are external to Git ownership; the tracked historical CSS evidence and ignored local duplicate are reference-only.
 - Every CMS value and asset URL is baked into checked-in HTML, so the file can become stale when CMS changes. Current structural counts/order match; item-level values are deferred to WF-MIG.4.
 - The .introductions-collection runtime selector mismatch exists against both current Webflow and checked-in markup; it is not snapshot drift.
 
