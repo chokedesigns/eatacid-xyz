@@ -59,7 +59,7 @@ admin-ui/
 # ----------------------------------------
 # Local sanity harness (generated)
 # ----------------------------------------
-test/
+pages-sanity/
 
 # ----------------------------------------
 # Project guide notes

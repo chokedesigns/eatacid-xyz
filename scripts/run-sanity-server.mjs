@@ -3,9 +3,9 @@ import { spawn, exec } from "node:child_process";
 
 const PORT = 8080;
 const urls = [
-  `http://localhost:${PORT}/test/home`,
-  `http://localhost:${PORT}/test/drops`,
-  `http://localhost:${PORT}/test/exchange`,
+  `http://localhost:${PORT}/pages-sanity/home`,
+  `http://localhost:${PORT}/pages-sanity/drops`,
+  `http://localhost:${PORT}/pages-sanity/exchange`,
 ];
 
 function openUrl(url) {

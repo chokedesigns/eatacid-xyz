@@ -18,6 +18,64 @@ function writeUtf8(p, s) {
   fs.writeFileSync(p, s, "utf8");
 }
 
+function cleanupLegacyTestHarness(dir) {
+  if (!fs.existsSync(dir)) return;
+
+  if (!fs.lstatSync(dir).isDirectory()) {
+    throw new Error(
+      `sync-test-harness: refusing to clean legacy test path; not a directory: ${dir}`
+    );
+  }
+
+  const expectedFiles = new Map([
+    ["home.html", "home"],
+    ["drops.html", "drops"],
+    ["exchange.html", "exchange"],
+  ]);
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const recognizedFiles = [];
+  const unknownPaths = [];
+
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    const surface = expectedFiles.get(entry.name);
+
+    if (!entry.isFile() || !surface) {
+      unknownPaths.push(entryPath);
+      continue;
+    }
+
+    const html = readUtf8(entryPath);
+    const markedBundles = [
+      `../dist/staging/${surface}.js`,
+      `../dist/${surface}.js`,
+    ].map(
+      (bundleSrc) =>
+        `${MARK_START}\n` +
+        `<script type="module" src="${bundleSrc}"></script>\n` +
+        `${MARK_END}`
+    );
+
+    if (!markedBundles.some((markedBundle) => html.includes(markedBundle))) {
+      unknownPaths.push(entryPath);
+      continue;
+    }
+
+    recognizedFiles.push(entryPath);
+  }
+
+  if (unknownPaths.length > 0) {
+    throw new Error(
+      `sync-test-harness: refusing to clean legacy test directory; unknown content:\n${unknownPaths
+        .map((p) => `- ${p}`)
+        .join("\n")}`
+    );
+  }
+
+  for (const file of recognizedFiles) fs.unlinkSync(file);
+  fs.rmdirSync(dir);
+}
+
 function removeMarkedBlock(html) {
   const start = html.indexOf(MARK_START);
   const end = html.indexOf(MARK_END);
@@ -106,9 +164,11 @@ function buildOne({ src, dest, bundleSrc }) {
 }
 
 const root = process.cwd();
-const testDir = path.join(root, "test");
+const legacyTestDir = path.join(root, "test");
+const pagesSanityDir = path.join(root, "pages-sanity");
 const loaderChain = process.argv.includes("--loader-chain");
-ensureDir(testDir);
+cleanupLegacyTestHarness(legacyTestDir);
+ensureDir(pagesSanityDir);
 
 if (loaderChain) {
   for (const surface of ["home", "drops", "exchange"]) {
@@ -144,19 +204,19 @@ function harnessBundle(surface) {
 // strips app module loader scripts, injects dist bundles.
 buildOne({
   src: path.join(root, "index.html"),
-  dest: path.join(testDir, "home.html"),
+  dest: path.join(pagesSanityDir, "home.html"),
   bundleSrc: harnessBundle("home"),
 });
 
 buildOne({
   src: path.join(root, "drops", "index.html"),
-  dest: path.join(testDir, "drops.html"),
+  dest: path.join(pagesSanityDir, "drops.html"),
   bundleSrc: harnessBundle("drops"),
 });
 
 buildOne({
   src: path.join(root, "exchange", "index.html"),
-  dest: path.join(testDir, "exchange.html"),
+  dest: path.join(pagesSanityDir, "exchange.html"),
   bundleSrc: harnessBundle("exchange"),
 });
 
