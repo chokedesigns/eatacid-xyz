@@ -4,7 +4,7 @@
 
 This is the canonical current-state guide to the outer/public runtime. It explains source ownership, repository boundaries, major runtime relationships, and the verification architecture so a contributor can determine what owns a change.
 
-This guide is not a historical ticket log, a day-to-day command runbook, the testnet-to-mainnet cutover procedure, or Admin implementation documentation. Specialist dossiers remain useful evidence, but executable source and configuration are authoritative for current behavior.
+This guide is not a historical ticket log, a day-to-day command runbook, the testnet-to-mainnet cutover procedure, or Admin implementation documentation. Use the [operations guide](operations.md) for supported procedures. Specialist dossiers remain useful evidence, but executable source and configuration are authoritative for current behavior.
 
 ## Repository and Git boundaries
 
@@ -76,6 +76,8 @@ Home and Exchange start the shared `first-paint.js` artifact concurrently with t
 On a push to `main` or `staging`, `.github/workflows/pages.yml` checks out both refs, installs each ref independently, and builds production from `main` and staging from `staging`. It then assembles one Pages artifact: stable routers and prod loaders come from `main`; staging loaders come from `staging`; referenced bundles come from their corresponding builds. It removes source maps and verifies file equality, loader references, required markers, and provenance before upload.
 
 Production is a fresh build from `main`. Tested staging bundle bytes are not copied unchanged into production.
+
+For the current branch workflow and post-deployment checks, see [staging deployment](operations.md#10-staging-deployment), [production promotion](operations.md#11-production-promotion), and [deployment verification](operations.md#13-deployment-verification).
 
 ## First-paint and full-application split
 
@@ -162,7 +164,7 @@ Git owns the public JavaScript behavior, stable root routers and environment loa
 
 The stylesheet at `docs/webflow-migration/evidence/eatacid-xyz-webflow-reference-snapshot.css` is tracked historical evidence. Ignored files under `drops/css/`, `exchange/css/`, and `assets/site/` are local reference/export material. None is the current live runtime CSS authority.
 
-The HTML refresh procedure belongs in the future operations guide, not this architecture guide.
+Follow [refreshing Webflow-derived HTML/reference material](operations.md#16-refreshing-webflow-derived-htmlreference-material) for the supported capture, comparison, and validation procedure.
 
 ## Generated versus authored paths
 
@@ -213,7 +215,7 @@ Validation is layered because no single check proves source logic, emitted depen
 | CI artifact/provenance verification | The assembled Pages artifact contains main-owned roots/prod loaders, staging-owned staging loaders, matching branch-built referenced artifacts, no retired router shape, and no source maps. |
 | Live deployed verification | Real Webflow custom code, hostname selection, hosting, network requests, browser timing, wallet/provider behavior, and the published DOM/CSS integration work together. This cannot be established by static checks alone. |
 
-Operational sequencing and manual checklists will live in the future operations guide.
+For operational sequencing, see [primary deterministic tests](operations.md#5-primary-deterministic-tests), [production and staging builds](operations.md#6-production-and-staging-builds), [direct Pages sanity](operations.md#7-direct-pages-sanity), [loader-chain Pages sanity](operations.md#8-loader-chain-pages-sanity), and [deployment verification](operations.md#13-deployment-verification).
 
 ## Deep-reference links
 
@@ -228,4 +230,4 @@ Operational sequencing and manual checklists will live in the future operations 
 - [Burn/redeem escrow README](../contracts/burn-redeem-escrow/README.md) — contract-specific build, test, and deployment documentation.
 - [Split-escrow notes](../shared/chain-registry.split-escrow-notes.md) — historical registry/escrow migration notes; current `shared/chain-registry.js` is authoritative.
 
-A dedicated operations guide will be added in REPO-2B2. A dedicated testnet-to-mainnet runbook will be added in REPO-2B3. These future files are intentionally not linked.
+Use the [operations guide](operations.md) for day-to-day outer-repository work. A dedicated testnet-to-mainnet runbook will be added in REPO-2B3; that future file is intentionally not linked.

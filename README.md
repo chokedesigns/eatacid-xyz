@@ -47,7 +47,7 @@ npm run start
 | `npm run test:loader-architecture` | Check hostname routing, sibling artifact loading, failure isolation, and first-paint startup behavior. |
 | `npm run test:public-trade-ops` | Run deterministic fixtures for shared approval, confirmation, and NFT-refresh helpers. |
 
-A dedicated operations guide will be added in REPO-2B2.
+See the [operations guide](docs/operations.md) for supported day-to-day procedures, validation, deployment, rollback, and Webflow shell refresh.
 
 ## Development and staging workflow
 
@@ -71,13 +71,14 @@ The [developer guide](docs/developer-guide.md#generated-versus-authored-paths) c
 
 ## Documentation map
 
+- [Operations guide](docs/operations.md) — canonical day-to-day outer-repository procedures and validation.
 - [Developer guide](docs/developer-guide.md) — canonical current architecture and source ownership.
 - [Performance dossiers](docs/performance/) — specialist implementation history and evidence for loader and first-paint work; not the primary current-state guide.
 - [Webflow migration dossier](docs/webflow-migration/) — historical migration audit, evidence, and planning material; current executable code wins where it differs.
 - [Webflow CMS image migration](docs/webflow-cms-image-migration.md) — specialist CMS image migration reference.
 - [Burn/redeem escrow contract](contracts/burn-redeem-escrow/README.md) — contract-specific implementation and deployment documentation.
 
-The planned primary documentation set will also include `docs/operations.md` in REPO-2B2 and `docs/testnet-to-mainnet.md` in REPO-2B3. Those files do not exist yet and are intentionally not linked.
+The remaining planned primary document is `docs/testnet-to-mainnet.md` in REPO-2B3. It does not exist yet and is intentionally not linked.
 
 ## Mainnet cutover
 
