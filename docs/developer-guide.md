@@ -2,7 +2,7 @@
 
 ## Purpose and scope
 
-This is the canonical current-state guide to the outer/public runtime. It explains source ownership, repository boundaries, major runtime relationships, and the verification architecture so a contributor can determine what owns a change.
+This is the canonical current-state guide to the outer/public runtime. It explains source ownership, repository boundaries, major runtime relationships, and the verification architecture so a contributor can determine what owns a change. Use the [testnet-to-mainnet runbook](testnet-to-mainnet.md) for network cutover procedure.
 
 This guide is not a historical ticket log, a day-to-day command runbook, the testnet-to-mainnet cutover procedure, or Admin implementation documentation. Use the [operations guide](operations.md) for supported procedures. Specialist dossiers remain useful evidence, but executable source and configuration are authoritative for current behavior.
 
@@ -230,4 +230,4 @@ For operational sequencing, see [primary deterministic tests](operations.md#5-pr
 - [Burn/redeem escrow README](../contracts/burn-redeem-escrow/README.md) — contract-specific build, test, and deployment documentation.
 - [Split-escrow notes](../shared/chain-registry.split-escrow-notes.md) — historical registry/escrow migration notes; current `shared/chain-registry.js` is authoritative.
 
-Use the [operations guide](operations.md) for day-to-day outer-repository work. A dedicated testnet-to-mainnet runbook will be added in REPO-2B3; that future file is intentionally not linked.
+Use the [operations guide](operations.md) for day-to-day outer-repository work and the [testnet-to-mainnet runbook](testnet-to-mainnet.md) for Mainnet readiness, cutover, verification, containment, and rollback.

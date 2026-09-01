@@ -8,7 +8,7 @@ This is the canonical day-to-day operations guide for developing, validating, st
 - Work staging-first unless the current ticket explicitly requires a different base or destination.
 - GitHub Pages production deployment is controlled by `.github/workflows/pages.yml` and the current `main` and `staging` refs.
 - Generated files and local reference exports are not authoring sources.
-- Mainnet cutover is outside this guide. Ordinary build and deployment success does not authorize it.
+- Mainnet cutover is outside this guide. Ordinary build and deployment success does not authorize it; follow the [testnet-to-mainnet runbook](testnet-to-mainnet.md).
 
 Before changing files, confirm the branch, outer status, and nested status. Stop if either repository has unexpected tracked changes:
 
@@ -359,7 +359,7 @@ These files are ignored review artifacts, not application source, and should not
 
 ## Mainnet operations boundary
 
-Ordinary deployment procedures in this guide are not sufficient for network cutover. Production currently defaults to the `testnet` registry slot configured for Shadownet. Mainnet cutover will receive a dedicated runbook in REPO-2B3 at `docs/testnet-to-mainnet.md`. That file is not yet part of the repository; do not improvise network migration from this guide.
+Ordinary deployment and rollback procedures in this guide are not sufficient for network cutover. Production currently defaults to the `testnet` registry slot configured for Shadownet. Follow the [testnet-to-mainnet runbook](testnet-to-mainnet.md) for the blocking prerequisite manifest, two-phase cutover, contract containment, production verification, and compatible-graph rollback.
 
 ## Deep troubleshooting references
 

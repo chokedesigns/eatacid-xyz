@@ -22,7 +22,7 @@ The stable public module URLs are backed by `home.js`, `drops.js`, and `exchange
 
 The public runtime currently defaults to the `testnet` registry slot. That slot is configured for Tezos Shadownet. The current `main` and `staging` refs both use this default, so main and staging currently target Shadownet unless an explicit supported build-time `NETWORK` override is supplied. A `mainnet` configuration slot exists, but mainnet is not the public default and its presence does not mean cutover is ready.
 
-A dedicated testnet-to-mainnet runbook will be added in REPO-2B3.
+Use the [testnet-to-mainnet runbook](docs/testnet-to-mainnet.md) for readiness gates, staged verification, cutover, and rollback. The project is not cutover-ready while that runbook's blocking prerequisites remain unresolved.
 
 ## Getting started
 
@@ -71,6 +71,7 @@ The [developer guide](docs/developer-guide.md#generated-versus-authored-paths) c
 
 ## Documentation map
 
+- [Testnet-to-mainnet runbook](docs/testnet-to-mainnet.md) — canonical Mainnet readiness, cutover, verification, containment, and rollback procedure.
 - [Operations guide](docs/operations.md) — canonical day-to-day outer-repository procedures and validation.
 - [Developer guide](docs/developer-guide.md) — canonical current architecture and source ownership.
 - [Performance dossiers](docs/performance/) — specialist implementation history and evidence for loader and first-paint work; not the primary current-state guide.
@@ -78,8 +79,6 @@ The [developer guide](docs/developer-guide.md#generated-versus-authored-paths) c
 - [Webflow CMS image migration](docs/webflow-cms-image-migration.md) — specialist CMS image migration reference.
 - [Burn/redeem escrow contract](contracts/burn-redeem-escrow/README.md) — contract-specific implementation and deployment documentation.
 
-The remaining planned primary document is `docs/testnet-to-mainnet.md` in REPO-2B3. It does not exist yet and is intentionally not linked.
-
 ## Mainnet cutover
 
-The public runtime currently defaults to testnet. Mainnet transition is a controlled, multi-step procedure: do not improvise it by changing a single network constant. The dedicated runbook will be authored separately in REPO-2B3.
+The public runtime currently defaults to testnet. Mainnet transition is a controlled, two-phase procedure; do not improvise it by changing a single network constant. Follow the [testnet-to-mainnet runbook](docs/testnet-to-mainnet.md).
