@@ -44,6 +44,30 @@ It must not silently override unrelated safety rules.
 
 ---
 
+## Documentation maintenance
+
+For outer-repo implementation work:
+
+* If a code or configuration change makes an existing canonical document inaccurate, update that document in the same ticket.
+* Otherwise, do not touch documentation.
+* Do not perform a broad documentation audit merely to satisfy this rule.
+
+Canonical ownership:
+
+* Architecture, runtime behavior, source ownership, and repository structure → `docs/developer-guide.md`
+* Commands, builds, sanity checks, deployment, troubleshooting, and ordinary rollback → `docs/operations.md`
+* Network configuration, Mainnet readiness, wallet-network behavior, and testnet-to-Mainnet cutover → `docs/testnet-to-mainnet.md`
+
+Additional rules:
+
+* Update `README.md` only when its high-level orientation, current-status summary, or documentation links become inaccurate.
+* Do not rewrite historical evidence, performance records, or project dossiers merely to reflect current implementation; update them only when the ticket directly changes the contract, status, or evidence they intentionally record.
+* Generated artifacts are not documentation authority.
+* `admin-ui` implementation documentation belongs to the nested Admin repository and its applicable `AGENTS.md`.
+* Keep documentation changes in the same implementation branch/ticket that makes them necessary.
+
+---
+
 ## Repository boundaries
 
 This workspace contains two separate Git repositories:
