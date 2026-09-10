@@ -248,7 +248,7 @@ const imageCommitFunction = eventsSource.slice(
 assert.doesNotMatch(imageCommitFunction, /initialDropStateReveal\.markReady/);
 assert.match(eventsSource, /if \(!redeemInitialSupplyCommitted\) return false/);
 
-// Recurring supply work is serialized, including across stop/reconcile restarts.
+// A later supply tick cannot overtake an unresolved fetch, including after restart.
 {
   const pollingStart = eventsSource.indexOf('let redeemSupplyIntervalId = null;');
   const pollingEnd = eventsSource.indexOf(
@@ -304,8 +304,10 @@ assert.match(eventsSource, /if \(!redeemInitialSupplyCommitted\) return false/);
   assert.equal(intervals.size, 1);
   assert.equal([...intervals.values()][0].intervalMs, 10000);
 
-  const overlappingTick = [...intervals.values()][0].callback();
+  const attemptedOvertakingTick = [...intervals.values()][0].callback();
   assert.equal(pendingFetches.length, 1);
+  assert.equal(pollingState.redeemSupply, 5);
+  assert.equal(supplyElement.textContent, '');
 
   pollingContext.pollingHarness.stopRedeemSupplyPolling();
   assert.equal(intervals.size, 0);
@@ -313,10 +315,13 @@ assert.match(eventsSource, /if \(!redeemInitialSupplyCommitted\) return false/);
   assert.equal(intervals.size, 1);
   assert.equal(pendingFetches.length, 1);
 
+  const restartedOvertakingTick = [...intervals.values()][0].callback();
+  assert.equal(pendingFetches.length, 1);
+
   pendingFetches[0].resolve([
     { contractAddress: 'KT1-redeem', tokenId: '7', balance: '4' }
   ]);
-  await Promise.all([initialPoll, overlappingTick]);
+  await Promise.all([initialPoll, attemptedOvertakingTick, restartedOvertakingTick]);
   assert.equal(pollingState.redeemSupply, 4);
   assert.equal(supplyElement.textContent, 'x04');
 
