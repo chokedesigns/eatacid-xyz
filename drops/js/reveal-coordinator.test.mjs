@@ -356,6 +356,59 @@ assert.match(postTradeRefresh, /currentGeneration: walletRefreshGeneration/);
 assert.match(postTradeRefresh, /currentAddress: synchronizedWalletAddress/);
 assert.ok(postTradePoll > -1 && postTradeGuard > postTradePoll && postTradeCommit > postTradeGuard);
 
+// A post-trade NFT result commits only while its captured wallet stays current.
+{
+  const postTradeRefreshStep = postTradeRefresh.slice(
+    postTradePoll,
+    postTradeRefresh.indexOf('// After balances reflect', postTradePoll)
+  );
+
+  async function runPostTradeRefresh({ address, generation }) {
+    const pendingNFTs = deferred();
+    const refreshedNFTs = [{ tokenId: '7', balance: '1' }];
+    const commits = [];
+    const context = {
+      isCurrentWalletProjection,
+      myAddr: 'tz1-trader',
+      pollForNFTUpdate: () => pendingNFTs.promise,
+      refreshConnectedState: nfts => commits.push(nfts),
+      synchronizedWalletAddress: 'tz1-trader',
+      tradedTokens: [{ contractAddress: 'KT1-burn', tokenId: '3' }],
+      walletGeneration: 8,
+      walletRefreshGeneration: 8
+    };
+
+    const refresh = runInNewContext(
+      `(async () => { ${postTradeRefreshStep} })()`,
+      context
+    );
+    context.synchronizedWalletAddress = address;
+    context.walletRefreshGeneration = generation;
+    pendingNFTs.resolve(refreshedNFTs);
+    await refresh;
+
+    return { commits, refreshedNFTs };
+  }
+
+  const currentWallet = await runPostTradeRefresh({
+    address: 'tz1-trader',
+    generation: 8
+  });
+  assert.deepEqual(currentWallet.commits, [currentWallet.refreshedNFTs]);
+
+  const changedAddress = await runPostTradeRefresh({
+    address: 'tz1-next',
+    generation: 8
+  });
+  assert.deepEqual(changedAddress.commits, []);
+
+  const changedGeneration = await runPostTradeRefresh({
+    address: 'tz1-trader',
+    generation: 9
+  });
+  assert.deepEqual(changedGeneration.commits, []);
+}
+
 const disconnectedRender = eventsSource.slice(
   eventsSource.indexOf('function renderDisconnectedWalletTokenState'),
   eventsSource.indexOf('function renderConnectedWalletTokenState')
