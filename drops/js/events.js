@@ -987,6 +987,7 @@ async function handleEventExchange() {
       return;
     }
     const myAddr = activeAccount.address;
+    const walletGeneration = walletRefreshGeneration;
     logger.log('✅ User wallet address:', myAddr);
 
     // Gather burn-cart items
@@ -1132,7 +1133,14 @@ async function handleEventExchange() {
       startingBalance: item.startingBalance
     }));
     const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokens);
-    refreshConnectedState(refreshedNFTs);
+    if (isCurrentWalletProjection({
+      generation: walletGeneration,
+      address: myAddr,
+      currentGeneration: walletRefreshGeneration,
+      currentAddress: synchronizedWalletAddress
+    })) {
+      refreshConnectedState(refreshedNFTs);
+    }
 
     // After balances reflect, swap spinner to checkbox & finalize
     if (text6) {

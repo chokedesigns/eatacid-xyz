@@ -258,6 +258,21 @@ assert.doesNotMatch(walletPendingBranch, /handleWalletDisconnected/);
 assert.match(eventsSource, /if \(!isCurrentWalletProjection\(\{/);
 assert.match(eventsSource, /renderConnectedWalletTokenState\(eligible\.length\)/);
 
+const postTradeRefresh = eventsSource.slice(
+  eventsSource.indexOf('async function handleEventExchange'),
+  eventsSource.indexOf('// HELPERS: MODAL', eventsSource.indexOf('async function handleEventExchange'))
+);
+const postTradePoll = postTradeRefresh.indexOf(
+  'const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokens)'
+);
+const postTradeGuard = postTradeRefresh.indexOf('if (isCurrentWalletProjection({', postTradePoll);
+const postTradeCommit = postTradeRefresh.indexOf('refreshConnectedState(refreshedNFTs)', postTradeGuard);
+assert.match(postTradeRefresh, /const walletGeneration = walletRefreshGeneration/);
+assert.match(postTradeRefresh, /generation: walletGeneration/);
+assert.match(postTradeRefresh, /currentGeneration: walletRefreshGeneration/);
+assert.match(postTradeRefresh, /currentAddress: synchronizedWalletAddress/);
+assert.ok(postTradePoll > -1 && postTradeGuard > postTradePoll && postTradeCommit > postTradeGuard);
+
 const disconnectedRender = eventsSource.slice(
   eventsSource.indexOf('function renderDisconnectedWalletTokenState'),
   eventsSource.indexOf('function renderConnectedWalletTokenState')
