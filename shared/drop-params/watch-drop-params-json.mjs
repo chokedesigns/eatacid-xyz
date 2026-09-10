@@ -113,7 +113,9 @@ if (once) {
   console.log("[drop-params] watching", jsPath);
   generate();
 
-  fs.watch(jsPath, () => {
+  fs.watch(__dirname, (_eventType, filename) => {
+    if (filename && filename !== path.basename(jsPath)) return;
+
     clearTimeout(t);
     t = setTimeout(generate, 150);
   });
