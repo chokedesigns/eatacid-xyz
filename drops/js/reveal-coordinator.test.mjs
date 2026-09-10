@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { runInNewContext } from 'node:vm';
 
 import {
   createInitialRevealBarrier,
@@ -246,6 +247,88 @@ const imageCommitFunction = eventsSource.slice(
 );
 assert.doesNotMatch(imageCommitFunction, /initialDropStateReveal\.markReady/);
 assert.match(eventsSource, /if \(!redeemInitialSupplyCommitted\) return false/);
+
+// Recurring supply work is serialized, including across stop/reconcile restarts.
+{
+  const pollingStart = eventsSource.indexOf('let redeemSupplyIntervalId = null;');
+  const pollingEnd = eventsSource.indexOf(
+    '// Automatically reconcile polling after later phase or supply changes.',
+    pollingStart
+  );
+  assert.ok(pollingStart > -1 && pollingEnd > pollingStart);
+
+  const pendingFetches = [];
+  const intervals = new Map();
+  const supplyElement = { textContent: '' };
+  const pollingState = { countdownPhase: 'live', redeemSupply: 5 };
+  let nextIntervalId = 0;
+  const pollingContext = {
+    AppState: pollingState,
+    BURN_REDEEM_CONTRACT_ADDRESS: 'KT1-escrow',
+    collections: { redeem: 'KT1-redeem' },
+    console,
+    document: {
+      hidden: false,
+      querySelector: () => supplyElement
+    },
+    fetchNFTs: () => {
+      const request = deferred();
+      pendingFetches.push(request);
+      return request.promise;
+    },
+    networkConfigAvailable: true,
+    networkUnavailableMessage: '',
+    redeemInitialSupplyCommitted: true,
+    redeemToken: { collection: 'redeem', tokenId: '7' },
+    updateAppState: patch => Object.assign(pollingState, patch),
+    setInterval: (callback, intervalMs) => {
+      const id = ++nextIntervalId;
+      intervals.set(id, { callback, intervalMs });
+      return id;
+    },
+    clearInterval: id => intervals.delete(id)
+  };
+
+  runInNewContext(
+    `${eventsSource.slice(pollingStart, pollingEnd)}\n` +
+      `globalThis.pollingHarness = {\n` +
+      `  reconcileRedeemSupplyPolling,\n` +
+      `  startRedeemSupplyPolling,\n` +
+      `  stopRedeemSupplyPolling\n` +
+      `};`,
+    pollingContext
+  );
+
+  const initialPoll = pollingContext.pollingHarness.startRedeemSupplyPolling(10000, true);
+  assert.equal(pendingFetches.length, 1);
+  assert.equal(intervals.size, 1);
+  assert.equal([...intervals.values()][0].intervalMs, 10000);
+
+  const overlappingTick = [...intervals.values()][0].callback();
+  assert.equal(pendingFetches.length, 1);
+
+  pollingContext.pollingHarness.stopRedeemSupplyPolling();
+  assert.equal(intervals.size, 0);
+  pollingContext.pollingHarness.reconcileRedeemSupplyPolling();
+  assert.equal(intervals.size, 1);
+  assert.equal(pendingFetches.length, 1);
+
+  pendingFetches[0].resolve([
+    { contractAddress: 'KT1-redeem', tokenId: '7', balance: '4' }
+  ]);
+  await Promise.all([initialPoll, overlappingTick]);
+  assert.equal(pollingState.redeemSupply, 4);
+  assert.equal(supplyElement.textContent, 'x04');
+
+  const nextPoll = [...intervals.values()][0].callback();
+  assert.equal(pendingFetches.length, 2);
+  pendingFetches[1].resolve([
+    { contractAddress: 'KT1-redeem', tokenId: '7', balance: '3' }
+  ]);
+  await nextPoll;
+  assert.equal(pollingState.redeemSupply, 3);
+  assert.equal(supplyElement.textContent, 'x03');
+}
 
 // Beacon pending is not guessed as disconnected, and NFT commits stay guarded.
 const walletPendingBranch = eventsSource.slice(

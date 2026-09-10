@@ -838,6 +838,7 @@ function refreshConnectedState(nfts) {
 // =============================================================================
 
 let redeemSupplyIntervalId = null;
+let redeemSupplyUpdatePromise = null;
 
 /**
  * Queries TzKT (via your fetchNFTs util) for every token held by the burn+redeem contract,
@@ -866,20 +867,27 @@ async function fetchRedeemSupply() {
  */
 async function updateRedeemSupplyDisplay() {
   if (!redeemInitialSupplyCommitted) return false;
+  if (redeemSupplyUpdatePromise) return redeemSupplyUpdatePromise;
 
-  try {
-    const supply = await fetchRedeemSupply();
-    const el = document.querySelector('.supply-text-number');
-    if (el) {
-      el.textContent = 'x' + String(supply).padStart(2, '0');
+  redeemSupplyUpdatePromise = (async () => {
+    try {
+      const supply = await fetchRedeemSupply();
+      const el = document.querySelector('.supply-text-number');
+      if (el) {
+        el.textContent = 'x' + String(supply).padStart(2, '0');
+      }
+
+      updateAppState({ redeemSupply: supply });
+      return true;
+    } catch (err) {
+      console.error('Error polling redeem supply:', err);
+      return false;
+    } finally {
+      redeemSupplyUpdatePromise = null;
     }
+  })();
 
-    updateAppState({ redeemSupply: supply });
-    return true;
-  } catch (err) {
-    console.error('Error polling redeem supply:', err);
-    return false;
-  }
+  return redeemSupplyUpdatePromise;
 }
 
 /** Resolves the initial supply without mutating the preview or AppState. */
