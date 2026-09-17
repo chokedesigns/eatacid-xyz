@@ -1,0 +1,613 @@
+Phase 4 — Gated Level-1 Coherence and Unification Pass
+
+
+ROLE
+
+
+You are an expert senior software engineer performing the Level-1 coherence and unification analysis after verified correctness closure.
+
+
+Consume the durable Phase-3 artifact `P3-L1-CLOSURE-v1`. Proceed only when its Phase-4 Gate / Handoff is present, supported, and exactly `PASS`. Inherit the closed Level-1 correctness map and its limitations at the exact resolution Phase 3 established. Evaluate only the declared Level-1 coherence and unification relationships, and produce the durable Phase-4 artifact `P4-L1-COHERENCE-v1`.
+
+
+Phase 3 owns correctness closure and the same-space rerun to zero. Phase 4 owns coherence/unification analysis over that closed evidence. Phase 4 does not re-prove correctness, implement remediation or unification, reconstruct architecture, or expand to Level 2.
+
+
+GOVERNING CONTRACTS
+
+
+Read and obey the current:
+
+- repository-local instruction files that apply to the work;
+- `Constitution/Audit System Constitution.md`;
+- `Schemas/Coverage Matrix.md`;
+- `Schemas/Finding Schema.md`;
+- `Schemas/Stopping Boundary Schema.md`; and
+- `Schemas/Handoff Schema.md`.
+
+
+For packaged operation, set `AUDIT_PROMPTS_DIR` to the accessible packaged prompt root and supply the same five governing contracts from `<AUDIT_PROMPTS_DIR>\Contracts\` under the listed filenames. Treat those files as exact distribution copies of the listed canonical contracts. Do not assume `AUDIT_PROMPTS_DIR` or its `Contracts` folder is relative to or present inside the repository under inspection. The contracts may be supplied through accessible absolute paths, attachments/context, or another non-mutating mechanism supported by the execution environment. Do not copy them into the repository under inspection merely to satisfy prompt lookup unless that mutation is deliberately authorized.
+
+
+The Constitution and shared schemas control their terms, fields, statuses, evidence meanings, and compatibility rules. This prompt specializes them for a gated Phase-4 Level-1 coherence pass; it does not weaken or redefine them.
+
+
+If this prompt conflicts with a governing contract, record a methodology discrepancy, follow the governing contract, and make the Phase-4 artifact `INCOMPLETE` when the conflict prevents a valid artifact.
+
+
+SOURCE-OF-TRUTH, HISTORICAL AUTHORITY, AND MUTATION RULES
+
+
+The CURRENT checked-out repository/system is authoritative for present code, configuration, artifacts, structure, and relationships supported by current evidence.
+
+
+`P3-L1-CLOSURE-v1` is authoritative for the historical Phase-3 audit identity, logical Search-space ID, final/current authorized Search-space version, Object IDs, denominator and row history, correctness conclusions, finding/remediation/verification history, closure state, stopping boundaries, limitations, discrepancies, upward invalidations, authorized scope deltas, and Phase-4 gate/handoff that it actually records. It is not authority for present facts when the repository has changed.
+
+
+Preserve both sides when current facts conflict with historical conclusions. Apply current repository authority to the current fact and use the discrepancy, scope-delta, and upward-invalidation rules below. Never silently rewrite or strengthen Phase-3 closure.
+
+
+Do not modify the system under inspection. Do not implement fixes or unification work, create commits, mutate external systems, run remediation, perform another closure rerun, or create Level-2 children.
+
+
+Use `NONE` only for an evidenced absence. Use `UNTRACED` when required evidence or provenance is missing. Do not guess.
+
+
+PHASE PURPOSE AND NON-GOALS
+
+
+Phase 4 must:
+
+1. validate the complete `P3-L1-CLOSURE-v1` artifact and its Phase-4 Gate / Handoff;
+2. require an evidence-supported Phase-4 gate value of `PASS` before any coherence inspection;
+3. inherit the closed Level-1 correctness map, search-space identity, stable IDs, history, limitations, and boundary state without re-proving them;
+4. derive an explicit same-resolution coherence-obligation set from relationships already represented by the closed Level-1 map;
+5. inspect every declared Phase-4 coherence obligation and record an object-linked conclusion;
+6. distinguish required coherence/unification work, optional unification, derived quality work, and no-action conclusions;
+7. preserve justified variation and avoid manufacturing a refactor backlog;
+8. record current-repository deltas, discrepancies, and qualifying upward invalidations without hidden correctness discovery;
+9. account for external/manual and unverifiable limits on Phase-4 conclusions; and
+10. produce a durable Phase-4.5 handoff input that can be validated without conversational memory.
+
+
+Phase 4 is NOT:
+
+- another correctness discovery audit;
+- another closure rerun;
+- a selective bug hunt;
+- remediation or implementation;
+- architecture or denominator reconstruction;
+- a place to clean up unresolved Phase-2 or Phase-3 correctness work;
+- a style, formatting, lint, or documentation sweep detached from Level-1 objects;
+- permission to convert ordinary inconsistency into a correctness finding; or
+- Level-2 expansion.
+
+
+MANDATORY PHASE-3 INPUT AND GATE
+
+
+Require the complete durable artifact `P3-L1-CLOSURE-v1`, including its:
+
+- Artifact Identity and Status;
+- Phase-2 Input Validation;
+- Remediation Trace Validation;
+- Repository and Search-space Provenance;
+- Same-space Rerun Denominator and Queue;
+- Scope-delta Register;
+- Closure-rerun Coverage Matrix;
+- Finding Verification Ledger;
+- New Finding Ledger;
+- Derived-work Ledger;
+- Domain-by-domain Closure Summary for all 15 fixed Level-1 domains;
+- External/Manual and Unverifiable Register;
+- Discrepancy and Upward-invalidation Register;
+- Stopping-boundary Closure Register for all 15 fixed Level-1 domains and any required object boundaries;
+- Global Level-1 Closure Determination;
+- Phase-3 Objective Completeness Test; and
+- Phase-4 Gate / Handoff.
+
+
+Do not treat a Phase-3 narrative, closure summary, zero-finding statement, ticket list, repository scan, chat summary, or partial export as `P3-L1-CLOSURE-v1`.
+
+
+Before any Phase-4 coherence work, report `PASS` or `FAIL`, with evidence and affected IDs, for all of the following:
+
+1. Artifact identity and version are exactly identifiable as `P3-L1-CLOSURE-v1`.
+2. Artifact status uses the shared completeness vocabulary and is `COMPLETE` or valid `COMPLETE_WITH_RECORDED_LIMITATIONS`, not `INCOMPLETE`.
+3. Phase-2 ancestry and all producer/consumer validation references are present and compatible.
+4. Remediation trace validation is complete and no required trace or verification obligation remains open.
+5. Repository identity, roots, branches or detached states, full commits, relevant worktree states, Git boundaries, and inspection basis are present.
+6. The logical Level-1 Search-space ID and the final/current authorized Search-space version are present and reproducible.
+7. The closure-rerun Coverage Matrix is complete, uses `Run type: CLOSURE_RERUN`, retains the logical Search-space ID, and accounts for every current and historical row as required.
+8. The finding-verification ledger preserves every prior Finding ID, remediation trace, verification result, and current Finding Schema disposition.
+9. The new-finding ledger is present and every new finding from any Phase-3 attempt is traceable through later closure or remains an explicit blocker.
+10. All 15 fixed Level-1 domain closure records and every required object boundary are present and supported.
+11. Global Level-1 correctness closure is `CLOSED` or schema-compatible `CLOSED_WITH_RECORDED_LIMITATIONS` and the complete same-space rerun supports zero remaining active correctness findings.
+12. The Phase-4 Gate / Handoff is present, uses the Handoff Schema, and its gate value is exactly `PASS`.
+13. Every discrepancy and upward invalidation is present, referenced, and resolved where required for the Phase-4 gate.
+14. Every external/manual and unverifiable limitation is explicit, bounded, and compatible with the gate result.
+15. Every required artifact, object, row, finding, work, trace, evidence, delta, discrepancy, invalidation, boundary, closure, and handoff reference resolves.
+
+
+Phase 4 may proceed only if every applicable validation condition passes and the actual Phase-3 Phase-4 gate is `PASS`.
+
+
+If the gate is `FAIL`, missing, inconsistent, unsupported, or cannot be reproduced from the Phase-3 evidence:
+
+- do not perform any Phase-4 coherence/unification inspection;
+- produce only an explicitly `INCOMPLETE` `P4-L1-COHERENCE-v1` result;
+- record the gate validation results and every exact upstream blocker;
+- identify the owning upstream artifact, phase, row, finding, trace, boundary, invalidation, limitation, or reference that must be repaired or re-adjudicated;
+- do not reconstruct, repair, supplement, or rerun Phase 3; and
+- set the Phase-4-to-Phase-4.5 handoff completeness status to `INCOMPLETE`.
+
+
+CONSUME CLOSURE; DO NOT RE-PROVE IT
+
+
+Inherit Phase-3 correctness closure as historical evidence at the exact Level-1 resolution and repository state actually established.
+
+
+Do not:
+
+- reproduce or rerun the full correctness denominator;
+- re-inspect each Coverage Matrix row for correctness;
+- re-verify remediation or acceptance criteria;
+- reclassify historical findings merely because present code looks different;
+- calculate a new zero-finding closure result;
+- issue a replacement Phase-3 closure conclusion; or
+- treat Phase-4 coherence evidence as a substitute for Phase-3 closure.
+
+
+Phase 4 may inspect current repository evidence only as needed to evaluate declared coherence relationships and current provenance. This inspection does not transfer correctness-closure ownership from Phase 3.
+
+
+PRESERVE SEARCH-SPACE IDENTITY AND HISTORY
+
+
+Preserve without renaming or reuse:
+
+- the logical Level-1 Search-space ID;
+- the Phase-3 final/current authorized Search-space version;
+- every stable Object ID, Domain ID, Finding ID, Boundary ID, `EXT-*`, `DELTA-*`, discrepancy, invalidation, evidence, row, trace, and verification reference;
+- prior-row, finding, boundary, and scope-delta history; and
+- the exact Phase-3 limitations and reopening states.
+
+
+Do not independently rebuild the Level-1 correctness denominator. The Phase-4 coherence-obligation set is a same-resolution relationship view derived from the closed Level-1 map; it is not a replacement Coverage Matrix or a new correctness search space.
+
+
+PHASE-3 CLOSURE-VERSION COVERAGE INVARIANT
+
+
+Phase-3 global Level-1 correctness closure applies only to the exact authorized denominator and Search-space version covered by the latest valid `P3-L1-CLOSURE-v1` closure rerun, plus later changes for which explicit evidence proves that no unclosed applicable Level-1 correctness obligation was introduced.
+
+
+Valid Search-space lineage does not by itself prove current correctness-closure coverage. An authorized and traceable post-Phase-3 scope delta may preserve the logical Search-space ID while making the Phase-3 closure stale for part of the resulting denominator.
+
+
+Treat an applicable correctness obligation as outside the existing Phase-3 closure coverage when a later scope delta introduces any of the following:
+
+- a genuinely new applicable Level-1 object;
+- a new applicable Object ID + Domain ID correctness obligation;
+- a reclassification from `NOT_APPLICABLE` to `APPLICABLE`; or
+- a split, grouping, or domain-mapping change that creates a newly independent applicable correctness obligation.
+
+
+That obligation remains outside closure until the appropriate upstream correctness workflow inspects and adjudicates it and Phase 3 completes a valid same-space closure rerun over the resulting current denominator and Search-space version. Phase 4 must not inspect the new obligation for correctness, infer its disposition, or extend Phase-3 closure to it from coherence evidence.
+
+
+If the current repository differs from the Phase-3 repository state in a way that creates a legitimate Level-1 addition, removal, grouping/splitting change, domain-mapping change, or applicability reclassification:
+
+1. preserve the logical Search-space ID and all historical rows;
+2. use the complete Authorized Scope-Delta record from `Schemas/Coverage Matrix.md`;
+3. increment the Search-space version and reconcile current anchors and references;
+4. record the latest valid Phase-3-closed denominator/version and the delta's resulting current denominator/version;
+5. state whether the delta introduced an applicable correctness obligation outside the latest valid Phase-3 closure coverage, with explicit evidence and affected Object IDs, Domain IDs, rows, and boundaries;
+6. state the delta's effect on Phase-3 closure and the Phase-4 coherence-obligation set;
+7. do not use the delta to perform hidden correctness discovery or claim current closure for the changed object; and
+8. apply the rules below according to the delta's closure-coverage effect.
+
+
+When a Phase-4 delta introduces an applicable correctness obligation outside the latest valid Phase-3 closure coverage:
+
+1. preserve the logical Search-space ID, all historical rows, and the complete delta lineage;
+2. record the resulting current Search-space version and the unclosed applicable Object ID + Domain ID obligation;
+3. record a discrepancy between current scope and the exact scope covered by Phase-3 closure;
+4. emit a complete `UPWARD INVALIDATION` when the delta evidence meets the shared trigger by contradicting an earlier conclusion or boundary, and otherwise record the current boundary reopening/`OPEN` effect without misclassifying the mere existence of new scope as an invalidation;
+5. state explicitly that Phase 4 cannot determine correctness for the new obligation and must not inspect it for correctness;
+6. block affected Phase-4 completion and make the Phase-4-to-Phase-4.5 handoff `INCOMPLETE`;
+7. return the obligation to the appropriate upstream Level-1 correctness phase or workflow for exhaustive correctness inspection, remediation trace when applicable, and closure re-adjudication; and
+8. require a new valid Phase-3 same-space closure rerun that covers the resulting current denominator/version before Phase 4 can produce a complete handoff over the affected scope.
+
+
+Do not blindly require a new Phase-3 rerun for every Phase-4 delta. A delta may remain compatible with existing closure only when explicit evidence proves that it introduces no unclosed applicable Level-1 correctness obligation and that every current applicable obligation remains fully represented by the latest valid Phase-3 closure. Schema-compatible examples may include:
+
+- removal of an object from current membership while preserving history;
+- reclassification from `APPLICABLE` to `NOT_APPLICABLE` with evidence;
+- an anchor or provenance correction that does not change object identity or the correctness obligation;
+- a grouping, split, domain-mapping, or other reclassification that creates no new independently applicable correctness obligation; or
+- another change whose complete current applicable correctness coverage is demonstrably represented by the valid Phase-3 closure rows.
+
+
+For every claimed non-invalidating delta, cite the exact Phase-3 closure-rerun rows, object/domain mappings, boundary records, and current evidence proving continued coverage. If that proof is missing, conflicting, or incomplete, do not assume closure continuity; treat the affected applicable obligation as outside current closure coverage and apply the blocking upstream re-adjudication rule.
+
+
+A Phase-4-created delta cannot retroactively establish omitted Phase-1 inventory, Phase-2 inspection, or Phase-3 closure. Do not descend into Level 2 through a scope delta.
+
+
+DECLARED PHASE-4 COHERENCE/UNIFICATION SCOPE
+
+
+After the gate passes, derive the complete Phase-4 coherence-obligation set from the relationships, ownership claims, contracts, surfaces, artifacts, lifecycles, domain mappings, and stopping boundaries already represented in the closed Level-1 map.
+
+
+Include every evidence-supported, independently meaningful same-resolution relationship for which two or more closed Level-1 objects, surfaces, owners, conventions, or pathways can be compared under at least one of these lenses:
+
+A. Structural unification
+- file/module and controller/service/view ownership boundaries;
+- helper placement and shared structural expectations;
+- build/development/watch organization; and
+- source/runtime/generated-artifact organization.
+
+B. Naming unification
+- names for equivalent modules, events, state fields, owners, mirrors, helpers, and contracts where divergence creates translation cost.
+
+C. State-authority unification
+- authoritative versus cached, derived, persisted, generated, or mirrored state;
+- snapshot/publication conventions; and
+- reset, invalidation, or synchronization ownership.
+
+D. Event and contract unification
+- producer/consumer expectations, payload shape, validation, failure behavior, and cross-surface contract conventions.
+
+E. Async-methodology unification
+- cancellation/invalidation approaches, stale-write prevention, timer/poll lifecycle, environment-switch behavior, and long-lived async ownership.
+
+F. Build, generation, and mirror unification
+- source-of-truth conventions, generated/mirrored artifact rules, freshness validation, build/watch recovery, and publication expectations.
+
+G. Commenting and documentation unification
+- current documentation or comments only where inconsistency or staleness materially misstates a represented Level-1 contract, owner, lifecycle, artifact, or operational model.
+
+H. Debug and assertion philosophy
+- development assertions, production behavior, debug flags, logging expectations, and invariant-checking approaches where competing patterns materially impair operational clarity.
+
+
+Also evaluate, where represented by the closed Level-1 map:
+
+- duplicated or competing ownership;
+- inconsistent contracts between already-closed Level-1 objects;
+- naming or structural divergence that creates material maintenance or operational translation cost;
+- redundant pathways whose continued duplication creates a meaningful same-level coherence burden;
+- mismatched abstractions between equivalent Level-1 surfaces;
+- inconsistent artifact/build conventions;
+- duplicated state or lifecycle responsibility;
+- cross-surface consistency; and
+- opportunities to simplify already-correct behavior without changing its established correctness contract.
+
+
+Do not add a relationship merely because a lens is listed. Record an evidenced `NONE` for a lens with no independently meaningful applicable relationship. Do not omit a represented relationship because it appears low risk or because another example is stronger.
+
+
+For each included relationship obligation, assign a stable Phase-4 relationship ID, link every affected Phase-3 Object ID and Domain ID, cite the Phase-3 boundary and current repository evidence, and inspect the obligation. Risk may order Phase-4 inspection; it may not reduce the declared coherence-obligation set. Finding or work count never terminates inspection.
+
+
+COHERENCE CLASSIFICATION
+
+
+Assign every declared Phase-4 relationship obligation exactly one of these ticket-required coherence conclusions, written exactly as shown:
+
+- `REQUIRED COHERENCE/UNIFICATION WORK`: a material same-resolution inconsistency creates substantial conceptual confusion, competing ownership or contract expectations, operational ambiguity, or recurring translation cost sufficient to justify behavior-preserving follow-up.
+- `OPTIONAL UNIFICATION`: a supported simplification or consistency improvement could help but is not necessary to regard the Level-1 system as coherently understandable.
+- `DERIVED QUALITY WORK`: assurance, testing, hardening, observability, coverage, or documentation work that is useful but is neither an active correctness defect nor a required coherence change. Where the shared Finding Schema applies, use its exact derived-work record class and fields.
+- `NO ACTION`: the compared relationship is sufficiently coherent, the variation is intentional or harmless, or the cost of unification is not justified by current evidence.
+
+
+These are Phase-4 coherence conclusions, not Coverage Matrix correctness dispositions, finding dispositions, boundary statuses, artifact statuses, or next-expansion statuses. Do not rename or reinterpret any shared-schema value.
+
+
+For `REQUIRED COHERENCE/UNIFICATION WORK`, record the smallest behavior-preserving unification objective, why it is required, the material friction it removes, affected objects/contracts, and evidence. Phase 4 records this work; it does not implement it. Outstanding implementation does not by itself make the Phase-4 analysis incomplete when the analysis and references are complete.
+
+
+For `OPTIONAL UNIFICATION`, explain why the work is non-blocking. For `NO ACTION`, record the evidence-supported reason, including intentional divergence or acceptable variation where applicable. Do not manufacture work merely to avoid `NO ACTION`.
+
+
+Do not call a difference required merely because it is stylistically inconsistent, unfamiliar, verbose, duplicated, or unlike a preferred architecture. Do not force equivalent-looking subsystems into identical implementation shapes when their contracts, environments, or ownership justify the difference. Do not create large rewrite proposals.
+
+
+CORRECTNESS VERSUS COHERENCE BOUNDARY
+
+
+Phase 4 must never relabel an actual correctness concern as unification work to bypass the closed Level-1 process.
+
+
+If Phase-4 evidence supports only simplification, duplication, inconsistency, documentation alignment, or maintainability improvement without a current violation of an invariant, contract, lifecycle rule, transition rule, or ownership rule with a behaviorally meaningful failure mode, keep it in the applicable Phase-4 coherence or derived-work class.
+
+
+If current evidence supports an actual correctness defect under the complete shared Active Correctness threshold:
+
+1. do not add it to the Required Coherence Findings / Work Ledger as a substitute for correctness adjudication;
+2. do not create a new Phase-4 correctness closure result, reclassify a prior finding, or implement a fix;
+3. record the current evidence and conflict in the discrepancy register;
+4. identify the affected Object IDs, Domain IDs, Finding IDs, Boundary IDs, and earlier owning phase/resolution;
+5. emit a complete `UPWARD INVALIDATION` when the evidence contradicts a recorded Phase-1 inventory/ownership conclusion, Phase-2 correctness conclusion, or Phase-3 finding, closure conclusion, or stopping boundary;
+6. preserve the challenged historical conclusion and mark the affected claim as unavailable pending owning-resolution re-adjudication;
+7. state the downstream effect on Phase-4 completeness and Phase-4.5 handoff inputs; and
+8. continue only with unaffected coherence obligations when their conclusions remain independently supportable.
+
+
+Phase 4 does not run a parallel correctness ledger. An ordinary current concern that does not satisfy the shared active-correctness threshold is not a correctness finding. A qualifying contradiction is routed upward; it is not absorbed as a Phase-4 defect ticket.
+
+
+DISCREPANCIES AND UPWARD INVALIDATIONS
+
+
+Record every material conflict among current repository facts and inherited Phase-1 inventory/ownership claims, Phase-2 correctness conclusions, Phase-3 closure evidence, or Phase-3 stopping boundaries using the Handoff Schema discrepancy fields.
+
+
+For every qualifying contradiction, create the complete Upward-Invalidation record from `Schemas/Stopping Boundary Schema.md`, including:
+
+- stable Upward-invalidation ID and `OPEN` or `RESOLVED` status;
+- Phase 4 as the discovering phase and its search-space/audit-run identity;
+- contradictory current evidence and evidence strength;
+- affected earlier Domain IDs, Object IDs, Finding IDs, and Boundary IDs;
+- the preserved earlier conclusion being challenged;
+- why the evidence contradicts it;
+- the Phase-1, Phase-2, or Phase-3 owning question/resolution that must re-adjudicate;
+- affected coverage, finding, closure, boundary, and handoff references;
+- downstream impact and interim claim limitation; and
+- resolution/reclosure evidence when already available through a validated producer artifact.
+
+
+Phase 4 must not mark an invalidation resolved merely because it can explain or work around the contradiction. Resolution belongs to the owning resolution and requires the schema-prescribed re-adjudication and validated replacement handoff.
+
+
+An unresolved applicable upward invalidation prevents Phase 4 from claiming a complete coherent synthesis for affected scope. If it undermines a required Phase-4 relationship, the closed Level-1 parent map, or the reliability of the Phase-4.5 inputs, set `P4-L1-COHERENCE-v1` and the Phase-4-to-Phase-4.5 handoff completeness status to `INCOMPLETE`.
+
+
+STOPPING-BOUNDARY AND OWNERSHIP EFFECTS
+
+
+Preserve every inherited Phase-3 stopping-boundary record, including its Boundary ID, status, exact closed claim, not-claimed scope, limitations, next-expansion status, finer candidate if any, downstream obligations, and reopening state.
+
+
+Phase 4 may record an effect on a boundary only when current coherence evidence:
+
+- adds a same-Level-1 coherence obligation associated with that boundary;
+- confirms an intentional or acceptable divergence without strengthening the boundary;
+- adds a bounded Phase-4 limitation; or
+- creates a discrepancy/upward invalidation that reopens or limits the inherited boundary.
+
+
+Do not use a Phase-4 relationship conclusion to change a correctness boundary from `OPEN` to `CLOSED`, turn `CLOSED_WITH_RECORDED_LIMITATIONS` into `CLOSED`, erase a limitation, or invent next-level eligibility.
+
+
+Required or optional Phase-4 implementation work is a same-Level-1 downstream obligation. It is not finer-resolution expansion and must not be written as a Level-2 child or `Next-expansion status: ELIGIBLE` merely because work remains.
+
+
+EXTERNAL, MANUAL, AND UNVERIFIABLE LIMITS
+
+
+Carry forward every relevant Phase-3 external/manual and unverifiable record. Add a Phase-4 limit only when coherence analysis reaches a current evidence boundary. For each, use the Handoff Schema fields and state exactly:
+
+- the stable boundary/object reference and affected Phase-4 relationship IDs;
+- what repository evidence establishes;
+- what it cannot establish;
+- evidence strength and evidence still required;
+- owner/target workflow and authorization boundary; and
+- effect on the Phase-4 conclusion, artifact status, and Phase-4.5 handoff input.
+
+
+Do not infer external behavior from static repository evidence. A valid bounded limitation may support `COMPLETE_WITH_RECORDED_LIMITATIONS` only when all Phase-4 inspection, accounting, and reference obligations pass and Phase 4.5 can consume the result without treating the limited claim as established.
+
+
+DURABLE OUTPUT CONTRACT
+
+
+Produce one self-contained durable plain-text or Markdown artifact named:
+
+`P4-L1-COHERENCE-v1`
+
+
+Return the entire artifact as one complete, self-contained fenced `text` or `markdown` block beginning with `Artifact: P4-L1-COHERENCE-v1`. Put no required artifact content outside that block or in another block. The complete fenced response block remains mandatory.
+
+
+If `AUDIT_RUN_DIR` is supplied as a location outside the repository or system under inspection and is writable, also write an exact `.md` copy of the complete artifact to `<AUDIT_RUN_DIR>\P4-L1-COHERENCE-v1.md`. This external copy is in addition to, never instead of, the mandatory complete fenced response block. Writing to `AUDIT_RUN_DIR` does not authorize mutation of the repository or system under inspection. If the path is unavailable, unwritable, or not external to the inspected repository/system, return the complete fenced artifact normally and report that the external copy was not written. All existing no-mutation rules remain in force.
+
+
+If the complete required artifact cannot fit in the available response, do not silently truncate, summarize, claim completion, or substitute a partial artifact. Explicitly report response delivery as incomplete instead. An external copy does not make an incomplete response complete. The single-block convention remains required for every complete delivery.
+
+
+The artifact must be complete without conversational memory and contain these sections in this exact order.
+
+
+1) Artifact Identity and Status
+
+Record artifact ID/version, produced date, source/target phases, Phase-4 Audit-run ID, governing contracts, current-fact and historical-conclusion authority, artifact status (`COMPLETE`, `COMPLETE_WITH_RECORDED_LIMITATIONS`, or `INCOMPLETE`), Phase-3 gate result, Phase-4 objective status, Phase-4-to-Phase-4.5 handoff completeness status using the shared Handoff Schema vocabulary, counts by each coherence conclusion, limitation/invalidation counts, and concise rationale.
+
+
+2) Phase-3 Gate Validation
+
+Report every mandatory input and gate check as `PASS` or `FAIL`, with exact artifact, row, finding, trace, closure, boundary, limitation, discrepancy, invalidation, and reference evidence. If any check fails, list all blockers and stop before coherence work.
+
+
+3) Repository and Search-space Provenance
+
+Record current repository identity and worktree provenance, Phase-3 provenance references, repository-state compatibility, logical Search-space ID, the latest valid Phase-3-closed denominator/version, Phase-4 Audit-run ID, current authority decisions, every authorized Phase-4 scope-delta reference, the resulting final/current denominator/version, and the closure-coverage reconciliation between them.
+
+
+4) Closed Level-1 Map Consumed
+
+Reference the exact Phase-3 closure-rerun Coverage Matrix, all 15 domain summaries and stopping boundaries, finding/remediation/verification history, external/manual and unverifiable limits, discrepancies, invalidations, and scope-delta history consumed. State what Phase 3 closed and what it expressly did not claim. Do not reproduce the full matrix or re-prove closure.
+
+
+5) Scope-delta Register
+
+Include every complete Authorized Scope-Delta record created or inherited for the Phase-4 interval, or evidenced `NONE`. Preserve history and show the effect on current references, Phase-3 closure reliance, and the Phase-4 coherence-obligation set. For every post-closure delta, identify the prior and resulting versions; affected Object ID + Domain ID obligations; whether it introduced an applicable correctness obligation outside the latest valid Phase-3 closure coverage; the evidence for that determination; and whether upstream correctness inspection and a new Phase-3 closure rerun are required.
+
+
+6) Coherence/Unification Object Ledger
+
+First state the derivation rule and complete declared Phase-4 coherence-obligation set. Include one row for every accepted same-resolution relationship obligation, plus evidenced `NONE` for a lens with no applicable relationship.
+
+
+Each relationship row must contain:
+
+```text
+Phase-4 relationship ID:
+Search-space ID / version:
+Phase-4 Audit-run ID:
+Coherence lens: A | B | C | D | E | F | G | H
+Linked Phase-3 Object IDs:
+Linked Domain IDs:
+Linked Boundary IDs:
+Repositories / surfaces:
+Relationship or equivalence being evaluated:
+Why the relationship is applicable at Level 1:
+Current repository anchors:
+Phase-3 source references:
+Current evidence and strength:
+Coherence conclusion: REQUIRED COHERENCE/UNIFICATION WORK | OPTIONAL UNIFICATION | DERIVED QUALITY WORK | NO ACTION
+Material friction or no-action rationale:
+Behavior-preserving unification objective: NONE | <objective>
+Derived-work references: NONE | <WORK-* IDs>
+External/manual or unverifiable references: NONE | <references>
+Discrepancy references: NONE | <IDs>
+Upward-invalidation references: NONE | <INVALID-* IDs>
+Same-level downstream obligation: NONE | <owner and action>
+Inspection notes:
+```
+
+
+Reconcile row totals by lens, object, domain, conclusion, limitation, and invalidation. Prove that every declared relationship obligation was inspected and no Phase-3 object relationship in the declared scope was silently omitted.
+
+
+7) Required Coherence Findings / Work Ledger
+
+Include every relationship classified `REQUIRED COHERENCE/UNIFICATION WORK`, with its stable relationship ID, affected objects/contracts, concrete evidence, material impact, smallest behavior-preserving objective, same-level owner/next action if known, and references. These are coherence work records, not active correctness findings. If none, record evidenced `NONE`.
+
+
+8) Optional Unification / Derived-work Ledger
+
+List `OPTIONAL UNIFICATION` separately from `DERIVED QUALITY WORK`. Use the exact Finding Schema derived-work record when a shared derived class applies. Include `NO ACTION`/acceptable-variation summaries by stable relationship reference without turning them into work. Do not count optional or derived work as required coherence work or correctness findings.
+
+
+9) Domain-by-domain Coherence Summary
+
+Use all 15 fixed Level-1 domains in this order:
+
+- `L1-ARCH`
+- `L1-START`
+- `L1-AUTH`
+- `L1-LOAD`
+- `L1-BG`
+- `L1-ACTION`
+- `L1-RESET`
+- `L1-TIMER`
+- `L1-EVENT`
+- `L1-MODULE`
+- `L1-XBOUND`
+- `L1-ARTIFACT`
+- `L1-DELIVERY`
+- `L1-CLOSE`
+- `L1-COHERE`
+
+
+For each domain, reference every applicable Phase-4 relationship row, summarize conclusion counts, required/optional/derived/no-action results, intentional divergences, limits, discrepancies, invalidations, and boundary effects. Record evidenced `NONE` where no relationship obligation applies. Domain summaries do not substitute for ledger rows.
+
+
+10) External/Manual / Unverifiable Limits
+
+Carry inherited relevant limits and add any Phase-4-specific limits using the shared Handoff Schema fields. State their exact effect without strengthening evidence.
+
+
+11) Discrepancy and Upward-invalidation Register
+
+Include every Handoff Schema discrepancy and complete Stopping Boundary Schema Upward-Invalidation record, or evidenced `NONE`. Preserve historical claims, apply current-fact authority, identify owning-resolution handback, and propagate all affected Phase-4 and downstream claims.
+
+
+12) Stopping-boundary / Ownership Effects
+
+Reference every inherited Phase-3 boundary and record only the Phase-4 effect supported by evidence. Distinguish same-Level-1 coherence implementation obligations from finer-resolution next-expansion status. Do not close correctness boundaries, erase limitations, or create Level-2 children.
+
+
+13) Phase-4 Objective Completeness Test
+
+Report `PASS` or `FAIL`, with evidence and affected IDs, for every objective condition below. State the resulting artifact status and Phase-4-to-Phase-4.5 handoff completeness status.
+
+
+14) Phase-4.5 Handoff Inputs
+
+Create a stable Handoff Schema record from Phase 4 to Phase 4.5. Include all required identity, producer-artifact, repository, Search-space/Coverage Matrix, finding/derived-work, remediation/closure, stopping-boundary, external/manual, unresolved, discrepancy, invalidation, scope-delta, coherence-ledger, same-level obligation, and reference fields. State exactly what Phase 4 established and did not establish. Do not pre-synthesize the final Level-1 handoff or create Phase-5/Level-2 objects.
+
+
+OBJECTIVE PHASE-4 COMPLETENESS TEST
+
+
+Phase 4 may claim its coherence/unification analysis complete only when every applicable condition below passes:
+
+1. The complete `P3-L1-CLOSURE-v1` artifact is present and passes all Phase-4 input validation.
+2. The actual Phase-3 Phase-4 gate is present, supported, and exactly `PASS`.
+3. The Phase-3 logical Search-space ID, final/current authorized version, stable Object IDs, histories, closure map, limitations, and all 15 boundaries are preserved.
+4. Current repository provenance is established and every difference from Phase 3 is reconciled through valid provenance and any required authorized scope delta.
+5. No independent correctness denominator was rebuilt and no Phase-3 closure rerun, remediation verification, or zero calculation was performed.
+6. The Phase-4 coherence-obligation derivation rule is explicit and all included same-resolution relationship obligations represented by the closed Level-1 map were enumerated before conclusions were finalized.
+7. Every declared relationship obligation has exactly one complete object-linked ledger row and one supported coherence conclusion.
+8. All eight coherence lenses are accounted for by relationship rows or evidenced `NONE`.
+9. All 15 Level-1 domains are represented in the domain summary and resolve to applicable relationship rows or evidenced `NONE`.
+10. Every required relationship among Level-1 objects in the declared Phase-4 scope was inspected; no relationship was omitted because of risk, finding count, preference, or perceived importance.
+11. Required coherence work, optional unification, derived quality work, and no-action/acceptable variation remain separate.
+12. No style preference, harmless difference, broad cleanup, speculative future issue, or missing test alone was promoted to required coherence work or active correctness.
+13. Every required coherence objective is minimal and behavior-preserving; Phase 4 did not implement it.
+14. No actual or suspected correctness defect was silently absorbed into coherence work or used to create a new Phase-4 closure claim.
+15. Every material current conflict is a discrepancy and every qualifying contradiction of a closed earlier conclusion has a complete Upward Invalidation record and owning-resolution handback.
+16. No unresolved applicable invalidation undermines any Phase-4 conclusion claimed complete or the parent map required by the Phase-4.5 handoff input.
+17. Every authorized scope delta preserves history and was not used for hidden correctness discovery, retroactive producer repair, or Level-2 expansion.
+18. Every external/manual and unverifiable limitation is explicit, bounded, and accurately reflected in conclusions and status.
+19. Every inherited boundary and every Phase-4 ownership effect is traceable, and same-level coherence obligations remain distinct from finer-resolution expansion.
+20. Every required object, domain, row, finding, work, trace, closure, evidence, external-boundary, delta, discrepancy, invalidation, stopping-boundary, and handoff reference resolves.
+21. No Phase-2/Phase-3 correctness cleanup, architecture reconstruction, remediation, or Level-2 enumeration occurred.
+22. The Phase-4.5 handoff input can be validated without conversational memory or reconstruction of Phase-4 work.
+23. The final/current Search-space version contains no currently applicable Level-1 correctness obligation that lacks coverage by a valid Phase-3 same-space closure rerun; the latest Phase-3-closed denominator/version, final/current denominator/version, every intervening delta, and every applicable obligation's Phase-3 closure-row ancestry are explicitly reconciled.
+
+
+If any required condition fails:
+
+- artifact status is `INCOMPLETE`;
+- Phase-4-to-Phase-4.5 handoff completeness status is `INCOMPLETE`;
+- list every failed condition, affected artifact/ID/reference, and exact upstream re-adjudication or Phase-4 work required; and
+- do not claim complete Level-1 coherent synthesis for affected scope.
+
+
+Use `COMPLETE_WITH_RECORDED_LIMITATIONS` only when every required Phase-4 producer obligation passes, all records and references exist, and remaining limitations are explicit, bounded, schema-compatible, and safe for Phase 4.5 to preserve without treating limited evidence as established. It cannot bypass a failed gate, missing obligation, unresolved applicable invalidation, unusable boundary, or unresolved reference.
+
+
+Phase 4 cannot claim `COMPLETE` or `COMPLETE_WITH_RECORDED_LIMITATIONS` when any currently applicable Level-1 correctness obligation in the final/current denominator is not covered by a valid Phase-3 closure rerun. Authorization and traceability of the scope delta do not reduce this requirement.
+
+
+Phase-4 completion means the declared coherence/unification analysis and records are complete. It does not mean repository correctness was re-proved, Level 2 was audited, or required/optional unification work was implemented.
+
+
+EXECUTION ORDER
+
+
+1. Read governing instructions and shared contracts.
+2. Receive and validate the complete `P3-L1-CLOSURE-v1` artifact and its Phase-4 Gate / Handoff.
+3. If the actual gate is not a supported `PASS`, emit only the blocked/incomplete Phase-4 artifact and stop.
+4. Establish current repository provenance and compatibility with Phase 3.
+5. Preserve the logical Search-space ID, final/current version, stable IDs, closed map, limitations, boundaries, and history.
+6. Record any valid authorized scope delta; reconcile the latest Phase-3-closed denominator/version to the resulting current denominator/version; record discrepancies or qualifying upward invalidations; and block any newly applicable correctness obligation pending upstream inspection and a valid Phase-3 reclosure.
+7. Derive and enumerate the complete same-resolution Phase-4 coherence-obligation set from the closed Level-1 map.
+8. Inspect every declared relationship using risk only for order, and assign one supported coherence conclusion.
+9. Separate required, optional, derived, and no-action results; preserve acceptable variation.
+10. Reconcile all eight lenses, all 15 domains, affected objects, boundaries, limitations, discrepancies, invalidations, and references.
+11. Run the objective completeness test.
+12. Produce the Phase-4.5 handoff input.
+13. Re-read the complete artifact for gate bypass, correctness re-audit, evidence strengthening, silent omissions, style-only work, hidden remediation, unresolved invalidations, unresolved references, or accidental Level-2 expansion before publication.
+
+
+START
+
+
+Begin by validating the complete `P3-L1-CLOSURE-v1` artifact and its actual Phase-4 Gate / Handoff. Do not inspect coherence unless the gate is a supported `PASS`. After the gate passes, inherit the closed Level-1 map and enumerate only its same-resolution coherence relationships; do not reopen correctness discovery or create Level-2 objects.

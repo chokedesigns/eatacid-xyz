@@ -1,0 +1,100 @@
+ROLE
+
+Create the initial remediation execution checklist from `P2-L1-CORRECTNESS-v1`, reconcile a failed Phase-3 attempt into the existing checklist, or reconcile the checklist with supplied landed Git provenance after remediation. This is reconciliation and planning, not an audit, verification, or closure decision.
+
+
+MODE AND REQUIRED INPUTS
+
+Declare exactly one mode:
+
+`INITIAL`
+
+- The complete `P2-L1-CORRECTNESS-v1` artifact.
+- No existing checklist or Phase-3 artifact is used to replace this source.
+
+`PHASE_3_CONTINUATION`
+
+- The existing execution checklist, including ticket IDs, source mappings, statuses, and history.
+- The latest failed `P3-L1-CLOSURE-v1`.
+- Do not recreate the initial checklist from Phase 2 in this mode.
+
+`REMEDIATION_RECONCILIATION`
+
+- The existing execution checklist, including all ticket IDs, source Finding IDs and derived-work IDs, ordering, statuses, and history.
+- The complete exported `remediation-git-log.txt` for the remediation interval.
+- Reconcile implemented remediation tickets against actual supplied Git provenance after remediation work is complete; do not recreate or re-audit the checklist.
+
+Use only the required inputs for the declared mode. Do not use repository inspection, conversational memory, assumptions, or outside facts to supplement them.
+
+
+RULES
+
+1. Use only supported active correctness findings and follow-up work justified by the authoritative artifact for the declared mode.
+2. Preserve every source Finding ID and derived-work ID. Deduplicate overlapping implementation work by linking all affected source IDs to one ticket; never erase a finding identity.
+3. Keep active correctness remediation distinct from the five derived-work classes used by the artifact. Do not promote derived work into a correctness finding.
+4. Group and order tickets in a safe implementation sequence using only dependencies and constraints recorded in the artifact.
+5. Carry forward the artifact's remediation inputs, acceptance criteria, verification targets, external/manual dependencies, and residual-risk notes without strengthening or weakening them.
+6. If required information is absent, record `UNTRACED`; use `NONE` only for an evidenced absence. Do not infer missing scope, provenance, dependencies, or verification.
+7. Perform no new audit. Invent no findings or follow-up work. Reinterpret no finding disposition, stopping boundary, gate, or closure result.
+8. `REMEDIATION_RECONCILIATION` may assign only the implementation-provenance state defined below. Do not use it to claim ticket correctness, acceptance-criteria success, verification, Phase-3 closure, or a passing Phase-4 gate.
+
+
+INITIAL MODE
+
+1. Produce the initial compact execution checklist from the complete `P2-L1-CORRECTNESS-v1`.
+2. Include only its supported active findings and justified derived work.
+3. Initialize each ticket with a new stable Ticket ID and `Status: NOT_STARTED`.
+
+
+PHASE_3_CONTINUATION MODE
+
+1. Use only supported new or unresolved findings and follow-up work actually recorded by the latest failed `P3-L1-CLOSURE-v1`.
+2. Preserve every existing Ticket ID, source mapping, status, ordering record, and history. Do not renumber, recreate, reinterpret, or silently rewrite already completed Phase-2 tickets.
+3. Append or reconcile only the additional remediation tickets required by the failed Phase-3 artifact. Never reopen, recreate, or reinterpret an already completed Phase-2 ticket. If the failed artifact requires more remediation related to one, append a new ticket and preserve the dependency and source relationship.
+4. Preserve every prior Phase-3 Finding ID. Link each additional ticket to the exact prior-Phase-3 Finding ID or recorded follow-up-work ID that justifies it.
+5. Deduplicate overlapping additional work without erasing existing or new source identities. Reconcile into an existing incomplete ticket only when the artifact explicitly supports that relationship; otherwise append a new ticket and preserve all relevant history.
+6. Assign new stable Ticket IDs only to genuinely additional tickets and initialize only those tickets with `Status: NOT_STARTED`.
+7. Make no new finding, remediation, verification, disposition, stopping-boundary, gate, or closure judgment.
+
+
+REMEDIATION_RECONCILIATION MODE
+
+1. Produce the complete provenance-reconciled execution checklist by comparing every existing ticket with the supplied `remediation-git-log.txt`.
+2. Preserve every Ticket ID, source Finding ID and derived-work ID, ticket order, dependency, supplied requirement, existing `Status`, and status-history entry from `INITIAL` and `PHASE_3_CONTINUATION`. Never replace, erase, or reinterpret those statuses or their history during provenance reconciliation.
+3. Add exactly one separate `Implementation-provenance state` to every ticket in this mode, using only:
+   - `NO_PROVENANCE_FOUND` — the supplied complete landed Git history is reconcilable, but contains no commit explicitly attributable to the exact Ticket ID.
+   - `PROVENANCE_FOUND` — one or more supplied landed commits contain the exact Ticket ID in the commit summary and are therefore explicitly attributable to that ticket.
+   - `UNTRACED` — required supplied evidence is missing, incomplete, or conflicting such that provenance for the ticket cannot be reconciled.
+4. `NO_PROVENANCE_FOUND` does not mean work was never attempted or started. It means only that the supplied complete, reconcilable landed Git history contains no commit explicitly attributable to the exact Ticket ID.
+5. `PROVENANCE_FOUND` means only that implementation provenance exists. It does not mean the ticket objective is correct, acceptance criteria passed, verification passed, or closure was achieved. Phase 3 independently verifies remediation and owns finding closure.
+6. Implementation-provenance state is separate from checklist `Status`, correctness, acceptance, verification, finding disposition, and closure. Preserve the existing checklist `Status` and its history unchanged.
+7. Do not infer association or an implementation-provenance state from branch names, branch decorations, chronology, topical similarity, apparent intent, or an inexact Ticket ID. Record missing or conflicting evidence as `UNTRACED` rather than guessing.
+8. Reconcile every in-scope Git-log entry to the exact checklist Ticket ID stated in its commit summary, or record the entry as unresolved/`UNTRACED`. Preserve all supplied full commit hashes and many-to-one or one-to-many mappings.
+9. Do not perform a new audit, invent findings or work, reinterpret the checklist's source artifacts, create a finding or audit disposition, make verification claims, or make any Phase-3 closure or Phase-4 gate decision.
+
+
+OUTPUT
+
+Return the entire output as one complete, self-contained fenced `text` or `markdown` block. Begin the block with `Output name: <execution-checklist name>`. Put no commentary outside that block except the external-copy delivery-status report required below, put no required artifact content outside that block, and do not split the checklist across multiple blocks, summaries, or `see above` references. The complete fenced response block remains mandatory.
+
+If `AUDIT_RUN_DIR` is supplied as a location outside the repository or system under inspection and is writable, also write an exact `.md` copy of the complete checklist to `<AUDIT_RUN_DIR>\Execution Checklist.md`. This external copy is in addition to, never instead of, the mandatory complete fenced response block. Writing to `AUDIT_RUN_DIR` does not authorize mutation of the repository or system under inspection. If the path is unavailable, unwritable, or not external to the inspected repository/system, return the complete fenced checklist normally and report that the external copy was not written. All existing no-mutation rules remain in force.
+
+If the complete required checklist cannot fit in the available response, do not silently truncate, summarize, claim completion, or substitute a partial checklist. Explicitly report response delivery as incomplete instead. An external copy does not make an incomplete response complete. The single-block convention remains required for every complete delivery.
+
+Produce only:
+
+1. Declared mode, checklist identity, and exact source artifact references.
+2. In `INITIAL` mode, the ordered initial checklist. In `PHASE_3_CONTINUATION` mode, the complete updated checklist with existing entries/history preserved and additional entries clearly identified. In `REMEDIATION_RECONCILIATION` mode, the complete provenance-reconciled checklist with all existing statuses and history preserved and the separate deterministic implementation-provenance state added. Each ticket contains:
+   - Ticket ID
+   - Work class: `ACTIVE_CORRECTNESS_REMEDIATION` or the exact supplied derived-work class
+   - Source Finding IDs and/or derived-work IDs
+   - Implementation objective and supplied scope
+   - Dependencies and safe ordering constraints
+   - Supplied acceptance criteria and verification target/required evidence
+   - External/manual dependencies and residual-risk notes
+   - Status: `NOT_STARTED` for an initial or newly added ticket; otherwise preserve the existing status and status history
+   - In `REMEDIATION_RECONCILIATION` mode only, `Implementation-provenance state: NO_PROVENANCE_FOUND | PROVENANCE_FOUND | UNTRACED` with exact supporting commit references or the precise evidence gap
+3. A source-to-ticket reconciliation for the declared mode showing every applicable Finding ID and derived-work ID exactly once or explaining an artifact-supported exclusion. In continuation mode, distinguish preserved mappings from additions. In remediation-reconciliation mode, also include bidirectional Ticket ID-to-commit mappings and commit-to-Ticket ID mappings based on exact commit-summary IDs.
+4. An explicit list of unresolved/`UNTRACED` mappings and input gaps, or evidenced `NONE`.
+
+Keep the checklist compact while retaining all source identities and requirements.
