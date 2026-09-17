@@ -33,6 +33,7 @@ nul
 ZIP/
 ticket.*.diff
 ticket.*.stat.txt
+/audits/
 
 # ----------------------------------------
 # Webflow‑exported CSS & assets

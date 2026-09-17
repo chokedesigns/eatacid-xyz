@@ -89,6 +89,18 @@ Rules:
 
 ---
 
+## Local audit operation
+
+For the short commands `Run Phase 1`, `Run Phase 2`, `Prepare for Phase 3`, `Run Phase 3`, `Run Phase 4`, `Run Phase 4.5`, and `Run Phase 5`, resolve the runtime at `audits/system/`, durable runs at `audits/runs/<yyyyMMdd-HHmmss>/`, phase prompts under `Level 1/` or `Level 2/`, both Traditional LLM helpers under `Traditional LLM/`, and all five governing contracts under `Contracts/`; do not require the operator to supply these paths. Treat ignored `audits/` as local operational infrastructure outside the audited project content; writing run artifacts there does not authorize changes to the audited project.
+
+The EA-XYZ project scope is the outer repository plus the nested `admin-ui` repository whenever the governing phase requires project-wide coverage. `Run Phase 1` always creates a new timestamp-named run; never silently reuse an old or incomplete Phase-1 run. If the operator explicitly asks to resume, resolve the existing run unambiguously or ask which run to use. For later commands, resolve the unique run whose canonical artifacts and gates make it eligible, and ask instead of guessing if the run or target scope is ambiguous. Load the matching prompt and five contracts, validate every required gate/input, resolve prior artifacts by canonical filename, execute the prompt unchanged, and save its canonical output in that run; short commands never relax phase responsibilities, stopping rules, or missing-input behavior.
+
+Before executing any audit command, verify the required Git branch/state for every in-scope repository and stop rather than proceeding on an unexpected state. Normal flow is: Phase 1 and Phase 2 run on the audited baseline branch/state, normally `staging`; remediation, Prepare for Phase 3, and Phase 3 run on the dedicated remediation branch/state created from the Phase-2 audited baseline; after valid Phase-3 closure and merge/promotion back into `staging`, Phases 4, 4.5, and 5 run on the validated promoted `staging` state. For nested `admin-ui`, apply the corresponding repository-specific branch/state recorded by the audit artifacts. Do not invent or switch branches automatically when the expected state is ambiguous; ask instead.
+
+Command orchestration is: Phase 1 -> `P1-L1-INVENTORY-v1.md`; Phase 2 -> `P2-L1-CORRECTNESS-v1.md`, then Ticket Reconciliation `INITIAL` -> `Execution Checklist.md`; Prepare for Phase 3 -> for every Git repository in P2 scope, export the full remediation history from that repository's Phase-2 base commit recorded by P2 through its current `HEAD`, without inventing a base commit, into the single `remediation-git-log.txt`. Include only in-scope repositories and give each an explicit section such as `=== eatacid-xyz ===` or `=== admin-ui ===`; then run Ticket Reconciliation `REMEDIATION_RECONCILIATION` and Remediation Trace Synthesis `INITIAL` -> `Remediation Trace.md`. Phase 3 -> `P3-L1-CLOSURE-v1.md`; Phase 4 -> `P4-L1-COHERENCE-v1.md`; Phase 4.5 -> `L1-HANDOFF-v2.md`; Phase 5 -> `P5-L2-INVENTORY-v1.md`. If Phase 3 fails, run Ticket Reconciliation `PHASE_3_CONTINUATION` without changing existing checklist IDs/history, remediate, refresh the complete in-scope repository Git provenance using the same rule, rerun `REMEDIATION_RECONCILIATION`, run trace synthesis in `PHASE_3_RERUN`, and rerun Phase 3. These helper steps are evidence-bounded subroutines using their declared durable inputs, never conversational memory.
+
+---
+
 ## Webflow MCP boundary
 
 * Webflow MCP access is read-only unless the current ticket explicitly authorizes specific mutations.
