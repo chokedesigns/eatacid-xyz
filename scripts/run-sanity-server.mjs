@@ -6,6 +6,7 @@ const urls = [
   `http://localhost:${PORT}/pages-sanity/home`,
   `http://localhost:${PORT}/pages-sanity/drops`,
   `http://localhost:${PORT}/pages-sanity/exchange`,
+  `http://localhost:${PORT}/pages-sanity/collection-utility`,
 ];
 
 function openUrl(url) {

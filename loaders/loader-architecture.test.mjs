@@ -13,9 +13,14 @@ import {
   selectExchangeLoaderBase,
   startExchangeLoader
 } from './root/exchange.js';
+import {
+  selectCollectionUtilityLoaderBase,
+  startCollectionUtilityLoader
+} from './root/collection-utility.js';
 import { startHomeBundles } from './environment/home.js';
 import { startDropsBundles } from './environment/drops.js';
 import { startExchangeBundles } from './environment/exchange.js';
+import { startCollectionUtilityBundles } from './environment/collection-utility.js';
 
 function deferred() {
   let resolve;
@@ -53,6 +58,11 @@ const rootSurfaces = [
     name: 'exchange',
     selectBase: selectExchangeLoaderBase,
     startLoader: startExchangeLoader
+  },
+  {
+    name: 'collection-utility',
+    selectBase: selectCollectionUtilityLoaderBase,
+    startLoader: startCollectionUtilityLoader
   }
 ];
 
@@ -307,6 +317,106 @@ for (const failingBundle of ['first-paint', 'exchange']) {
   assert.equal(logger.errors.length, 1);
 }
 
+for (const settleFirst of ['first-paint', 'collection utility']) {
+  const firstPaint = deferred();
+  const collectionUtility = deferred();
+  const calls = [];
+  const logger = createLogger();
+  const loads = startCollectionUtilityBundles({
+    logger,
+    importModule(specifier) {
+      calls.push(specifier);
+      return specifier === './first-paint.js'
+        ? firstPaint.promise
+        : collectionUtility.promise;
+    }
+  });
+
+  assert.deepEqual(calls, ['./first-paint.js', './collection-utility.js']);
+
+  const first = settleFirst === 'first-paint' ? firstPaint : collectionUtility;
+  const second = settleFirst === 'first-paint' ? collectionUtility : firstPaint;
+  const firstLoad = settleFirst === 'first-paint'
+    ? loads.firstPaintLoad
+    : loads.collectionUtilityLoad;
+  const secondLoad = settleFirst === 'first-paint'
+    ? loads.collectionUtilityLoad
+    : loads.firstPaintLoad;
+
+  first.resolve(`${settleFirst}-ready-first`);
+  assert.equal(await firstLoad, `${settleFirst}-ready-first`);
+
+  let secondSettled = false;
+  void secondLoad.then(() => {
+    secondSettled = true;
+  });
+  await Promise.resolve();
+  assert.equal(secondSettled, false);
+
+  second.resolve('second-ready');
+  assert.equal(await secondLoad, 'second-ready');
+  assert.deepEqual(logger.errors, []);
+}
+
+for (const failingBundle of ['first-paint', 'collection utility']) {
+  const firstPaint = deferred();
+  const collectionUtility = deferred();
+  const logger = createLogger();
+  const loads = startCollectionUtilityBundles({
+    logger,
+    importModule(specifier) {
+      return specifier === './first-paint.js'
+        ? firstPaint.promise
+        : collectionUtility.promise;
+    }
+  });
+
+  const failed = failingBundle === 'first-paint' ? firstPaint : collectionUtility;
+  const surviving = failingBundle === 'first-paint' ? collectionUtility : firstPaint;
+  const failedLoad = failingBundle === 'first-paint'
+    ? loads.firstPaintLoad
+    : loads.collectionUtilityLoad;
+  const survivingLoad = failingBundle === 'first-paint'
+    ? loads.collectionUtilityLoad
+    : loads.firstPaintLoad;
+
+  failed.reject(new Error(`${failingBundle} unavailable`));
+  assert.equal(await failedLoad, null);
+  surviving.resolve('survivor-ready');
+  assert.equal(await survivingLoad, 'survivor-ready');
+  assert.equal(logger.errors.length, 1);
+  assert.match(logger.errors[0][0], new RegExp(`${failingBundle} bundle load failed`));
+}
+
+for (const failingBundle of ['first-paint', 'collection utility']) {
+  const calls = [];
+  const logger = createLogger();
+  const loads = startCollectionUtilityBundles({
+    logger,
+    importModule(specifier) {
+      calls.push(specifier);
+      const failingSpecifier = failingBundle === 'first-paint'
+        ? './first-paint.js'
+        : './collection-utility.js';
+      if (specifier === failingSpecifier) {
+        throw new Error(`synchronous ${failingBundle} failure`);
+      }
+      return Promise.resolve('survivor-ready');
+    }
+  });
+
+  assert.deepEqual(calls, ['./first-paint.js', './collection-utility.js']);
+  const failedLoad = failingBundle === 'first-paint'
+    ? loads.firstPaintLoad
+    : loads.collectionUtilityLoad;
+  const survivingLoad = failingBundle === 'first-paint'
+    ? loads.collectionUtilityLoad
+    : loads.firstPaintLoad;
+  assert.equal(await failedLoad, null);
+  assert.equal(await survivingLoad, 'survivor-ready');
+  assert.equal(logger.errors.length, 1);
+}
+
 for (const settleFirst of ['drops first-paint', 'drops']) {
   const firstPaint = deferred();
   const drops = deferred();
@@ -552,4 +662,7 @@ for (const failingBundle of ['drops first-paint', 'drops']) {
   }
 }
 
-console.log('Loader architecture and Home/Drops/Exchange first-paint tests passed.');
+console.log(
+  'Loader architecture and Home/Drops/Exchange/Collection Utility ' +
+  'first-paint tests passed.'
+);

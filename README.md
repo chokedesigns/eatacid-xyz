@@ -1,6 +1,6 @@
 # EATACID.xyz public repository
 
-This repository owns the Git-side public runtime for EATACID.xyz. Its public application surfaces are Home, Drops, and Exchange. Webflow supplies the live page presentation and loads stable JavaScript module URLs served by GitHub Pages; Git owns the behavior behind those URLs. The two systems therefore have separate ownership boundaries rather than one being a complete copy of the other.
+This repository owns the Git-side public runtime for EATACID.xyz. Its public application surfaces are Home, Drops, Exchange, and Collection Utility. Webflow supplies the live page presentation and loads stable JavaScript module URLs served by GitHub Pages; Git owns the behavior behind those URLs. The two systems therefore have separate ownership boundaries rather than one being a complete copy of the other.
 
 ## Repository boundaries
 
@@ -16,7 +16,7 @@ Webflow-hosted page
 -> shared and page-specific runtime
 ```
 
-The stable public module URLs are backed by `home.js`, `drops.js`, and `exchange.js` root routers. They select an environment from the browser hostname, while the selected environment loader starts the corresponding artifacts. See the [developer guide](docs/developer-guide.md) for ownership and dependency details.
+The stable public module URLs are backed by `home.js`, `drops.js`, `exchange.js`, and `collection-utility.js` root routers. They select an environment from the browser hostname, while the selected environment loader starts the corresponding artifacts. See the [developer guide](docs/developer-guide.md) for ownership and dependency details.
 
 ## Current network status
 
@@ -33,14 +33,14 @@ npm ci
 npm run start
 ```
 
-`npm run start` first checks that port 4000 is free, then opens a Parcel development server for the Home, Drops, and Exchange HTML shells at `http://localhost:4000/`. In parallel it watches `shared/drop-params/drop-params.js`, regenerates the tracked JSON projection, and mirrors that projection into the nested Admin repository when content changes. Check both repositories before retaining any generated change.
+`npm run start` first checks that port 4000 is free, then opens a Parcel development server for the Home, Drops, Exchange, and Collection Utility HTML shells at `http://localhost:4000/`. In parallel it watches `shared/drop-params/drop-params.js`, regenerates the tracked JSON projection, and mirrors that projection into the nested Admin repository when content changes. Check both repositories before retaining any generated change.
 
 ## Common commands
 
 | Command | Purpose |
 | --- | --- |
-| `npm run start` | Run the three local Webflow-derived shells with Parcel on port 4000 and watch drop parameters. |
-| `npm run build:pages:staging` | Regenerate drop parameters and build the five current public Parcel entries into ignored `dist/staging/` output. |
+| `npm run start` | Run the four local Webflow-derived shells with Parcel on port 4000 and watch drop parameters. |
+| `npm run build:pages:staging` | Regenerate drop parameters and build the six current public Parcel entries into ignored `dist/staging/` output. |
 | `npm run build:pages:prod` | Regenerate drop parameters and build the same source entries into ignored `dist/prod/` output. |
 | `npm run pages:sanity` | Build staging and launch the generated direct-bundle sanity harness. |
 | `npm run pages:sanity:loader-chain` | Build staging and launch the generated stable-router/environment-loader sanity harness. |

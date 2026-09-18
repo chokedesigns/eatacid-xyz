@@ -25,31 +25,33 @@ The outer `shared/chain-registry.js` also defines an Admin-oriented validator, b
 | Home | `index.html` | Shell modules `shared/public-first-paint.js` and `shared/beacon-setup.js` under Parcel serve | Stable `/home.js` router; full Parcel source `webflow/home.js` | Shared first-paint and wallet lifecycle |
 | Drops | `drops/index.html` | `drops/js/main.js` | Stable `/drops.js` router; early/full Parcel sources `webflow/drops-first-paint.js` and `webflow/drops.js` | `drops/js/events.js`, reveal coordination, shared wallet/trade modules, drop parameters |
 | Exchange | `exchange/index.html` | `exchange/js/main.js` | Stable `/exchange.js` router; full Parcel source `webflow/exchange.js` plus shared early first paint | `exchange/js/exchange.js`, shared wallet and trade modules |
+| Collection Utility | `collection-utility/index.html` | `collection-utility/js/main.js` | Stable `/collection-utility.js` router; full Parcel source `webflow/collection-utility.js` plus shared early first paint | Six image/spinner reveal pairs, shared first-paint, and shared wallet lifecycle |
 
 The tracked shells are snapshots used for local development and generated sanity pages. They retain Webflow DOM, CMS rows, hosted CSS, runtime scripts, assets, and fonts, but they substitute local module entries for the stable GitHub Pages URLs used by the live Webflow pages.
 
 ## Source and Parcel entrypoints
 
-The current `build:pages:staging` and `build:pages:prod` scripts define five public Parcel entries:
+The current `build:pages:staging` and `build:pages:prod` scripts define six public Parcel entries:
 
 1. `webflow/first-paint.js`
 2. `webflow/drops-first-paint.js`
 3. `webflow/home.js`
 4. `webflow/drops.js`
 5. `webflow/exchange.js`
+6. `webflow/collection-utility.js`
 
 These roles are distinct:
 
-- `index.html`, `drops/index.html`, and `exchange/index.html` are tracked local shells and are the HTML entries used by `npm run start`.
-- `shared/public-first-paint.js`, `shared/beacon-setup.js`, `drops/js/main.js`, and `exchange/js/main.js` are local runtime entries referenced by those shells.
+- `index.html`, `drops/index.html`, `exchange/index.html`, and `collection-utility/index.html` are tracked local shells and are the HTML entries used by `npm run start`.
+- `shared/public-first-paint.js`, `shared/beacon-setup.js`, `drops/js/main.js`, `exchange/js/main.js`, and `collection-utility/js/main.js` are local runtime entries referenced by those shells.
 - `webflow/*.js` files are authored Pages deployment entries. They assemble the dependency graph Parcel emits for live use.
 - `dist/prod/*.js` and `dist/staging/*.js` are generated Parcel artifacts. They are ignored locally and assembled by CI for Pages.
 
-Because Pages builds the two branch refs independently, the exact entry graph deployed under `prod/` is the graph present on `main`, and the graph under `staging/` is the graph present on `staging`. The checked-out source has five entries; the current `main` ref still has the earlier four-entry graph until the Drops early-paint work reaches `main`.
+Because Pages builds the two branch refs independently, the exact entry graph deployed under `prod/` is the graph present on `main`, and the graph under `staging/` is the graph present on `staging`. The checked-out source has six entries; the current `main` ref still has the earlier four-entry graph until the Drops early-paint and Collection Utility work reach `main`.
 
 ## Stable root-router architecture
 
-`loaders/root/home.js`, `loaders/root/drops.js`, and `loaders/root/exchange.js` back the stable public module URLs `/home.js`, `/drops.js`, and `/exchange.js`. The Pages workflow always takes these router sources from `main`, so one stable layer selects both environments.
+`loaders/root/home.js`, `loaders/root/drops.js`, `loaders/root/exchange.js`, and `loaders/root/collection-utility.js` back the stable public module URLs `/home.js`, `/drops.js`, `/exchange.js`, and `/collection-utility.js`. The Pages workflow always takes these router sources from `main`, so one stable layer selects both environments.
 
 Each router reads `window.location.hostname`. The exact production hostname set is `eatacid.xyz` and `www.eatacid.xyz`; those hosts select `./prod`. Every other hostname, including staging and localhost, selects `./staging`. The router then imports the surface-specific `{surface}-loader.js` and isolates loader failures.
 
@@ -71,7 +73,7 @@ staging
 -> /staging/* Parcel artifacts freshly built from staging
 ```
 
-Home and Exchange start the shared `first-paint.js` artifact concurrently with their full application artifact. The current Drops loader starts `drops-first-paint.js` concurrently with `drops.js`. Each import has separate synchronous and asynchronous failure handling.
+Home, Exchange, and Collection Utility start the shared `first-paint.js` artifact concurrently with their full application artifact. The current Drops loader starts `drops-first-paint.js` concurrently with `drops.js`. Each import has separate synchronous and asynchronous failure handling.
 
 On a push to `main` or `staging`, `.github/workflows/pages.yml` checks out both refs, installs each ref independently, and builds production from `main` and staging from `staging`. It then assembles one Pages artifact: stable routers and prod loaders come from `main`; staging loaders come from `staging`; referenced bundles come from their corresponding builds. It removes source maps and verifies file equality, loader references, required markers, and provenance before upload.
 
@@ -83,7 +85,7 @@ For the current branch workflow and post-deployment checks, see [staging deploym
 
 The early path is deliberately much smaller than the Beacon- and feature-bearing application path.
 
-`webflow/first-paint.js` imports only `shared/public-first-paint.js`. Home and Exchange environment loaders start that artifact beside `home.js` or `exchange.js`. Their full entries retain a first-paint import as a fallback; a global singleton guard prevents duplicate coordinator startup.
+`webflow/first-paint.js` imports only `shared/public-first-paint.js`. Home, Exchange, and Collection Utility environment loaders start that artifact beside their full application artifact. Their full entries retain a first-paint import as a fallback; a global singleton guard prevents duplicate coordinator startup.
 
 `shared/public-first-paint.js` owns shared reveal behavior. It applies the current testnet presentation, waits within bounded font and Home hero-image readiness windows, and reveals ready or fallback state. A 1,300 ms fail-open timer prevents the surface from remaining hidden indefinitely, and the error path also forces an inline reveal.
 
@@ -97,9 +99,9 @@ For implementation history and evidence, see [early Home first paint](performanc
 
 | Module | Owns | Major consumers | Does not own |
 | --- | --- | --- | --- |
-| `shared/network.js` | Supported-slot selection, the default `testnet` slot, optional `process.env.NETWORK` selection, and active RPC/TzKT projections | First paint, Beacon, Drops, Exchange | Addresses, per-surface validation, or cutover procedure |
+| `shared/network.js` | Supported-slot selection, the default `testnet` slot, optional `process.env.NETWORK` selection, and active RPC/TzKT projections | First paint, Beacon, Drops, Exchange, Collection Utility | Addresses, per-surface validation, or cutover procedure |
 | `shared/chain-registry.js` | Per-slot labels, Beacon/RPC/TzKT values, collection addresses, escrow configuration, pair-map paths, mirror maps, resolution helpers, and validators | `network.js`, Drops/Exchange configs, Admin-facing shared validation | Runtime network switching or proof that a configured slot is cutover-ready |
-| `shared/beacon-setup.js` | One shared `DAppClient`, permission/connect/disconnect lifecycle, active-account network validation, public wallet state, wallet controls, and TzKT NFT balance reads | Home, Drops, Exchange | Page-specific filtering, cart state, or transaction construction |
+| `shared/beacon-setup.js` | One shared `DAppClient`, permission/connect/disconnect lifecycle, active-account network validation, public wallet state, wallet controls, and TzKT NFT balance reads | Home, Drops, Exchange, Collection Utility | Page-specific filtering, cart state, or transaction construction |
 | `shared/public-first-paint.js` | Shared network class/banner state, bounded font/hero readiness, reveal/fallback behavior, and duplicate-start protection | Early entry, with full-entry fallbacks | Drops-specific authoritative-region readiness or application boot |
 | `shared/public-trade-ops.js` | TzKT pair lookup, operator-approval construction, expected-operation confirmation polling, and post-trade NFT refresh polling | Drops and Exchange transaction flows | Page-specific cart/payload composition, modal state, or wallet send request |
 | `shared/drop-params/drop-params.js` | Authored Drops schedule, display/mechanics, burn eligibility/exclusions, redeem identity, and mirror-network metadata | Drops runtime; JSON generator; Admin projection | Chain endpoints, addresses, live pause state, or live redeem supply |
@@ -160,7 +162,7 @@ For the current live integration, Webflow owns live page HTML and hosting, CMS c
 
 Git owns the public JavaScript behavior, stable root routers and environment loaders, shared runtime, page application modules, network/registry configuration, drop parameters, transaction-side client logic, build scripts, verification, and GitHub Pages deployment assembly.
 
-`index.html`, `drops/index.html`, and `exchange/index.html` are tracked Webflow-derived development and sanity shells. They are useful representations of the expected DOM contract, but they are not the live Webflow HTML authority. They load hosted Webflow CSS/runtime/assets and local application entries so Parcel can serve the repository runtime against representative markup.
+`index.html`, `drops/index.html`, `exchange/index.html`, and `collection-utility/index.html` are tracked Webflow-derived development and sanity shells. They are useful representations of the expected DOM contract, but they are not the live Webflow HTML authority. They load hosted Webflow CSS/runtime/assets and local application entries so Parcel can serve the repository runtime against representative markup.
 
 The stylesheet at `docs/webflow-migration/evidence/eatacid-xyz-webflow-reference-snapshot.css` is tracked historical evidence. Ignored files under `drops/css/`, `exchange/css/`, and `assets/site/` are local reference/export material. None is the current live runtime CSS authority.
 
@@ -173,6 +175,7 @@ Follow [refreshing Webflow-derived HTML/reference material](operations.md#16-ref
 | `shared/` | Authored shared runtime/configuration, except named generated projections | Yes, by module responsibility | Yes, within ticket scope |
 | `drops/js/` | Authored Drops runtime | Yes for Drops behavior | Yes |
 | `exchange/js/` | Authored Exchange runtime | Yes for Exchange behavior | Yes |
+| `collection-utility/js/` | Authored Collection Utility runtime | Yes for Collection Utility behavior | Yes |
 | `webflow/` | Authored Parcel deployment entry sources | Yes for deployed bundle entry graphs | Yes |
 | `loaders/` | Authored stable routers, environment loaders, and loader tests | Yes for deployed routing/loading | Yes |
 | `dist/` | Ignored generated Parcel/assembled output | No | No; rebuild |

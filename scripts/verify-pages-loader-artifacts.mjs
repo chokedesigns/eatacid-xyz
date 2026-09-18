@@ -2,7 +2,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const SURFACES = ['home', 'drops', 'exchange'];
+const SURFACES = ['home', 'drops', 'exchange', 'collection-utility'];
 const ENVIRONMENTS = ['prod', 'staging'];
 const PROD_HOST_DECLARATION =
   'new Set(["eatacid.xyz", "www.eatacid.xyz"])';
@@ -126,7 +126,8 @@ function verifyEnvironmentLoaderText(contents, surface, description) {
     fail(`${description} is missing required local artifact reference: ` +
       `./${applicationArtifact}`);
   }
-  if (surface === 'home' && !artifactNames.has('first-paint.js')) {
+  if ((surface === 'home' || surface === 'collection-utility') &&
+      !artifactNames.has('first-paint.js')) {
     fail(`${description} is missing required local artifact reference: ` +
       './first-paint.js');
   }
@@ -220,7 +221,7 @@ async function verifyRequiredRootRouters(mainRoot) {
   const rootCount = present.filter(Boolean).length;
 
   if (rootCount !== SURFACES.length) {
-    fail('main must contain all three permanent root-router sources ' +
+    fail('main must contain all four permanent root-router sources ' +
       `(found ${rootCount} of ${SURFACES.length})`);
   }
 }

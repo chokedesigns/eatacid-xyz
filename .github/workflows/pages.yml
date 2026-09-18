@@ -81,14 +81,14 @@ jobs:
       - name: Assemble dist for Pages
         run: |
           main_root_count=0
-          for source in home drops exchange; do
+          for source in home drops exchange collection-utility; do
             if [[ -f "repo-main/loaders/root/${source}.js" ]]; then
               main_root_count=$((main_root_count + 1))
             fi
           done
 
-          if [[ "$main_root_count" -ne 3 ]]; then
-            echo "::error title=PERMANENT ROOT ROUTERS REQUIRED::main must contain all three permanent root routers: loaders/root/home.js, loaders/root/drops.js, and loaders/root/exchange.js (found ${main_root_count} of 3)."
+          if [[ "$main_root_count" -ne 4 ]]; then
+            echo "::error title=PERMANENT ROOT ROUTERS REQUIRED::main must contain all four permanent root routers: loaders/root/home.js, loaders/root/drops.js, loaders/root/exchange.js, and loaders/root/collection-utility.js (found ${main_root_count} of 4)."
             exit 1
           fi
 
@@ -100,14 +100,17 @@ jobs:
           cp repo-main/loaders/root/home.js dist/home.js
           cp repo-main/loaders/root/drops.js dist/drops.js
           cp repo-main/loaders/root/exchange.js dist/exchange.js
+          cp repo-main/loaders/root/collection-utility.js dist/collection-utility.js
           cp repo-main/loaders/environment/home.js dist/prod/home-loader.js
           cp repo-main/loaders/environment/drops.js dist/prod/drops-loader.js
           cp repo-main/loaders/environment/exchange.js dist/prod/exchange-loader.js
+          cp repo-main/loaders/environment/collection-utility.js dist/prod/collection-utility-loader.js
 
           # Staging environment loaders are always staging-owned.
           cp repo-staging/loaders/environment/home.js dist/staging/home-loader.js
           cp repo-staging/loaders/environment/drops.js dist/staging/drops-loader.js
           cp repo-staging/loaders/environment/exchange.js dist/staging/exchange-loader.js
+          cp repo-staging/loaders/environment/collection-utility.js dist/staging/collection-utility-loader.js
 
       - name: Remove source maps from Pages artifact
         run: find dist -type f -name '*.map' -delete

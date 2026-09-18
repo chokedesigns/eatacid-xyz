@@ -31,6 +31,7 @@ function cleanupLegacyTestHarness(dir) {
     ["home.html", "home"],
     ["drops.html", "drops"],
     ["exchange.html", "exchange"],
+    ["collection-utility.html", "collection-utility"],
   ]);
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   const recognizedFiles = [];
@@ -90,9 +91,10 @@ function removeMarkedBlock(html) {
 //
 // - Home: ./shared/public-first-paint.js and ./shared/beacon-setup.js
 //   (sometimes after </html> in the rip)
-// - Drops/Exchange: js/main.js (within each folder)
-// - Your previous harness injections: dist/(home|drops|exchange).js
-// - NEW: staging/prod subfolder injections: dist/(staging|prod)/(home|drops|exchange).js
+// - Drops/Exchange/Collection Utility: js/main.js (within each folder)
+// - Your previous harness injections: dist/(home|drops|exchange|collection-utility).js
+// - NEW: staging/prod subfolder injections:
+//   dist/(staging|prod)/(home|drops|exchange|collection-utility).js
 // - Stable wrapper entrypoints when loader-chain mode is used
 function stripAppScripts(html) {
   const patterns = [
@@ -111,18 +113,19 @@ function stripAppScripts(html) {
     // If your repo HTML ever points directly at these (older iterations)
     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*drops\/js\/main\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
     /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*exchange\/js\/main\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*collection-utility\/js\/main\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
 
     // Remove any previous harness injections (various relative forms)
-    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
-    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange|collection-utility)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:home|drops|exchange|collection-utility)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
 
     // NEW: remove staging/prod subfolder injections too
-    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:staging|prod)\/(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
-    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:staging|prod)\/(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:staging|prod)\/(?:home|drops|exchange|collection-utility)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\.\.\/)?dist\/(?:staging|prod)\/(?:home|drops|exchange|collection-utility)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
 
     // Optional: if you ever put these stable entrypoints directly in HTML
-    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
-    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\btype\s*=\s*["']module["'][^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange|collection-utility)\.js[^"']*["'][^>]*>\s*<\/script>\s*/gi,
+    /<script\b[^>]*\bsrc\s*=\s*["'][^"']*(?:\/)?(?:home|drops|exchange|collection-utility)\.js[^"']*["'][^>]*\btype\s*=\s*["']module["'][^>]*>\s*<\/script>\s*/gi,
 
   ];
 
@@ -171,7 +174,7 @@ cleanupLegacyTestHarness(legacyTestDir);
 ensureDir(pagesSanityDir);
 
 if (loaderChain) {
-  for (const surface of ["home", "drops", "exchange"]) {
+  for (const surface of ["home", "drops", "exchange", "collection-utility"]) {
     const rootRouterSource = path.join(root, "loaders", "root", `${surface}.js`);
     const environmentLoaderSource = path.join(
       root,
@@ -218,6 +221,12 @@ buildOne({
   src: path.join(root, "exchange", "index.html"),
   dest: path.join(pagesSanityDir, "exchange.html"),
   bundleSrc: harnessBundle("exchange"),
+});
+
+buildOne({
+  src: path.join(root, "collection-utility", "index.html"),
+  dest: path.join(pagesSanityDir, "collection-utility.html"),
+  bundleSrc: harnessBundle("collection-utility"),
 });
 
 console.log(`done (${loaderChain ? "loader-chain" : "direct-bundle"} mode).`);

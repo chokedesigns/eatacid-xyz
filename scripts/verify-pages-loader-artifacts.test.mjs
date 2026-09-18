@@ -11,7 +11,7 @@ import { join } from 'node:path';
 
 import { verifyPagesLoaderArtifacts } from './verify-pages-loader-artifacts.mjs';
 
-const SURFACES = ['home', 'drops', 'exchange'];
+const SURFACES = ['home', 'drops', 'exchange', 'collection-utility'];
 const FIRST_PAINT_BUNDLE =
   `const STATE_KEY = '__EA_PUBLIC_FIRST_PAINT__';\n`;
 const DROPS_FIRST_PAINT_BUNDLE =
@@ -33,7 +33,10 @@ const ENVIRONMENT_SOURCES = Object.fromEntries(await Promise.all(SURFACES.map(
   )]
 )));
 function applicationOnlyEnvironmentSource(surface) {
-  const title = surface[0].toUpperCase() + surface.slice(1);
+  const title = surface
+    .split('-')
+    .map(part => part[0].toUpperCase() + part.slice(1))
+    .join('');
   return `function importBundle(specifier) {
   return import(specifier);
 }
@@ -70,6 +73,8 @@ const APPLICATION_ONLY_DROPS_ENVIRONMENT_SOURCE =
   applicationOnlyEnvironmentSource('drops');
 const APPLICATION_ONLY_EXCHANGE_ENVIRONMENT_SOURCE =
   applicationOnlyEnvironmentSource('exchange');
+const APPLICATION_ONLY_COLLECTION_UTILITY_ENVIRONMENT_SOURCE =
+  applicationOnlyEnvironmentSource('collection-utility');
 const HOME_WITHOUT_FIRST_PAINT_SOURCE = applicationOnlyEnvironmentSource('home');
 const PAGES_WORKFLOW = await readFile(
   new URL('.github/workflows/pages.yml', sourceRoot),
@@ -202,14 +207,14 @@ await withFixture(async fixture => {
     fixture.staging,
     quiet
   );
-  assert.equal(result.roots.length, 3);
-  assert.equal(result.environmentLoaders.length, 6);
-  assert.equal(result.artifacts.length, 10);
+  assert.equal(result.roots.length, 4);
+  assert.equal(result.environmentLoaders.length, 8);
+  assert.equal(result.artifacts.length, 12);
   assert.deepEqual(
     result.artifacts.find(artifact =>
       artifact.environment === 'prod' && artifact.surface === 'first-paint'
     ).referencedBy,
-    ['home', 'exchange']
+    ['home', 'exchange', 'collection-utility']
   );
   assert.deepEqual(
     result.artifacts.find(artifact =>
@@ -233,18 +238,18 @@ await withFixture(async fixture => {
     fixture.staging,
     quiet
   );
-  assert.equal(result.artifacts.length, 10);
+  assert.equal(result.artifacts.length, 12);
   assert.deepEqual(
     result.artifacts.find(artifact =>
       artifact.environment === 'prod' && artifact.surface === 'first-paint'
     ).referencedBy,
-    ['home']
+    ['home', 'collection-utility']
   );
   assert.deepEqual(
     result.artifacts.find(artifact =>
       artifact.environment === 'staging' && artifact.surface === 'first-paint'
     ).referencedBy,
-    ['home', 'exchange']
+    ['home', 'exchange', 'collection-utility']
   );
 }, STAGING_FIRST_EXCHANGE_ROLLOUT);
 
@@ -255,7 +260,7 @@ await withFixture(async fixture => {
     fixture.staging,
     quiet
   );
-  assert.equal(result.artifacts.length, 9);
+  assert.equal(result.artifacts.length, 11);
   assert.equal(
     result.artifacts.some(artifact =>
       artifact.environment === 'prod' &&
@@ -330,7 +335,7 @@ await withFixture(async fixture => {
       fixture.staging,
       quiet
     ),
-    /missing staging first-paint artifact referenced by home\/exchange environment loader\(s\)/
+    /missing staging first-paint artifact referenced by home\/exchange\/collection-utility environment loader\(s\)/
   );
 }, STAGING_FIRST_EXCHANGE_ROLLOUT);
 
@@ -458,7 +463,7 @@ await withFixture(async fixture => {
       fixture.staging,
       quiet
     ),
-    /missing prod first-paint artifact referenced by home\/exchange environment loader\(s\)/
+    /missing prod first-paint artifact referenced by home\/exchange\/collection-utility environment loader\(s\)/
   );
 });
 
@@ -471,7 +476,7 @@ await withFixture(async fixture => {
       fixture.staging,
       quiet
     ),
-    /missing staging first-paint artifact referenced by home environment loader\(s\)/
+    /missing staging first-paint artifact referenced by home\/collection-utility environment loader\(s\)/
   );
 }, {
   mainEnvironmentSources: {
@@ -503,6 +508,33 @@ await withFixture(async fixture => {
       quiet
     ),
     /authoritative main home environment-loader source is missing required local artifact reference: \.\/first-paint\.js/
+  );
+});
+
+await withFixture(async fixture => {
+  await Promise.all([
+    writeFile(
+      join(
+        fixture.main,
+        'loaders',
+        'environment',
+        'collection-utility.js'
+      ),
+      APPLICATION_ONLY_COLLECTION_UTILITY_ENVIRONMENT_SOURCE
+    ),
+    writeFile(
+      join(fixture.artifact, 'prod', 'collection-utility-loader.js'),
+      APPLICATION_ONLY_COLLECTION_UTILITY_ENVIRONMENT_SOURCE
+    )
+  ]);
+  await assert.rejects(
+    verifyPagesLoaderArtifacts(
+      fixture.artifact,
+      fixture.main,
+      fixture.staging,
+      quiet
+    ),
+    /authoritative main collection-utility environment-loader source is missing required local artifact reference: \.\/first-paint\.js/
   );
 });
 
@@ -599,7 +631,7 @@ await withFixture(async fixture => {
       fixture.staging,
       quiet
     ),
-    /main must contain all three permanent root-router sources \(found 2 of 3\)/
+    /main must contain all four permanent root-router sources \(found 3 of 4\)/
   );
 });
 
@@ -654,17 +686,17 @@ await withFixture(async fixture => {
   assertWorkflowOrdering(PAGES_WORKFLOW);
   assert.match(
     PAGES_WORKFLOW,
-    /if \[\[ "\$main_root_count" -ne 3 \]\]/,
-    'workflow must require exactly three permanent main root routers'
+    /if \[\[ "\$main_root_count" -ne 4 \]\]/,
+    'workflow must require exactly four permanent main root routers'
   );
   assert.doesNotMatch(
     PAGES_WORKFLOW,
-    /loaders\/(?:home|drops|exchange)\.loader\.js/,
+    /loaders\/(?:home|drops|exchange|collection-utility)\.loader\.js/,
     'workflow must not copy retired legacy root loaders'
   );
   assert.doesNotMatch(
     PAGES_WORKFLOW,
-    /dist\/candidate-(?:home|drops|exchange)\.js/,
+    /dist\/candidate-(?:home|drops|exchange|collection-utility)\.js/,
     'workflow must not generate retired candidate routers'
   );
 

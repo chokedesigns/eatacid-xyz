@@ -53,6 +53,7 @@ The served tracked shells are:
 http://localhost:4000/           Home
 http://localhost:4000/drops/     Drops
 http://localhost:4000/exchange/  Exchange
+http://localhost:4000/collection-utility/  Collection Utility
 ```
 
 Parcel may write ignored `.parcel-cache/` content. The watcher may regenerate tracked `shared/drop-params/drop-params.json` and, when the nested checkout exists, `admin-ui/src/drop-params.mirror.json`. Inspect both Git repositories before retaining those changes.
@@ -92,7 +93,7 @@ Run the tests that match the changed contract. These commands do not intentional
 
 | Command | Run when changing | What it proves |
 | --- | --- | --- |
-| `npm run test:loader-architecture` | Root routers, environment loaders, first-paint startup, or loader failure handling | Host selection, sibling artifact startup, and failure isolation match the encoded Home/Drops/Exchange architecture. |
+| `npm run test:loader-architecture` | Root routers, environment loaders, first-paint startup, or loader failure handling | Host selection, sibling artifact startup, and failure isolation match the encoded Home/Drops/Exchange/Collection Utility architecture. |
 | `npm run test:pages-loader-artifacts` | Pages workflow assembly, loader provenance, or artifact verification | The verifier accepts the supported assembled graph, rejects ownership/marker/map violations, and the workflow keeps verification after map removal with no later artifact mutation. |
 | `npm run test:public-trade-ops` | Shared approvals, operation confirmation, pair matching, or NFT refresh behavior | Deterministic trade-helper fixtures preserve approval fallback, confirmation matching/retry, and refresh completion rules. |
 | `npm run test:drops-reveal` | Drops early paint, readiness barriers, pending states, or environment loading | The initial and wallet reveal contracts, early-shell markers, and Drops sibling loading remain coordinated. |
@@ -116,7 +117,7 @@ Both commands:
 1. run `npm run dropparams:json`;
 2. remove `.parcel-cache/`;
 3. remove only their target environment directory;
-4. build the five current `webflow/` Parcel entries without content hashes or scope hoisting.
+4. build the six current `webflow/` Parcel entries without content hashes or scope hoisting.
 
 Staging output goes to ignored `dist/staging/`; production output goes to ignored `dist/prod/`. Branch-local output retains Parcel source maps for local analysis. The GitHub Pages workflow removes maps only after it combines both branch builds.
 
@@ -133,10 +134,10 @@ npm run pages:sanity
 The command:
 
 1. produces a staging build in `dist/staging/`;
-2. creates ignored `pages-sanity/home.html`, `drops.html`, and `exchange.html` from the three tracked Webflow-derived shells;
+2. creates ignored `pages-sanity/home.html`, `drops.html`, `exchange.html`, and `collection-utility.html` from the four tracked Webflow-derived shells;
 3. strips tracked local application module tags and any prior harness injection;
 4. injects direct `../dist/staging/{surface}.js` application artifacts;
-5. starts `npx serve . -l 8080` through `cmd.exe` and opens all three sanity URLs in the default browser.
+5. starts `npx serve . -l 8080` through `cmd.exe` and opens all four sanity URLs in the default browser.
 
 This runner is currently Windows-specific. Its child window is not hidden. `serve` is not a declared package dependency, so `npx` may need network access or may offer to obtain it when it is not already cached. The server remains active until stopped with `Ctrl+C`.
 
@@ -222,6 +223,7 @@ The final Pages artifact has this practical shape:
 /home.js
 /drops.js
 /exchange.js
+/collection-utility.js
 /prod/*
 /staging/*
 ```
@@ -239,7 +241,7 @@ staging
 -> staging Parcel artifacts
 ```
 
-The workflow requires all three root routers from `main`. It removes maps only after final assembly, verifies that zero `.map` files remain, then runs provenance verification. No step mutates the assembled `dist/` graph between that verifier and artifact upload. Branch-local `dist/prod/` and `dist/staging/` builds retain their source maps.
+The workflow requires all four root routers from `main`. It removes maps only after final assembly, verifies that zero `.map` files remain, then runs provenance verification. No step mutates the assembled `dist/` graph between that verifier and artifact upload. Branch-local `dist/prod/` and `dist/staging/` builds retain their source maps.
 
 See the [developer guide](developer-guide.md#stable-root-router-architecture) for the architectural rationale.
 
@@ -296,12 +298,13 @@ Before cleanup, use `git status --short` in both repositories. Prefer the scoped
 
 ## 16. Refreshing Webflow-derived HTML/reference material
 
-This procedure refreshes the three Git-tracked development/sanity shells:
+This procedure refreshes the four Git-tracked development/sanity shells:
 
 ```text
 index.html
 drops/index.html
 exchange/index.html
+collection-utility/index.html
 ```
 
 Keep three states distinct:
@@ -317,10 +320,10 @@ Webflow publishing is a mutation. Perform step 1 only with explicit project/tick
 3. **Open DevTools and disable cache.** Keep DevTools open so the setting remains effective during capture.
 4. **Hard refresh.** On Windows/Chrome-family browsers, use `Ctrl+Shift+R`; otherwise use the browser's equivalent. Confirm the document request is fresh.
 5. **Capture the actual HTML document.** Prefer **View Page Source** and save/copy that response. If it is unavailable or suspect, use **DevTools -> Network -> Document -> Response**. Do not use the runtime-mutated Elements DOM as the primary capture unless runtime mutation is the subject of the investigation.
-6. **Verify the intended page.** Check the URL, Home/Drops/Exchange surface, expected content, publish freshness, and Webflow site/page identity where observable.
-7. **Compare; do not blindly overwrite.** Diff the captured HTML against the corresponding tracked shell. Separate Webflow-origin changes from Git-owned local substitutions and sanity integration. Preserve or deliberately reapply the supported local module entries: Home uses `./shared/public-first-paint.js` and `./shared/beacon-setup.js`; Drops and Exchange use their local `js/main.js`. The sanity generator depends on recognizing and replacing these entries.
+6. **Verify the intended page.** Check the URL, Home/Drops/Exchange/Collection Utility surface, expected content, publish freshness, and Webflow site/page identity where observable.
+7. **Compare; do not blindly overwrite.** Diff the captured HTML against the corresponding tracked shell. Separate Webflow-origin changes from Git-owned local substitutions and sanity integration. Preserve or deliberately reapply the supported local module entries: Home uses `./shared/public-first-paint.js` and `./shared/beacon-setup.js`; Drops, Exchange, and Collection Utility use their local `js/main.js`. The sanity generator depends on recognizing and replacing these entries.
 8. **Review DOM/class contract impact.** For meaningful changes, inspect selectors, IDs/classes, CMS/list structure, element ancestry, runtime-required elements, and hosted CSS/runtime dependencies. Use the historical/specialist [Webflow DOM contracts](webflow-migration/03-dom-contracts.md) and [runtime dependency data](webflow-migration/03-runtime-dependencies.json) as evidence, then verify against current consumers.
-9. **Validate every affected surface.** Home-only success does not prove Drops or Exchange. Run relevant deterministic tests and builds, direct sanity to isolate bundle/runtime behavior, and loader-chain sanity when the deployed integration graph could be affected.
+9. **Validate every affected surface.** Home-only success does not prove Drops, Exchange, or Collection Utility. Run relevant deterministic tests and builds, direct sanity to isolate bundle/runtime behavior, and loader-chain sanity when the deployed integration graph could be affected.
 10. **Review the final shell diff.** Reject accidental runtime-mutated HTML, unexpected CDN/runtime drift, removed local modules, unrelated CMS changes, or changes outside the intended surfaces.
 11. **Roll back a bad capture from Git.** After preserving any other intended work, restore the affected tracked shell from its prior known-good Git version. Do not try to repair live Webflow by manipulating generated local HTML.
 
