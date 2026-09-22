@@ -28,6 +28,7 @@ import {
   pollForConfirmation as pollForSharedConfirmation,
   pollForNFTUpdate as pollForSharedNFTUpdate
 } from '../../shared/public-trade-ops.js';
+import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
 
 const logger = createPublicLogger({ enabled: DEBUG_LOGGING, scope: 'drops' });
 
@@ -1756,36 +1757,34 @@ async function updateTokensWithWalletData(nfts) {
     const cmsRows = (window.cmsRowsByCollection[key] || [])
                       .sort((a, b) => Number(a.dataset.tokenId) - Number(b.dataset.tokenId));
 
-    Object.entries(tokenMapping[key] || {})
-      .filter(([mainId]) => !config.exclude.includes(mainId))
-      .forEach(([mainId, testId]) => {
-        if (
-          eligible.some(n =>
-            n.tokenId === testId &&
-            n.contractAddress === collections[key]
-          )
-        ) {
-          const orig = cmsRows.find(r => r.dataset.tokenId === mainId);
-          if (!orig || !parent) return;
+    resolveBurnTokenRenderIdentities({
+      canonicalTokenIds: cmsRows.map(row => row.dataset.tokenId),
+      eligibleTokenIds: eligible
+        .filter(n => n.contractAddress === collections[key])
+        .map(n => n.tokenId),
+      excludedTokenIds: config.exclude,
+      tokenMapping: tokenMapping[key]
+    }).forEach(({ canonicalTokenId, walletTokenId }) => {
+      const orig = cmsRows.find(r => r.dataset.tokenId === canonicalTokenId);
+      if (!orig || !parent) return;
 
-          const wrappedRow = wrapTokenRow(
-            buildEventTokenRow(orig, testId),
-            key
-          );
+      const wrappedRow = wrapTokenRow(
+        buildEventTokenRow(orig, walletTokenId),
+        key
+      );
 
-          wrappedRow.setAttribute(
-            'data-contract-address',
-            collections[key]
-          );
+      wrappedRow.setAttribute(
+        'data-contract-address',
+        collections[key]
+      );
 
-          wrappedRow.style.display = "";
-          parent.appendChild(wrappedRow);
+      wrappedRow.style.display = "";
+      parent.appendChild(wrappedRow);
 
-          logger.log(
-            `[DEBUG] Appended row for ${key} token ${testId} in .${slug}-collection (contract=${collections[key]})`
-          );
-        }
-      });
+      logger.log(
+        `[DEBUG] Appended row for ${key} token ${walletTokenId} in .${slug}-collection (contract=${collections[key]})`
+      );
+    });
   });
 
   updateOwnedTokenCounts(nfts);

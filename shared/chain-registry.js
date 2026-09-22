@@ -156,7 +156,7 @@ function addMissingEffectiveSurfaceEscrow(missing, config, surface, options = {}
 
   if (!isPlaceholderAddress(resolved.effectiveAddress)) return;
 
-  if (options?.strict === true) {
+  if (resolved.strict) {
     missing.push(`escrows.${surface}.address`);
     return;
   }
@@ -166,6 +166,11 @@ function addMissingEffectiveSurfaceEscrow(missing, config, surface, options = {}
       ? `escrows.${surface}.address`
       : 'escrow'
   );
+}
+
+function requiresDedicatedDropsEscrow(configOrNetwork) {
+  const config = resolveChainConfig(configOrNetwork);
+  return configOrNetwork === 'mainnet' || config?.beaconNetwork === 'mainnet';
 }
 
 export function isPlaceholderAddress(value) {
@@ -187,7 +192,9 @@ export function isPlaceholderAddress(value) {
 
 export function resolveSurfaceEscrow(configOrNetwork, surface, options = {}) {
   const config = resolveChainConfig(configOrNetwork);
-  const strict = options?.strict === true;
+  const strict = options?.strict === true || (
+    surface === 'drops' && requiresDedicatedDropsEscrow(configOrNetwork)
+  );
   const surfaceConfig = config?.escrows?.[surface] || {};
   const configuredAddress = stringValue(surfaceConfig.address);
   const fallbackAddress = stringValue(config?.escrow);
@@ -214,7 +221,9 @@ export function resolveSurfaceEscrow(configOrNetwork, surface, options = {}) {
 }
 
 export function resolveDropsEscrow(configOrNetwork) {
-  const resolved = resolveSurfaceEscrow(configOrNetwork, 'drops');
+  const resolved = resolveSurfaceEscrow(configOrNetwork, 'drops', {
+    strict: requiresDedicatedDropsEscrow(configOrNetwork)
+  });
   return {
     ...resolved,
     dropsEscrow: resolved.effectiveAddress
@@ -253,7 +262,9 @@ export function validatePublicDropsConfig(configOrNetwork) {
 
   if (!config) return validationResult(missing);
 
-  addMissingEffectiveSurfaceEscrow(missing, config, 'drops');
+  addMissingEffectiveSurfaceEscrow(missing, config, 'drops', {
+    strict: requiresDedicatedDropsEscrow(config)
+  });
   addMissingText(missing, config, 'pairsMapPath');
   addMissingCollections(missing, config, dropCollectionKeys);
 

@@ -56,17 +56,17 @@ Do not add a workflow override for this cutover.
 | Beacon | Registry; `shared/beacon-setup.js` | `mainnet` maps to `NetworkType.MAINNET` | KNOWN + VERIFIED IN SOURCE; runtime test required |
 | Browser switching | `shared/network.js`; consumers | None; selection is build/evaluation-time | KNOWN + VERIFIED IN SOURCE |
 | Mainnet NFT collections | `chainRegistry.mainnet.collections` | Four nonblank addresses are checked in | KNOWN BUT REQUIRES LIVE VERIFICATION |
-| Drops escrow | `mainnet.escrows.drops.address` and legacy `escrow` | Blank; no effective address | MISSING |
+| Drops escrow | `mainnet.escrows.drops.address` | Blank; no effective address | MISSING |
 | Exchange escrow | `mainnet.escrows.exchange.address` | Blank; strict resolver has no fallback | MISSING |
 | ACID COIN | `mainnet.collections['ACID COIN']` | Blank | MISSING |
-| Mainnet mirrors | `mainnet.mirrors` | `{}` | OPERATOR DECISION REQUIRED |
-| Drop parameters | `shared/drop-params/drop-params.js` | Scheduled `SPLINTERED`; `mirrorNetwork: 'testnet'`; May 28, 2026 at 9:00 PM EST; HEN burn excluding `141634`; CANAAN token `29`, amount `1`, declared supply `10` | OPERATOR DECISION REQUIRED |
+| Mainnet mirrors | `mainnet.mirrors` | `{}`; canonical token IDs render by identity | APPROVED EMPTY MIRROR POLICY + VERIFIED IN SOURCE |
+| Drop parameters | `shared/drop-params/drop-params.js` | Unscheduled initial Mainnet state; retained future-drop metadata is inactive | UNSCHEDULED STATE APPROVED + VERIFIED IN SOURCE |
 
 Current validator result:
 
 ```text
 validateNetworkBase('mainnet')          -> ok
-validatePublicDropsConfig('mainnet')    -> missing: escrow
+validatePublicDropsConfig('mainnet')    -> missing: escrows.drops.address
 validatePublicExchangeConfig('mainnet') -> missing: escrows.exchange.address, collections.ACID COIN
 validateAdminNetworkConfig('mainnet')   -> missing: escrow, collections.ACID COIN
 ```
@@ -87,13 +87,13 @@ Admin is separately owned. Its selector persists `ea.admin.network`, clears the 
 | HEN | `mainnet.collections.HEN` | `KT1RJ6PbjHpwc3M5rw5s2Nbmefwbuwbdxton` | Approved canonical collection | Source-known; live-unverified | HEN canonical evidence | Contract/metadata and known-wallet balance | Yes |
 | INTRODUCTIONS | `mainnet.collections.INTRODUCTIONS` | `KT1FmqojETK4Ux44oeudyDbQ6zQDYrD5DaP5` | Approved canonical collection | Source-known; live-unverified | Collection owner/deployment evidence | Contract/metadata and known-wallet balance | Yes |
 | ACID COIN | `mainnet.collections['ACID COIN']` | Blank | Approved Mainnet FA2 | No | Contract/Admin handoff | Origination, FA2 identity, token IDs, balances, payload review | Yes |
-| Drops escrow | `mainnet.escrows.drops.address` (legacy fallback: `mainnet.escrow`) | Both blank | Approved dedicated Drops escrow | No | Contract deployment handoff | Origination, code, storage, admin, pause, entrypoints, pair map | Yes |
+| Drops escrow | `mainnet.escrows.drops.address` | Blank | Approved dedicated Drops escrow | No | Contract deployment handoff | Origination, code, storage, admin, pause, entrypoints, pair map | Yes |
 | Admin root escrow | `mainnet.escrow` | Blank | Approved Admin Drops/root target | No | Contract/Admin handoff | Admin validator and target resolution agree with approved Drops contract | Yes before Admin activation |
 | Exchange escrow | `mainnet.escrows.exchange.address` | Blank | Approved dedicated Exchange escrow | No | Contract deployment handoff | Same; strict resolver reports `source: surface` | Yes |
 | Pair-map path | Surface path, then `mainnet.pairsMapPath` | Surface blank; fallback `token_mapping` | Path proved by deployed storage | Deployment-unverified | Deployed storage schema | Named active big map exists on each escrow | Yes |
 | Pair IDs/metadata | `mainnet.pairIdRanges.*`; escrow big maps | Both `{ start: 0, end: null }` | Approved contract-scoped IDs and pair manifest | No | Admin/contract pair handoff | Compare every active burn/redeem field | Yes |
-| Mainnet mirrors | `mainnet.mirrors` | `{}` | Approval that none are needed, or approved mappings | No decision | Collection identity owner | Known-wallet/CMS identity comparison | Yes when Drops collection needs mirrors |
-| Drop parameters | `shared/drop-params/drop-params.js` | See section 8 | Approved schedule/mechanics | No | Release/drop owner | Source/projection, UI, pair/inventory comparison | Yes if scheduled |
+| Mainnet mirrors | `mainnet.mirrors` | `{}` | Approved empty; canonical IDs use identity rendering | Yes | Collection identity owner | Deterministic rendering regression; live identity evidence at deployment | No for pre-deployment source readiness |
+| Drop parameters | `shared/drop-params/drop-params.js` | See section 8 | Initial Mainnet state unscheduled | Yes | Release/drop owner | Source/projection equality and unscheduled UI | No until a future drop is scheduled |
 | Redeem inventory/supply | Escrow holdings; `redeemToken.totalSupply` | Declared `10`; Mainnet live unknown | Approved funded inventory and truthful assumption | No | Treasury/Admin handoff | Escrow FA2 balances and exposure reconciliation | Yes |
 | Pause authority/state | Deployed escrow storage/custody | Unknown | Named reachable authority; both paused | No | Contract/Admin handoff | Storage read and authority confirmation | Yes |
 | Administrator/provenance | Deployment records/storage | No Mainnet record in outer repo | Complete evidence per contract | No | Contract deployment handoff | Origination, code/version, storage/admin comparison | Yes |
@@ -198,7 +198,7 @@ Expected: both repositories clean; no unexpected `.env*`; process `NETWORK` blan
 
 | Field | Current source value | Mainnet-approved value | Approval/source | Validation |
 | --- | --- | --- | --- | --- |
-| `dropScheduled` | `true` |  | Release/drop owner | Correct scheduled UI |
+| `dropScheduled` | `false` | `false` (initial Mainnet cutover has no scheduled drop) | Approved decision | Correct unscheduled UI |
 | `dropName` | `SPLINTERED` |  | Release/drop owner | Approved identity |
 | `mirrorNetwork` | `testnet` |  | Collection owner | Approved mirror policy/registry |
 | burn collections | HEN; INTRODUCTIONS |  | Drop owner | Registry and pairs agree |
@@ -257,7 +257,7 @@ Run section 6's Node command. Require all public and Admin validators, approved 
 
 ### A5 - Reconcile drop params
 
-Complete section 8; edit authoritative JS, regenerate JSON, review both, obtain Admin mirror handoff. If no Mainnet drop should be active, explicitly approve `dropScheduled` rather than assuming it.
+Complete section 8; edit authoritative JS, regenerate JSON, review both, obtain Admin mirror handoff. The approved initial Mainnet state is `dropScheduled: false`; do not invent a future schedule.
 
 ### A6 - Run deterministic tests
 
@@ -277,6 +277,7 @@ Re-run clean-environment gate, then:
 
 ```text
 npm run build:pages:staging
+npm run build:pages:prod
 git status --short
 git -C admin-ui status --short
 ```
