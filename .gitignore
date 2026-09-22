@@ -35,6 +35,7 @@ ticket.*.diff
 ticket.*.stat.txt
 /audits/
 shared/drop-params/.drop-params.transaction.lock*
+shared/drop-params/.drop-params.operations/
 
 # ----------------------------------------
 # Webflow‑exported CSS & assets

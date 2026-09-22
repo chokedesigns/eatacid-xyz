@@ -301,7 +301,18 @@ async function writeLockClaim(metadata, options = {}) {
     await handle.sync();
     await handle.close();
     handle = null;
-    await rename(temporaryPath, claimPath);
+    const renameStartedAt = Date.now();
+    while (true) {
+      try {
+        await rename(temporaryPath, claimPath);
+        break;
+      } catch (error) {
+        const windowsReadContention = process.platform === "win32" &&
+          ["EACCES", "EBUSY", "EPERM"].includes(error?.code);
+        if (!windowsReadContention || Date.now() - renameStartedAt >= 1_000) throw error;
+        await sleep(5);
+      }
+    }
     return claimPath;
   } catch (error) {
     if (handle) await handle.close().catch(() => {});

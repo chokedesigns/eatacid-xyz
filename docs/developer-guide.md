@@ -105,8 +105,10 @@ For implementation history and evidence, see [early Home first paint](performanc
 | `shared/public-first-paint.js` | Shared network class/banner state, bounded font/hero readiness, reveal/fallback behavior, and duplicate-start protection | Early entry, with full-entry fallbacks | Drops-specific authoritative-region readiness or application boot |
 | `shared/public-trade-ops.js` | TzKT pair lookup, operator-approval construction, expected-operation confirmation polling, and post-trade NFT refresh polling | Drops and Exchange transaction flows | Page-specific cart/payload composition, modal state, or wallet send request |
 | `shared/drop-params/drop-params.js` | Authored Drops schedule, display/mechanics, burn eligibility/exclusions, redeem identity, and mirror-network metadata | Drops runtime; JSON generator; Admin projection | Chain endpoints, addresses, live pause state, or live redeem supply |
-| `shared/drop-params/drop-params-authoring.mjs` | Strict operation-aware authored schema, exact inactive template, deterministic full-source serialization, and source/candidate hashing | Future Drop Params writer operations; focused tests | Applying mutations, archive/deactivation policy, or HTTP/UI surfaces |
-| `shared/drop-params/drop-params-projector.mjs` | Cache-busted canonical import, deterministic projection, atomic allowlisted replacement, outer/Admin equality verification, and the shared transaction lock | Generator, watcher, and future writer operations | Changing canonical authority or accepting arbitrary paths/source text |
+| `shared/drop-params/drop-params-authoring.mjs` | Strict operation-aware authored schema, exact inactive template, deterministic full-source serialization, and source/candidate hashing | Drop Params writer operations; focused tests | Applying mutations, archive/deactivation policy, or HTTP/UI surfaces |
+| `shared/drop-params/drop-params-projector.mjs` | Cache-busted canonical import, deterministic projection, atomic allowlisted replacement, outer/Admin equality verification, and the shared transaction lock | Generator, watcher, and writer operations | Changing canonical authority or accepting arbitrary paths/source text |
+| `shared/drop-params/drop-params-archive.mjs` | Version-1 immutable deactivation archive construction, validation, create-exclusive publication, collision handling, and read-back verification | Drop Params deactivation transactions | Current-config authority, live-chain state, or archive replacement/deletion |
+| `shared/drop-params/drop-params-transaction.mjs` | Fixed-path CREATE/EDIT/DEACTIVATE transactions, exact-byte rollback, local operation recovery, and fail-closed reconciliation | Local CLI and future privileged service adapter | HTTP/session semantics, Admin UI, chain/wallet operations, or deployment |
 
 `shared/drop-time.js` centralizes validation and conversion of configured drop date/time values. `shared/public-logger.js` provides explicitly gated public diagnostics. They are supporting shared concerns rather than configuration authorities.
 
@@ -184,6 +186,8 @@ Follow [refreshing Webflow-derived HTML/reference material](operations.md#16-ref
 | `pages-sanity/` | Ignored generated HTML sanity harness | No | No; regenerate |
 | `shared/drop-params/drop-params.js` | Authored drop-parameter source | Yes | Yes |
 | `shared/drop-params/drop-params.json` | Tracked generated projection | No; source is the JS file | No; run the generator |
+| `shared/drop-params/archive/` | Immutable deactivation history | Historical evidence only | No; publish through the transaction writer |
+| `shared/drop-params/.drop-params.operations/` | Ignored local operation journal and staging | No | No; inspect/reconcile through the transaction writer |
 | `drops/css/`, `exchange/css/` | Ignored local Webflow exports/reference | No | No as runtime source |
 | `assets/site/` | Ignored local Webflow/performance reference assets | No | No as runtime source |
 | `docs/webflow-migration/evidence/` | Tracked historical migration evidence | Evidence only, not runtime authority | Only in an evidence-scoped ticket |
