@@ -81,9 +81,9 @@ After deliberately changing `drop-params.js`, regenerate the outer projection:
 npm run dropparams:json
 ```
 
-This command reads `drop-params.js`, preserves the existing JSON file's line-ending style, and writes `shared/drop-params/drop-params.json` only when content differs. It does **not** update the Admin mirror.
+This command cache-busts and validates `drop-params.js`, serializes deterministic LF-terminated JSON, and atomically writes `shared/drop-params/drop-params.json` only when its bytes differ. It does **not** update the Admin mirror.
 
-`npm run start` runs `npm run dev:watch:params`. The watcher generates the outer JSON once at startup and after source changes, then copies that exact JSON into `admin-ui/src/drop-params.mirror.json` when the nested target exists and differs. The watcher waits for successful outer generation before mirroring.
+`npm run start` runs `npm run dev:watch:params`. The watcher generates the outer JSON once at startup and after source changes, then copies those exact bytes into `admin-ui/src/drop-params.mirror.json` when the nested target exists and differs. Projection and mirroring share the repository-scoped Drop Params transaction lock with later writer operations, and rapid source events are coalesced without racing a writer.
 
 Never hand-edit either generated JSON file. After deliberate generation, expect the outer source and projection to form one reviewable diff; if the watcher ran, separately inspect the Admin mirror diff. If generation was not intentional, stop and resolve the unexpected change rather than carrying it into another ticket.
 
@@ -98,6 +98,7 @@ Run the tests that match the changed contract. These commands do not intentional
 | `npm run test:public-trade-ops` | Shared approvals, operation confirmation, pair matching, or NFT refresh behavior | Deterministic trade-helper fixtures preserve approval fallback, confirmation matching/retry, and refresh completion rules. |
 | `npm run test:drops-reveal` | Drops early paint, readiness barriers, pending states, or environment loading | The initial and wallet reveal contracts, early-shell markers, and Drops sibling loading remain coordinated. |
 | `npm run test:hen-identity` | HEN IDs, registry mirrors, or network identity adapters | Canonical and Shadownet HEN IDs round-trip without altering other collections. |
+| `npm run test:drop-params` | Drop Params validation, serialization, projection, locking, generator, or watcher behavior | Strict schema rules, deterministic source/JSON output, source hashing, projection equality, inactive consumer compatibility, and rapid-save lock coordination remain enforced. |
 | `npm run test:webflow-cms` | Webflow CMS image tooling, retry/mutation handling, publication comparison, or evidence persistence | Request safety, ambiguity handling, content comparison, deterministic naming, and credential redaction behave as encoded. |
 | `npm run test:thumbs` | Thumbnail conversion, input/backfill workflow, or Windows launchers | Image normalization, safe archival/rollback, backfill reporting, and launcher behavior remain deterministic. |
 

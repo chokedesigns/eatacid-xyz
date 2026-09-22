@@ -34,6 +34,7 @@ ZIP/
 ticket.*.diff
 ticket.*.stat.txt
 /audits/
+shared/drop-params/.drop-params.transaction.lock*
 
 # ----------------------------------------
 # Webflow‑exported CSS & assets

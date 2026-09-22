@@ -5,6 +5,8 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { acquireDropParamsLock } from "./drop-params-projector.mjs";
+
 const testPath = fileURLToPath(import.meta.url);
 const dropParamsDir = path.dirname(testPath);
 const repoRoot = path.resolve(dropParamsDir, "..", "..");
@@ -56,7 +58,7 @@ async function assertGeneratedValue(expected) {
   assert.deepEqual(mirror, shared);
 }
 
-test("watcher survives consecutive atomic replacements", async () => {
+test("watcher coordinates through the transaction lock and preserves rapid atomic saves", async () => {
   const originalFiles = new Map(await Promise.all(
     [sourcePath, sharedJsonPath, adminMirrorPath].map(async filePath => [
       filePath,
@@ -70,6 +72,7 @@ test("watcher survives consecutive atomic replacements", async () => {
   });
   const watcherPid = watcher.pid;
   let output = "";
+  let coordinationLock = null;
 
   watcher.stdout.setEncoding("utf8");
   watcher.stderr.setEncoding("utf8");
@@ -132,37 +135,34 @@ test("watcher survives consecutive atomic replacements", async () => {
     assert.equal(typeof initialValue, "string");
     await assertGeneratedValue(initialValue);
 
-    const firstOutputStart = output.length;
+    coordinationLock = await acquireDropParamsLock();
+    const rapidOutputStart = output.length;
     await atomicReplace(
       sourcePath,
       sourceWithDropName(originalSource, firstDropName),
       1
     );
-    await waitForOutput(
-      `[drop-params] wrote ${adminMirrorPath}`,
-      firstOutputStart,
-      "first atomic save generation"
-    );
-    assert.equal(watcher.pid, watcherPid);
-    assert.equal(watcher.exitCode, null);
-    await assertGeneratedValue(firstDropName);
-
-    const secondOutputStart = output.length;
     await atomicReplace(
       sourcePath,
       sourceWithDropName(originalSource, secondDropName),
       2
     );
+    await new Promise(resolve => setTimeout(resolve, 500));
+    await assertGeneratedValue(initialValue);
+
+    assert.equal(await coordinationLock.release(), true);
+    coordinationLock = null;
     await waitForOutput(
       `[drop-params] wrote ${adminMirrorPath}`,
-      secondOutputStart,
-      "second atomic save generation"
+      rapidOutputStart,
+      "locked rapid-save generation"
     );
     assert.equal(watcher.pid, watcherPid);
     assert.equal(watcher.exitCode, null);
     await assertGeneratedValue(secondDropName);
   } finally {
     try {
+      if (coordinationLock) await coordinationLock.release();
       await stopWatcher();
     } finally {
       await Promise.all([...originalFiles].map(([filePath, contents]) =>

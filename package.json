@@ -9,6 +9,7 @@
   ],
   "scripts": {
     "dropparams:json": "node shared/drop-params/gen-drop-params-json.mjs",
+    "test:drop-params": "node --test --experimental-test-isolation=none shared/drop-params/drop-params-authoring.test.mjs && node --test --experimental-test-isolation=none shared/drop-params/watch-drop-params-json.test.mjs",
     "dev:watch:params": "node shared/drop-params/watch-drop-params-json.mjs",
     "dev:check-port": "node scripts/check-dev-port.mjs",
     "start": "npm run dev:check-port && concurrently \"npm run dev:watch:params\" \"node scripts/parcel-dev.mjs serve index.html drops/index.html exchange/index.html collection-utility/index.html --open --port 4000\"",
