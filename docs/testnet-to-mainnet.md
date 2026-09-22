@@ -2,7 +2,7 @@
 
 ## 1. Purpose, authority, and safety
 
-This is the canonical outer-repository procedure for moving the public Home, Drops, and Exchange runtime from the `testnet` registry slot (currently Tezos Shadownet) to Tezos Mainnet. Revalidate it against executable source before every cutover.
+This is the canonical outer-repository procedure for moving the public Home, Drops, Exchange, and Collection Utility runtime from the `testnet` registry slot (currently Tezos Shadownet) to Tezos Mainnet. Revalidate it against executable source before every cutover.
 
 This runbook does not authorize contract deployment or administration, asset funding, pair mutation, wallet operations, Git merges/pushes, or production activation. Obtain those authorizations separately. Admin implementation is outside this document.
 
@@ -18,7 +18,7 @@ The combined Pages workflow checks out `main` and `staging` independently on eve
 
 ```text
 main
--> stable /home.js, /drops.js, /exchange.js routers
+-> stable /home.js, /drops.js, /exchange.js, /collection-utility.js routers
 -> /prod/* loaders and Parcel artifacts
 
 staging
@@ -26,6 +26,8 @@ staging
 ```
 
 The stable routers select `/prod` only for `eatacid.xyz` and `www.eatacid.xyz`; every other hostname, including Webflow staging and localhost, selects `/staging`. Production is rebuilt from `main`. Exact staging bytes are not promoted unchanged.
+
+Each environment has four matching loaders and full application artifacts. Home, Exchange, and Collection Utility loaders also import the shared `first-paint.js` artifact; Drops imports `drops-first-paint.js`. Collection Utility's full bundle uses shared Beacon wallet bootstrap. The Pages artifact verifier checks every root router, environment loader, referenced sibling artifact, first-paint marker, and owning branch source.
 
 `.github/workflows/pages.yml` does not set `NETWORK`. It assembles both ref-owned outputs, removes source maps, asserts none remain, verifies the loader graph and branch provenance, and only then uploads the artifact. No step mutates the assembled graph between provenance verification and upload.
 
@@ -69,6 +71,8 @@ validatePublicExchangeConfig('mainnet') -> missing: escrows.exchange.address, co
 validateAdminNetworkConfig('mainnet')   -> missing: escrow, collections.ACID COIN
 ```
 
+Admin is separately owned. Its selector persists `ea.admin.network`, clears the active Beacon account, and reloads the page to switch networks; it does not switch the public build at browser time.
+
 ## 4. Mainnet prerequisite/value manifest
 
 `Current value` means checked-in source, not live approval. `Approved mainnet value` must be filled from the named authority before the associated gate passes.
@@ -84,6 +88,7 @@ validateAdminNetworkConfig('mainnet')   -> missing: escrow, collections.ACID COI
 | INTRODUCTIONS | `mainnet.collections.INTRODUCTIONS` | `KT1FmqojETK4Ux44oeudyDbQ6zQDYrD5DaP5` | Approved canonical collection | Source-known; live-unverified | Collection owner/deployment evidence | Contract/metadata and known-wallet balance | Yes |
 | ACID COIN | `mainnet.collections['ACID COIN']` | Blank | Approved Mainnet FA2 | No | Contract/Admin handoff | Origination, FA2 identity, token IDs, balances, payload review | Yes |
 | Drops escrow | `mainnet.escrows.drops.address` (legacy fallback: `mainnet.escrow`) | Both blank | Approved dedicated Drops escrow | No | Contract deployment handoff | Origination, code, storage, admin, pause, entrypoints, pair map | Yes |
+| Admin root escrow | `mainnet.escrow` | Blank | Approved Admin Drops/root target | No | Contract/Admin handoff | Admin validator and target resolution agree with approved Drops contract | Yes before Admin activation |
 | Exchange escrow | `mainnet.escrows.exchange.address` | Blank | Approved dedicated Exchange escrow | No | Contract deployment handoff | Same; strict resolver reports `source: surface` | Yes |
 | Pair-map path | Surface path, then `mainnet.pairsMapPath` | Surface blank; fallback `token_mapping` | Path proved by deployed storage | Deployment-unverified | Deployed storage schema | Named active big map exists on each escrow | Yes |
 | Pair IDs/metadata | `mainnet.pairIdRanges.*`; escrow big maps | Both `{ start: 0, end: null }` | Approved contract-scoped IDs and pair manifest | No | Admin/contract pair handoff | Compare every active burn/redeem field | Yes |
@@ -110,6 +115,7 @@ For each blank address above:
 | Outer dependency | Required handoff | Required before | Outer verification |
 | --- | --- | --- | --- |
 | Mainnet Drops escrow | Address and complete provenance | A3 | Resolver/validator plus live contract/storage/pause/pair reads |
+| Admin root escrow | Approved legacy `mainnet.escrow` target for Admin Drops/root flows | A3 | Admin validator and target resolution; Admin remains separately owned |
 | Mainnet Exchange escrow | Address and complete provenance | A3 | Strict surface resolver plus live contract/storage/pause/pair reads |
 | Mainnet ACID COIN | FA2 address, token identity/ranges, provenance | A3 | Validator, contract/token/balance reads, payload comparison |
 | Deployment evidence | Origination operation, network, code/version, storage shape | A3 | Compare explorer/RPC evidence to approved release artifact |
@@ -127,10 +133,10 @@ Every Mainnet escrow/contract record must contain: address, network, deployment/
 Run from the outer root. Validate checked-in configuration without contacting a chain:
 
 ```text
-node --input-type=module -e "import { validateNetworkBase, validatePublicDropsConfig, validatePublicExchangeConfig, resolveDropsEscrow, resolveExchangeEscrow } from './shared/chain-registry.js'; console.log(JSON.stringify({ base: validateNetworkBase('mainnet'), drops: validatePublicDropsConfig('mainnet'), exchange: validatePublicExchangeConfig('mainnet'), dropsEscrow: resolveDropsEscrow('mainnet'), exchangeEscrow: resolveExchangeEscrow('mainnet', { strict: true }) }, null, 2));"
+node --input-type=module -e "import { validateNetworkBase, validatePublicDropsConfig, validatePublicExchangeConfig, validateAdminNetworkConfig, resolveDropsEscrow, resolveExchangeEscrow } from './shared/chain-registry.js'; console.log(JSON.stringify({ base: validateNetworkBase('mainnet'), drops: validatePublicDropsConfig('mainnet'), exchange: validatePublicExchangeConfig('mainnet'), admin: validateAdminNetworkConfig('mainnet'), dropsEscrow: resolveDropsEscrow('mainnet'), exchangeEscrow: resolveExchangeEscrow('mainnet', { strict: true }) }, null, 2));"
 ```
 
-Expected after A3: all validators have `ok: true`; both effective escrows are approved; Exchange has `source: "surface"`. Any missing path is blocking.
+Expected after A3: all validators have `ok: true`; both effective public escrows and the Admin root target are approved; Exchange has `source: "surface"`. Any missing path is blocking for its associated public or Admin activation.
 
 After approving endpoints, verify chain identity/health without a wallet operation:
 
@@ -148,7 +154,7 @@ Invoke-RestMethod -Uri 'https://api.tzkt.io/v1/contracts/<APPROVED_ESCROW_ADDRES
 Invoke-RestMethod -Uri 'https://api.tzkt.io/v1/contracts/<APPROVED_ESCROW_ADDRESS>/bigmaps/token_mapping/keys?active=true&limit=10000'
 ```
 
-Read-only areas are: registry; RPC identity/head; TzKT health; collection/escrow existence; origination/code/storage; administrator/paused state; `token_mapping`; burn/redeem identities and quantities; pair IDs; inventory/supply; known-wallet NFTs; operator approvals; Home/Drops/Exchange rendering; testnet banner; network requests; explorer; Beacon permission/connect; and loader/artifact provenance.
+Read-only areas are: registry; RPC identity/head; TzKT health; collection/escrow existence; origination/code/storage; administrator/paused state; `token_mapping`; burn/redeem identities and quantities; pair IDs; inventory/supply; known-wallet NFTs; operator approvals; Home/Drops/Exchange/Collection Utility rendering; testnet banner; network requests; explorer; Beacon permission/connect; and loader/artifact provenance.
 
 > **STOP if:** chain identity disagrees; RPC/TzKT disagree materially; address/storage differs; a contract is unpaused; pair/inventory differs; or any Shadownet request/data appears.
 
@@ -163,12 +169,13 @@ Read-only areas are: registry; RPC identity/head; TzKT health; collection/escrow
 | Live `/home.js` hash/fetched identity |  | Pages response |  |  |  |
 | Live `/drops.js` hash/fetched identity |  | Pages response |  |  |  |
 | Live `/exchange.js` hash/fetched identity |  | Pages response |  |  |  |
-| Current testnet smoke result |  | Three surfaces |  |  |  |
+| Live `/collection-utility.js` hash/fetched identity |  | Pages response |  |  |  |
+| Current testnet smoke result |  | Four surfaces |  |  |  |
 | Current network default |  | `shared/network.js` |  |  |  |
 | Mainnet pause authority/operator |  | Handoff/storage |  |  |  |
 | Release operator/reviewer/monitor owner |  | Release approval |  |  |  |
 
-Current Webflow evidence names `https://chokedesigns.github.io/eatacid-xyz/{home,drops,exchange}.js`; verify live custom code before relying on it. Fetch each response and record headers, body SHA-256, and Pages workflow/ref. In PowerShell, use `Invoke-WebRequest -OutFile` to an explicitly chosen temporary file then `Get-FileHash -Algorithm SHA256`; remove only those named files afterward.
+The current loader architecture requires `https://chokedesigns.github.io/eatacid-xyz/{home,drops,exchange,collection-utility}.js`. Older captured Webflow evidence names `home.js` on Collection Utility; verify its live custom code points to `/collection-utility.js` before relying on that surface. Fetch each response and record headers, body SHA-256, and Pages workflow/ref. In PowerShell, use `Invoke-WebRequest -OutFile` to an explicitly chosen temporary file then `Get-FileHash -Algorithm SHA256`; remove only those named files afterward.
 
 Clean-environment gate:
 
@@ -183,7 +190,7 @@ Get-ChildItem -Force -Name .env*
 
 Expected: both repositories clean; no unexpected `.env*`; process `NETWORK` blank unless explicitly approved. Inspect runner/workflow variables too. Clean Git status does not prove ignored `.env*` absence.
 
-> **STOP if:** either repo is unexpectedly dirty, branch/ref is wrong, rollback ref is absent, or an unreviewed environment source can change selection.
+> **STOP if:** either repo is unexpectedly dirty, branch/ref is wrong, rollback ref is absent, Collection Utility still loads `home.js`, or an unreviewed environment source can change selection.
 
 ## 8. Drop-parameter mainnet reconciliation
 
@@ -202,6 +209,8 @@ Expected: both repositories clean; no unexpected `.env*`; process `NETWORK` blan
 | redeem amount | `1` |  | Pair manifest | Equals deployed pair |
 | declared total supply | `10` |  | Treasury/inventory | Reconciles to inventory/exposure |
 | schedule | May 28, 2026, 9:00 PM EST |  | Release/drop owner | Timezone/date/countdown review |
+
+The checked-in scheduled date is past as of September 22, 2026. The release/drop owner must explicitly approve a new schedule or unscheduled state before staging-mainnet readiness.
 
 After an approved source edit:
 
@@ -238,11 +247,11 @@ Complete every blocking manifest/handoff row. Independently verify the four sour
 
 ### A3 - Populate only the mainnet registry slot
 
-On reviewed staging-bound source, update only approved `chainRegistry.mainnet` fields in `shared/chain-registry.js`: endpoints/Beacon if approved values differ; legacy `escrow` only for an approved need; both surface escrow addresses/paths; collections including ACID COIN; pair metadata; mirrors. Keep public default `testnet`. Do not copy testnet values, infer addresses, or use ranges as pair contents.
+On reviewed staging-bound source, update only approved `chainRegistry.mainnet` fields in `shared/chain-registry.js`: endpoints/Beacon if approved values differ; legacy `escrow` for the approved Admin Drops/root target; both public surface escrow addresses/paths; collections including ACID COIN; pair metadata; mirrors. Admin's validator requires the legacy field, and its Drops/root flow resolves that field separately from the public Drops surface address. Confirm both targets with the Admin/contract handoff. Keep public default `testnet`. Do not copy testnet values, infer addresses, or use ranges as pair contents.
 
 ### A4 - Validate mainnet registry/config
 
-Run section 6's Node command. Require all public validators, approved effective addresses, and strict Exchange surface resolution.
+Run section 6's Node command. Require all public and Admin validators, approved effective addresses, approved Admin root target, and strict Exchange surface resolution.
 
 > **STOP if:** a validator fails or resolver uses an unapproved fallback/address/path.
 
@@ -281,7 +290,7 @@ npm run verify:home-first-paint-build
 npm run verify:drops-first-paint-build
 ```
 
-Confirm intended early/full graphs.
+Confirm intended early/full graphs. The Home verifier checks the shared `first-paint.js` bundle; the Pages artifact test and deployed loader-chain checks also cover Collection Utility's reference to that bundle. Inspect Collection Utility's built full-bundle source map for `collection-utility/js/main.js` and `shared/beacon-setup.js`. The Drops verifier checks its separate early bundle.
 
 ### A9 - Switch staging only to mainnet
 
@@ -309,7 +318,7 @@ npm run verify:home-first-paint-build
 npm run verify:drops-first-paint-build
 ```
 
-Inspect emitted network/address strings: Mainnet only; no Shadownet; banner hidden.
+Inspect emitted network/address strings across all four full bundles and their first-paint artifacts: Mainnet only; no Shadownet; banner hidden.
 
 ### A11 - Loader-chain sanity
 
@@ -317,7 +326,7 @@ Inspect emitted network/address strings: Mainnet only; no Shadownet; banner hidd
 npm run pages:sanity:loader-chain
 ```
 
-For all surfaces confirm stable router -> `/staging/*-loader.js` -> matching siblings; Mainnet RPC/TzKT/wallet; no `/prod` confusion. Stop server before cleanup.
+For Home, Drops, Exchange, and Collection Utility confirm stable router -> `/staging/*-loader.js` -> matching siblings; Mainnet RPC/TzKT/wallet; no `/prod` confusion. Stop server before cleanup.
 
 > **STOP if:** provenance is ambiguous, artifacts are missing, Shadownet appears, or banner/network identity is wrong.
 
@@ -327,7 +336,7 @@ After authorization, use normal reviewed Git operations to deliver to `staging`;
 
 ### A13 - Verify deployed staging loader chain
 
-In fresh/private sessions confirm stable root -> `/staging/*-loader.js` -> correct staging siblings for all surfaces. Record response identity and Pages provenance; confirm `/prod` remains main-owned.
+In fresh/private sessions confirm stable root -> `/staging/*-loader.js` -> correct staging siblings for Home, Drops, Exchange, and Collection Utility, including their first-paint artifacts. Record response identity and Pages provenance; confirm `/prod` remains main-owned.
 
 ### A14 - Verify chain identity/endpoints
 
@@ -336,6 +345,8 @@ Run section 6 endpoint checks and inspect browser requests. Require Mainnet chai
 ### A15 - Verify mainnet contract state read-only
 
 Verify all collections, ACID COIN, and escrows: network/address, origination, code/version, storage, admin, pause, map path, every pair tuple, metadata, operator reads, inventory/supply. Both escrows paused; authority available.
+
+The separately owned Admin Pre-Drop Checklist now reflects pre, standby, live, paused-live, and depleted lifecycle states. Interpret its pause, pair, and supply indicators in that phase context; retain the independent storage and inventory reads above as the cutover evidence.
 
 > **STOP if:** unpaused, provenance incomplete, pair differs, inventory differs from approval, or operator state is unexpected.
 
@@ -351,6 +362,10 @@ Confirm schedule/name/date/time; burn collections/exclusions/mirrors/NFT filteri
 
 Confirm collection rows/token IDs; known-wallet filtering/quantities; ACID COIN and calculations; strict escrow; pairs; inventory; Mainnet explorer/requests. Do not click final Exchange: frontend has no pause gate.
 
+### A18a - Verify Collection Utility read-only
+
+Confirm its shared first-paint reveal, image/spinner presentation, Mainnet banner state, shared Beacon wallet connect/disconnect and wrong-network account clearance, and network requests. Check that its links to Drops and Exchange resolve to the intended public surfaces. It has no Collection Utility trade submission path.
+
 ### A19 - Verify wallet lifecycle
 
 Without an operation, test:
@@ -358,7 +373,7 @@ Without an operation, test:
 - fresh desktop Mainnet connect;
 - persisted Shadownet session (must clear/disconnect);
 - disconnect/reconnect, refresh, hard refresh, new tab, private session;
-- account switching and Mainnet NFT filtering on Home, Drops, Exchange;
+- account switching and Mainnet NFT filtering on Home, Drops, Exchange; shared wallet state on Collection Utility;
 - mobile wallet/deep-link connect and return.
 
 Beacon account/peer state persists in browser storage and can survive refreshes and new tabs; a private session supplies an isolated storage context. The current module removes only known legacy Matrix transport keys when stored Beacon SDK version metadata proves they are old. Code clears an active account whose `account.network.type` differs, then publishes disconnected state. Provider storage/deep-link behavior still needs runtime proof. An existing `window.dAppClient` is reused without checking its constructor network, so new-document/private tests are mandatory; reconnect is expected after stale Shadownet account clearance.
@@ -403,7 +418,7 @@ No “probably correct,” conditional pass, or deferred verification passes.
 - [ ] A6 tests pass.
 - [ ] Staging-mainnet build passes.
 - [ ] First-paint verifiers pass.
-- [ ] Loader-chain sanity passes all surfaces.
+- [ ] Loader-chain sanity passes Home, Drops, Exchange, and Collection Utility.
 
 ### Staging mainnet
 
@@ -466,11 +481,11 @@ Only authorized operator pushes. Workflow freshly builds both refs, assembles gr
 
 ### B5 - Verify production artifact provenance
 
-On both production hosts, confirm root -> `/prod/*-loader.js` -> current main-owned siblings for all surfaces. Record run/ref/response hashes and no maps. Staging success is not production proof.
+On both production hosts, confirm root -> `/prod/*-loader.js` -> current main-owned siblings for Home, Drops, Exchange, and Collection Utility, including their first-paint artifacts. Record run/ref/response hashes and no maps. Staging success is not production proof.
 
 ### B6 - Production read-only verification while paused
 
-Repeat A14-A18. Require Mainnet, hidden banner, no Shadownet, healthy surfaces, approved write targets. Keep escrows paused.
+Repeat A14-A18a. Require Mainnet, hidden banner, no Shadownet, healthy surfaces, approved write targets. Keep escrows paused.
 
 > **STOP and roll back immediately** for wrong chain/address/provenance, unsafe/blank surface, or unexpected unpause.
 
@@ -507,6 +522,7 @@ Record final main/staging refs, Mainnet addresses, deployment/run/artifact ident
 - [ ] Collection, ACID COIN, escrow addresses approved.
 - [ ] Drops params/mirrors/pair/redeem/supply/inventory correct.
 - [ ] Exchange rows/pairs/ACID COIN/totals/inventory correct.
+- [ ] Collection Utility first paint, images, wallet state, requests, and links correct.
 - [ ] Fresh Mainnet wallet connect works without operation.
 - [ ] Stale Shadownet account clears/reconnects.
 - [ ] Refresh/session/account/mobile tests pass.
@@ -537,7 +553,7 @@ Immediately roll back for: wrong chain; RPC/TzKT; collection; escrow; ACID COIN/
 5. If params changed, run `npm run dropparams:json`; never hand-edit projection.
 6. Re-run clean-environment gate, relevant tests, and `npm run build:pages:prod`.
 7. Deploy through normal Pages workflow so complete compatible graph rebuilds.
-8. Verify both hosts, `/prod`, three graphs, provenance, restored Shadownet identity.
+8. Verify both hosts, `/prod`, four graphs including Collection Utility, provenance, restored Shadownet identity.
 9. Hard refresh/new/private session; verify stale Beacon Mainnet account is cleared/disconnected for Shadownet.
 10. Keep Mainnet contracts paused until incident closure; record residual chain state.
 
@@ -553,7 +569,7 @@ Do not manually replace only a root router, loader, first-paint artifact, or app
 
 Domain/DNS is not part of the testnet-to-mainnet migration. Webflow serves HTML and stable GitHub Pages module URLs; hostname selects `/prod` or `/staging`; runtime config selects network.
 
-No Webflow custom-code URL or DNS change is required. Local shells are not production authority. Testnet banner markup may remain in DOM but must be hidden on Mainnet. Verify DOM/runtime compatibility. Do not combine future Webflow hosting migration with cutover. For evidence only see [Webflow DOM contracts](webflow-migration/03-dom-contracts.md) and [runtime dependencies](webflow-migration/03-runtime-dependencies.json); current consumers win.
+No cutover-specific Webflow custom-code URL or DNS change is required. Confirm the existing Collection Utility module URL as part of the pre-cutover baseline; do not treat a stale `home.js` reference as correct integration. Local shells are not production authority. Testnet banner markup may remain in DOM but must be hidden on Mainnet. Verify DOM/runtime compatibility. Do not combine future Webflow hosting migration with cutover. For evidence only see [Webflow DOM contracts](webflow-migration/03-dom-contracts.md) and [runtime dependencies](webflow-migration/03-runtime-dependencies.json); current consumers win.
 
 ## 17. Write-capable path warning
 
