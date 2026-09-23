@@ -472,10 +472,12 @@ async function reconcilePendingOperations(options = {}) {
   return reconciled;
 }
 
-function requestPlanHash(operation, expectedSourceVersion, candidate) {
+export function getDropParamsRequestPlanHash(operation, expectedSourceVersion, candidate) {
+  const normalizedOperation = normalizeOperation(operation);
+  const normalizedSourceVersion = assertSourceVersion(expectedSourceVersion);
   return getPlanVersion(`${JSON.stringify({
-    operation,
-    expectedSourceVersion,
+    operation: normalizedOperation,
+    expectedSourceVersion: normalizedSourceVersion,
     candidateHash: candidate ? getCandidateSourceVersion(candidate, {
       operation: VALIDATION_OPERATIONS.ACTIVE
     }) : null
@@ -600,7 +602,7 @@ async function executeLocked(request, options) {
   } else if (request.candidate !== undefined) {
     throw new TypeError("DEACTIVATE does not accept a candidate configuration");
   }
-  const planHash = requestPlanHash(operation, expectedSourceVersion, candidate);
+  const planHash = getDropParamsRequestPlanHash(operation, expectedSourceVersion, candidate);
 
   await reconcilePendingOperations(options);
   let existing = await readJournalRecord(operationId);
@@ -895,6 +897,15 @@ export async function getDropParamsTransactionStatus() {
   } finally {
     await lock.release();
   }
+}
+
+export async function inspectDropParamsTransactionStatus() {
+  const records = await listJournalRecords();
+  return {
+    sourceVersion: sha256SourceBytes(await readFile(DROP_PARAMS_PATHS.canonicalSource)),
+    blocked: records.some(record => record.status === DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED),
+    operations: records.map(publicRecord)
+  };
 }
 
 export async function reconcileDropParamsTransactions(options = {}) {

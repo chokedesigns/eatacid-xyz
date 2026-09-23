@@ -99,6 +99,14 @@ npm run dropparams:transaction -- reconcile
 
 The ignored `shared/drop-params/.drop-params.operations/` directory holds narrowly scoped local recovery journals and staging files. A failed rollback marks the writer `reconciliation_required` and blocks later mutations. Inspect with `status`; after independently restoring or validating the recorded exact state, use `reconcile`. Do not delete an unresolved journal merely to bypass the block.
 
+For development-only Admin authoring, start the loopback service manually in a separate terminal:
+
+```text
+npm run dropparams:authoring-service
+```
+
+It binds only `127.0.0.1:47831` and accepts the Admin development origins `http://localhost:3000` and `http://127.0.0.1:3000`. Start the nested Admin separately with its existing `npm run dev` command. The service is intentionally not part of either development startup command yet. It exposes only the fixed Drop Params read/validate/preview/apply API; all writes still pass through the repository-scoped transaction layer. Stop it with `Ctrl+C`.
+
 Never hand-edit either generated JSON file. After deliberate generation, expect the outer source and projection to form one reviewable diff; if the watcher ran, separately inspect the Admin mirror diff. If generation was not intentional, stop and resolve the unexpected change rather than carrying it into another ticket.
 
 ## 5. Primary deterministic tests
@@ -112,7 +120,7 @@ Run the tests that match the changed contract. These commands do not intentional
 | `npm run test:public-trade-ops` | Shared approvals, operation confirmation, pair matching, or NFT refresh behavior | Deterministic trade-helper fixtures preserve approval fallback, confirmation matching/retry, and refresh completion rules. |
 | `npm run test:drops-reveal` | Drops early paint, readiness barriers, pending states, or environment loading | The initial and wallet reveal contracts, early-shell markers, and Drops sibling loading remain coordinated. |
 | `npm run test:hen-identity` | HEN IDs, registry mirrors, or network identity adapters | Canonical and Shadownet HEN IDs round-trip without altering other collections. |
-| `npm run test:drop-params` | Drop Params validation, serialization, projection, writer/archive transactions, locking, generator, or watcher behavior | Strict schema rules, deterministic source/JSON output, archive-first deactivation, exact rollback/fail-closed recovery, source hashing, projection equality, inactive consumer compatibility, and rapid-save lock coordination remain enforced. |
+| `npm run test:drop-params` | Drop Params validation, serialization, projection, writer/archive transactions, loopback authoring service, locking, generator, or watcher behavior | Strict schema rules, deterministic source/JSON output, archive-first deactivation, exact rollback/fail-closed recovery, source hashing, projection equality, service request/token security, inactive consumer compatibility, and rapid-save lock coordination remain enforced. |
 | `npm run test:webflow-cms` | Webflow CMS image tooling, retry/mutation handling, publication comparison, or evidence persistence | Request safety, ambiguity handling, content comparison, deterministic naming, and credential redaction behave as encoded. |
 | `npm run test:thumbs` | Thumbnail conversion, input/backfill workflow, or Windows launchers | Image normalization, safe archival/rollback, backfill reporting, and launcher behavior remain deterministic. |
 
