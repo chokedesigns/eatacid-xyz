@@ -37,9 +37,25 @@ function clone(value) {
 }
 
 function activeFixture() {
-  const fixture = clone(currentDropParams);
-  fixture.dropScheduled = true;
-  return fixture;
+  return {
+    dropScheduled: true,
+    dropName: "SPLINTERED TEST",
+    mirrorNetwork: "testnet",
+    dropDate: { month: "May", day: "28", year: "2026" },
+    dropTime: { time: "9:00", period: "PM", timezone: "EST" },
+    burnTokens: [{
+      collection: "HEN",
+      enabled: true,
+      exclude: ["141634"],
+      burnAmount: 1
+    }],
+    redeemToken: {
+      collection: "CANAAN",
+      tokenId: "29",
+      redeemAmount: 1,
+      totalSupply: 10
+    }
+  };
 }
 
 function lockClaimPathForTest(token) {
@@ -129,8 +145,7 @@ test("registry identities, safe integers, and duplicates are strict", () => {
   assert(result.errors.some(error => error.code === "token_id"));
 
   const duplicateBurnCollection = activeFixture();
-  duplicateBurnCollection.burnTokens[1].collection =
-    duplicateBurnCollection.burnTokens[0].collection;
+  duplicateBurnCollection.burnTokens.push(clone(duplicateBurnCollection.burnTokens[0]));
   assert(validateDropParams(duplicateBurnCollection).errors.some(error =>
     error.path === "$.burnTokens[1].collection" && error.code === "duplicate"
   ));
@@ -138,6 +153,18 @@ test("registry identities, safe integers, and duplicates are strict", () => {
   const invalidNetwork = activeFixture();
   invalidNetwork.mirrorNetwork = "shadownet";
   assert(validateDropParams(invalidNetwork).errors.some(error => error.code === "network"));
+});
+
+test("active configurations require at least one burn token", () => {
+  const invalid = activeFixture();
+  invalid.burnTokens = [];
+  const result = validateDropParams(invalid, {
+    operation: DROP_PARAMS_OPERATIONS.ACTIVE
+  });
+  assert.equal(result.ok, false);
+  assert(result.errors.some(error =>
+    error.path === "$.burnTokens" && error.code === "min_items"
+  ));
 });
 
 test("collection validation is scoped to the selected registry network", () => {
@@ -174,9 +201,16 @@ test("collection validation is scoped to the selected registry network", () => {
 });
 
 test("legacy disabled-row empty exclusion sentinel round-trips", async () => {
-  const source = serializeDropParamsSource(currentDropParams);
-  const evaluated = await evaluateSerializedDropParams(currentDropParams);
-  assert.deepEqual(evaluated, currentDropParams);
+  const legacy = activeFixture();
+  legacy.burnTokens.push({
+    collection: "INTRODUCTIONS",
+    enabled: false,
+    exclude: [""],
+    burnAmount: 1
+  });
+  const source = serializeDropParamsSource(legacy);
+  const evaluated = await evaluateSerializedDropParams(legacy);
+  assert.deepEqual(evaluated, legacy);
   assert.match(source, /"exclude": \[\n\s+""\n\s+\]/);
 
   const invalidEnabledSentinel = activeFixture();

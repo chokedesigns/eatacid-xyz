@@ -3,7 +3,6 @@ import http from "node:http";
 import test from "node:test";
 import { isDeepStrictEqual } from "node:util";
 
-import currentDropParams from "./drop-params.js";
 import {
   DROP_PARAMS_AUTHORING_BODY_LIMIT,
   DROP_PARAMS_AUTHORING_HOST,
@@ -12,16 +11,35 @@ import {
   startDropParamsAuthoringService
 } from "./drop-params-authoring-service.mjs";
 import {
+  INACTIVE_DROP_PARAMS,
   serializeDropParamsSource,
   sha256SourceBytes
 } from "./drop-params-authoring.mjs";
 import { serializeDropParamsJson } from "./drop-params-projector.mjs";
 
 function activeFixture() {
-  return { ...structuredClone(currentDropParams), dropScheduled: true };
+  return {
+    dropScheduled: true,
+    dropName: "SPLINTERED SERVICE TEST",
+    mirrorNetwork: "testnet",
+    dropDate: { month: "May", day: "28", year: "2026" },
+    dropTime: { time: "9:00", period: "PM", timezone: "EST" },
+    burnTokens: [{
+      collection: "HEN",
+      enabled: true,
+      exclude: ["141634"],
+      burnAmount: 1
+    }],
+    redeemToken: {
+      collection: "CANAAN",
+      tokenId: "29",
+      redeemAmount: 1,
+      totalSupply: 10
+    }
+  };
 }
 
-function snapshot(params = currentDropParams) {
+function snapshot(params = INACTIVE_DROP_PARAMS) {
   const sourceBytes = Buffer.from(serializeDropParamsSource(params));
   const jsonBytes = Buffer.from(serializeDropParamsJson(params));
   return {
@@ -140,6 +158,61 @@ test("GET metadata and validate/preview are read-only while apply delegates to t
   assert(isDeepStrictEqual(executeRequest.candidate, candidate));
 });
 
+test("service validation rejects an active candidate without burn tokens before execution", async () => {
+  let executeCalls = 0;
+  const api = createDropParamsAuthoringApi({
+    readSnapshot: async () => snapshot(),
+    readWriterState: async () => writer(),
+    execute: async () => { executeCalls += 1; }
+  });
+  const candidate = activeFixture();
+  candidate.burnTokens = [];
+
+  await assert.rejects(
+    api.validate({ operation: "CREATE", candidate }),
+    error => error.code === "validation_failed" &&
+      error.details.errors.some(item => item.path === "$.burnTokens" && item.code === "min_items")
+  );
+  assert.equal(executeCalls, 0);
+});
+
+test("completed apply returns transaction state without rebuild synchronization metadata", async () => {
+  const base = snapshot();
+  const operation = base.params.dropScheduled ? "EDIT" : "CREATE";
+  const candidate = base.params.dropScheduled
+    ? { ...structuredClone(base.params), dropName: `${base.params.dropName} EDITED` }
+    : activeFixture();
+  const api = createDropParamsAuthoringApi({
+    nonce: "a".repeat(64),
+    readSnapshot: async () => structuredClone(base),
+    readWriterState: async () => writer(),
+    execute: async requestValue => ({
+      status: "completed",
+      outcome: operation === "EDIT" ? "edited" : "created",
+      operationId: requestValue.operationId,
+      sourceVersion: "e".repeat(64),
+      projections: { adminMirrorSha256: "f".repeat(64) }
+    })
+  });
+  const preview = await api.preview({
+    operation,
+    expectedSourceVersion: base.sourceVersion,
+    candidate
+  });
+  const applied = await api.apply({
+    operation,
+    expectedSourceVersion: base.sourceVersion,
+    candidate,
+    candidateHash: preview.candidateHash,
+    planHash: preview.planHash,
+    previewToken: preview.previewToken
+  });
+
+  assert.equal(applied.ok, true);
+  assert.equal(applied.result.status, "completed");
+  assert.equal(Object.hasOwn(applied, "developmentBuild"), false);
+});
+
 test("preview tokens bind operation, source, candidate, plan, expiry, and single use", async () => {
   let nowMs = Date.parse("2026-09-22T12:00:00.000Z");
   let current = snapshot();
@@ -197,7 +270,7 @@ test("preview tokens bind operation, source, candidate, plan, expiry, and single
   await assert.rejects(api.apply(requestBody), error => error.code === "preview_token_unavailable");
 
   const stale = await makePreview();
-  current = snapshot({ ...current.params, dropName: "STALE SOURCE" });
+  current = snapshot(candidate);
   await assert.rejects(api.apply({
     operation: "CREATE",
     expectedSourceVersion: stale.sourceVersion,

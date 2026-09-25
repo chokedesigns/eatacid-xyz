@@ -99,13 +99,44 @@ npm run dropparams:transaction -- reconcile
 
 The ignored `shared/drop-params/.drop-params.operations/` directory holds narrowly scoped local recovery journals and staging files. A failed rollback marks the writer `reconciliation_required` and blocks later mutations. Inspect with `status`; after independently restoring or validating the recorded exact state, use `reconcile`. Do not delete an unresolved journal merely to bypass the block.
 
-For development-only Admin authoring, start the loopback service manually in a separate terminal:
+For development-only Admin authoring, start from the nested Admin repository:
+
+```text
+cd admin-ui
+npm run dev
+```
+
+This one command starts the Admin frontend on port 3000, both existing projection/thumbnail watchers, and the Drop Params authoring service. The service reports `READY` in the shared terminal and binds only `127.0.0.1:47831`; it accepts only the Admin development origins `http://localhost:3000` and `http://127.0.0.1:3000`. `Ctrl+C` stops the child processes together. If the same repository's service is already listening, startup reports that it is reusing it. If an unrelated process owns port 47831, startup reports `port_occupied`, terminates the other newly started children, and exits unsuccessfully instead of leaving a partial Admin development session. The standalone outer-repository command remains available for diagnostics and recovery:
 
 ```text
 npm run dropparams:authoring-service
 ```
 
-It binds only `127.0.0.1:47831` and accepts the Admin development origins `http://localhost:3000` and `http://127.0.0.1:3000`. Start the nested Admin separately with its existing `npm run dev` command. The service is intentionally not part of either development startup command yet. It exposes only the fixed Drop Params read/validate/preview/apply API; all writes still pass through the repository-scoped transaction layer. Stop it with `Ctrl+C`.
+The Admin authoring status retries briefly while the service starts, then checks availability at a modest interval. Local Drops initializes only from a verified, representation-equal service snapshot. It moves from `OFFLINE` to `READY` without a page refresh, moves back to `OFFLINE` if the service stops while leaving the rest of Admin usable, and publishes the current snapshot when the service returns. Production Admin continues to use only its bundled static mirror.
+
+### Admin authoring lifecycle
+
+The authoring controls are available only in local Admin development. They edit repository files through the fixed loopback API; they do not alter live systems.
+
+The production Admin build removes Parcel's unreachable development-only authoring chunks before running its isolation verifier. Production runtime continues to consume the bundled static mirror and has no localhost authoring transport or controls.
+
+- **CREATE:** when no drop is scheduled, select **Schedule Drop**, complete the structured form, validate, preview the exact plan, and apply. After verified transaction success, Admin fetches the committed service snapshot, verifies its operation and `sourceVersion`, publishes it through the local provider, and re-renders immediately without a reload. A completed no-op settles immediately.
+- **EDIT:** for an active drop, select **Edit Drop Params**. The form starts from the canonical values returned by the service. Validate, preview, and apply; the committed provider snapshot immediately supplies both Drops and its checklist.
+- **DEACTIVATE:** for an active drop, select **Deactivate Drop**, review the archive/reset preview, and acknowledge that no on-chain mutation occurs. **Archive & Deactivate** first publishes and verifies the immutable archive, then resets the canonical source, synchronizes both projections, verifies the transaction, and publishes the exact inactive provider snapshot. The Drops empty state and development-only **Schedule Drop** control update without reload. Failure, rollback, reconciliation, and already-inactive results settle immediately without waiting for a build.
+
+The active authority is always `shared/drop-params/drop-params.js`. `shared/drop-params/drop-params.json` is the generated outer projection, and `admin-ui/src/drop-params.mirror.json` is its exact Admin mirror. Files under `shared/drop-params/archive/` are immutable deactivation history, not active authority. Do not hand-edit projections, archives, operation journals, or lock files.
+
+Authoring does **not** pause or unpause contracts, add or remove token pairs, fund or transmit tokens, deploy, publish, commit or push Git, mutate GitHub or Webflow, or change chain state.
+
+### Authoring recovery
+
+- **Service is `OFFLINE`:** allow the bounded startup retries to complete. Check the shared `npm run dev` terminal for the service result. If the child stopped, stop the full dev command with `Ctrl+C` and restart it; use the standalone service command only as a diagnostic fallback. The rest of Admin remains usable.
+- **Port 47831 is occupied:** same-repository instances are reused automatically. A `port_occupied` error means the listener did not identify as this repository's service; stop or reconfigure that unrelated process, then rerun `npm run dev`. Do not bypass the fixed port or service identity checks.
+- **`sourceVersion` is stale:** discard the stale preview, allow Admin to refresh canonical state, reopen the operation, and validate/preview again. Never force-apply an old preview.
+- **A completed write cannot verify its committed snapshot:** the repository transaction may already have committed, so do not reapply. Inspect the reported `sourceVersion`, service health, representation equality, and transaction status. Restore service/equality health and let the bounded provider refresh recover the current snapshot; no Parcel rebuild or reload is part of synchronization.
+- **Source/projection/mirror drift is detected:** stop authoring and run the supported generator/watcher flow (`npm run dropparams:json`, then Admin `npm run sync:drop-params` when required). Inspect the resulting diffs and equality before retrying. Do not hand-edit either JSON projection.
+- **A transaction rolls back:** read the reported rollback result. A verified rollback preserves the pre-operation current files; inspect status and retry with a fresh source version and preview only after the cause is resolved. An archive already published by DEACTIVATE remains immutable history.
+- **`reconciliation_required` is raised:** authoring stays blocked. Run `npm run dropparams:transaction -- status`, independently restore or validate the exact recorded state, then run `npm run dropparams:transaction -- reconcile`. Do not edit or delete journals, locks, projections, or archives to bypass the block.
 
 Never hand-edit either generated JSON file. After deliberate generation, expect the outer source and projection to form one reviewable diff; if the watcher ran, separately inspect the Admin mirror diff. If generation was not intentional, stop and resolve the unexpected change rather than carrying it into another ticket.
 

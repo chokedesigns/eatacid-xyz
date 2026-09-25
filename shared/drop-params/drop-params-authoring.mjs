@@ -195,6 +195,14 @@ function validateFullAuthored(params, errors, { requireScheduled }) {
   if (!Array.isArray(params.burnTokens)) {
     addError(errors, "$.burnTokens", "must be an array", "type");
   } else {
+    if (params.dropScheduled === true && params.burnTokens.length === 0) {
+      addError(
+        errors,
+        "$.burnTokens",
+        "must contain at least one burn token for an active configuration",
+        "min_items"
+      );
+    }
     const collections = new Set();
     params.burnTokens.forEach((burnToken, index) => {
       const path = `$.burnTokens[${index}]`;

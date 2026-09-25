@@ -47,17 +47,30 @@ const originalFiles = Object.fromEntries(await Promise.all([
   ["outerJson", DROP_PARAMS_PATHS.outerJson],
   ["adminMirror", DROP_PARAMS_PATHS.adminMirror]
 ].map(async ([key, filePath]) => [key, await readFile(filePath)])));
-const originalParams = JSON.parse(originalFiles.outerJson.toString("utf8"));
-
 function clone(value) {
   return structuredClone(value);
 }
 
 function activeFixture(suffix = "ACTIVE") {
-  const params = clone(originalParams);
-  params.dropScheduled = true;
-  params.dropName = `SPLINTERED ${suffix}`;
-  return params;
+  return {
+    dropScheduled: true,
+    dropName: `SPLINTERED ${suffix}`,
+    mirrorNetwork: "testnet",
+    dropDate: { month: "May", day: "28", year: "2026" },
+    dropTime: { time: "9:00", period: "PM", timezone: "EST" },
+    burnTokens: [{
+      collection: "HEN",
+      enabled: true,
+      exclude: ["141634"],
+      burnAmount: 1
+    }],
+    redeemToken: {
+      collection: "CANAAN",
+      tokenId: "29",
+      redeemAmount: 1,
+      totalSupply: 10
+    }
+  };
 }
 
 async function setCurrent(params) {
@@ -120,6 +133,7 @@ async function expectCode(promise, code) {
 
 beforeEach(async () => {
   await restoreOriginalFiles();
+  await setCurrent(INACTIVE_DROP_PARAMS);
   await removeTestRuntimeArtifacts();
 });
 
@@ -166,6 +180,21 @@ test("CREATE rejects active state and stale sourceVersion before journal creatio
   await assert.rejects(readFile(path.join(
     DROP_PARAMS_TRANSACTION_PATHS.journalDirectory,
     `${staleId}.json`
+  )), error => error.code === "ENOENT");
+});
+
+test("CREATE rejects an active candidate without burn tokens before journal creation", async () => {
+  const operationId = `${testPrefix}create-empty-burns`;
+  const candidate = activeFixture("EMPTY BURNS");
+  candidate.burnTokens = [];
+  await assert.rejects(createDropParams({
+    operationId,
+    expectedSourceVersion: await getCurrentSourceVersion(),
+    candidate
+  }), /must contain at least one burn token/);
+  await assert.rejects(readFile(path.join(
+    DROP_PARAMS_TRANSACTION_PATHS.journalDirectory,
+    `${operationId}.json`
   )), error => error.code === "ENOENT");
 });
 

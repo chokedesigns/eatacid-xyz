@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "kind": "drop-params-deactivation-archive",
+  "operationId": "413f2ecc-7ae4-4655-81a3-7e447b913119",
+  "archiveCreatedAt": "2026-09-25T00:48:44.169Z",
+  "deactivationRequestedAt": "2026-09-25T00:48:44.169Z",
+  "source": {
+    "path": "shared/drop-params/drop-params.js",
+    "sha256": "a8516de5b7bc591cf64eef4db9be51602e5388b401fafdc4c5fd9bd6d4dbf727",
+    "snapshotSha256": "adf72dd0c5202f393ad76c76692fe6ace6959749cfdb89ee88e872c14fa912fc",
+    "params": {
+      "dropScheduled": true,
+      "dropName": "SPLINTERED",
+      "mirrorNetwork": "testnet",
+      "dropDate": {
+        "month": "September",
+        "day": "24",
+        "year": "2026"
+      },
+      "dropTime": {
+        "time": "9:15",
+        "period": "PM",
+        "timezone": "EST"
+      },
+      "burnTokens": [
+        {
+          "collection": "HEN",
+          "enabled": true,
+          "exclude": [
+            "141634"
+          ],
+          "burnAmount": 1
+        }
+      ],
+      "redeemToken": {
+        "collection": "CANAAN",
+        "tokenId": "29",
+        "redeemAmount": 1,
+        "totalSupply": 10
+      }
+    }
+  },
+  "projections": {
+    "outerJson": {
+      "path": "shared/drop-params/drop-params.json",
+      "sha256": "adf72dd0c5202f393ad76c76692fe6ace6959749cfdb89ee88e872c14fa912fc"
+    },
+    "adminMirror": {
+      "path": "admin-ui/src/drop-params.mirror.json",
+      "sha256": "adf72dd0c5202f393ad76c76692fe6ace6959749cfdb89ee88e872c14fa912fc"
+    }
+  }
+}

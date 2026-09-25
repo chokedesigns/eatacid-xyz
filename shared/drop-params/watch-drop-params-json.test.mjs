@@ -5,6 +5,10 @@ import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import {
+  DROP_PARAMS_OPERATIONS,
+  serializeDropParamsSource
+} from "./drop-params-authoring.mjs";
 import { acquireDropParamsLock } from "./drop-params-projector.mjs";
 
 const testPath = fileURLToPath(import.meta.url);
@@ -23,14 +27,32 @@ const timeoutMs = 15_000;
 const firstDropName = "__WATCHER_ATOMIC_SAVE_ONE__";
 const secondDropName = "__WATCHER_ATOMIC_SAVE_TWO__";
 
-function sourceWithDropName(source, value) {
-  const pattern = /(\bdropName\s*:\s*)"[^"\r\n]*"/g;
-  assert.equal(
-    [...source.matchAll(pattern)].length,
-    1,
-    "fixture must contain exactly one double-quoted dropName property"
-  );
-  return source.replace(pattern, `$1${JSON.stringify(value)}`);
+function sourceWithDropName(params, value) {
+  const candidate = params.dropScheduled
+    ? { ...structuredClone(params), dropName: value }
+    : {
+        dropScheduled: true,
+        dropName: value,
+        mirrorNetwork: "testnet",
+        dropDate: { month: "May", day: "28", year: "2026" },
+        dropTime: { time: "9:00", period: "PM", timezone: "EST" },
+        burnTokens: [{
+          collection: "HEN",
+          enabled: true,
+          exclude: ["141634"],
+          burnAmount: 1
+        }],
+        redeemToken: {
+          collection: "CANAAN",
+          tokenId: "29",
+          redeemAmount: 1,
+          totalSupply: 10
+        }
+      };
+
+  return serializeDropParamsSource(candidate, {
+    operation: DROP_PARAMS_OPERATIONS.ACTIVE
+  });
 }
 
 async function atomicReplace(filePath, contents, sequence) {
@@ -65,7 +87,7 @@ test("watcher coordinates through the transaction lock and preserves rapid atomi
       await readFile(filePath)
     ])
   ));
-  const originalSource = originalFiles.get(sourcePath).toString("utf8");
+  const originalParams = JSON.parse(originalFiles.get(sharedJsonPath).toString("utf8"));
   const watcher = spawn(process.execPath, [watcherPath], {
     cwd: repoRoot,
     stdio: ["ignore", "pipe", "pipe"]
@@ -139,12 +161,12 @@ test("watcher coordinates through the transaction lock and preserves rapid atomi
     const rapidOutputStart = output.length;
     await atomicReplace(
       sourcePath,
-      sourceWithDropName(originalSource, firstDropName),
+      sourceWithDropName(originalParams, firstDropName),
       1
     );
     await atomicReplace(
       sourcePath,
-      sourceWithDropName(originalSource, secondDropName),
+      sourceWithDropName(originalParams, secondDropName),
       2
     );
     await new Promise(resolve => setTimeout(resolve, 500));
