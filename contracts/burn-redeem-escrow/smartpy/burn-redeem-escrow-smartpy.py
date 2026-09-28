@@ -377,6 +377,7 @@ class BurnRedeemEscrow(sp.Contract):
                 burn_contract_address=sp.TAddress,  
                 burn_token_id=sp.TNat,       
                 burn_amount=sp.TNat,         
+                redeem_amount=sp.TNat,
                 redeem_contract_address=sp.TAddress,  
                 redeem_token_id=sp.TNat      
             ))
@@ -408,6 +409,7 @@ class BurnRedeemEscrow(sp.Contract):
                 (trade.burn_contract_address == token_pair.burn_contract_address) &
                 (trade.burn_token_id == token_pair.burn_token_id) &
                 (trade.burn_amount == token_pair.burn_amount) &
+                (trade.redeem_amount == token_pair.redeem_amount) &
                 (trade.redeem_contract_address == token_pair.redeem_contract_address) &
                 (trade.redeem_token_id == token_pair.redeem_token_id),
                 ERROR_INVALID_TOKEN_PARAMETERS
@@ -440,7 +442,7 @@ class BurnRedeemEscrow(sp.Contract):
                 txs=sp.list([
                     sp.record(
                         to_=trade.user_wallet,
-                        token_id_amount=sp.pair(token_pair.redeem_token_id, token_pair.redeem_amount)
+                        token_id_amount=sp.pair(token_pair.redeem_token_id, trade.redeem_amount)
                     )
                 ])
             ))
@@ -1232,6 +1234,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=2,  # Burn 2 tokens.
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1254,6 +1257,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=3,
+                redeem_amount=2,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1276,6 +1280,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=3,
+                redeem_amount=2,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1298,6 +1303,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=1,
+                redeem_amount=50,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1320,6 +1326,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=2,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1342,6 +1349,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=3,
+                redeem_amount=2,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1381,6 +1389,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=1,
+                redeem_amount=50,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1409,6 +1418,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=2,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1439,6 +1449,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=3,  # Incorrect burn amount.
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1471,6 +1482,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=2,
+                redeem_amount=1,
                 redeem_contract_address=sp.address("tz1InvalidPrefix"),
                 redeem_token_id=0
             )
@@ -1505,6 +1517,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=2,  
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1529,6 +1542,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=3,  
+                redeem_amount=2,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1553,6 +1567,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=2,  
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1581,6 +1596,7 @@ def test():
                     burn_contract_address=mock_burn_fa2.address,
                     burn_token_id=0,
                     burn_amount=5,
+                    redeem_amount=1,
                     redeem_contract_address=mock_redeem_fa2.address,
                     redeem_token_id=0
                 )
@@ -1599,6 +1615,7 @@ def test():
                     burn_contract_address=mock_burn_fa2.address,
                     burn_token_id=0,
                     burn_amount=10,
+                    redeem_amount=2,
                     redeem_contract_address=mock_redeem_fa2.address,
                     redeem_token_id=0
                 )
@@ -1617,6 +1634,7 @@ def test():
                     burn_contract_address=mock_burn_fa2.address,
                     burn_token_id=0,
                     burn_amount=5,
+                    redeem_amount=1,
                     redeem_contract_address=mock_redeem_fa2.address,
                     redeem_token_id=0
                 )
@@ -1631,6 +1649,7 @@ def test():
                     burn_contract_address=mock_burn_fa2.address,
                     burn_token_id=0,
                     burn_amount=10,
+                    redeem_amount=2,
                     redeem_contract_address=mock_redeem_fa2.address,
                     redeem_token_id=0
                 )
@@ -1665,6 +1684,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=3,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1692,6 +1712,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=1,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1709,6 +1730,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=90,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1726,6 +1748,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=1,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1791,6 +1814,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=10,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1815,6 +1839,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=(2**29 - 1),
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -1839,6 +1864,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=100000,
                 burn_amount=2,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -2102,6 +2128,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=5,
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -2204,6 +2231,7 @@ def test():
                     burn_contract_address=mock_burn_fa2.address,
                     burn_token_id=0,
                     burn_amount=1,
+                    redeem_amount=1,
                     redeem_contract_address=mock_redeem_fa2.address,
                     redeem_token_id=0
                 )
@@ -2231,6 +2259,7 @@ def test():
                     burn_contract_address=mock_burn_fa2.address,
                     burn_token_id=0,
                     burn_amount=1,
+                    redeem_amount=1,
                     redeem_contract_address=mock_redeem_fa2.address,
                     redeem_token_id=0
                 )
@@ -2328,6 +2357,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=2,   # For token pair 101: burn 2 tokens.
+                redeem_amount=1,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             ),
@@ -2337,6 +2367,7 @@ def test():
                 burn_contract_address=mock_burn_fa2.address,
                 burn_token_id=0,
                 burn_amount=3,   # For token pair 102: burn 3 tokens.
+                redeem_amount=2,
                 redeem_contract_address=mock_redeem_fa2.address,
                 redeem_token_id=0
             )
@@ -2433,6 +2464,7 @@ def test():
                 burn_contract_address=mixed_burn_fa2_a.address,
                 burn_token_id=0,
                 burn_amount=4,
+                redeem_amount=7,
                 redeem_contract_address=mixed_redeem_fa2_shared.address,
                 redeem_token_id=0
             ),
@@ -2442,6 +2474,7 @@ def test():
                 burn_contract_address=mixed_burn_fa2_b.address,
                 burn_token_id=0,
                 burn_amount=6,
+                redeem_amount=9,
                 redeem_contract_address=mixed_redeem_fa2_shared.address,
                 redeem_token_id=0
             )
@@ -2498,6 +2531,7 @@ def test():
                 burn_contract_address=mixed_burn_fa2_a.address,
                 burn_token_id=1,
                 burn_amount=2,
+                redeem_amount=3,
                 redeem_contract_address=mixed_redeem_fa2_shared.address,
                 redeem_token_id=1
             ),
@@ -2507,6 +2541,7 @@ def test():
                 burn_contract_address=mixed_burn_fa2_a.address,
                 burn_token_id=1,
                 burn_amount=5,
+                redeem_amount=11,
                 redeem_contract_address=mixed_redeem_fa2_alt.address,
                 redeem_token_id=0
             )
@@ -2522,6 +2557,249 @@ def test():
     
     # =============================================================================
     # ======== END MIXED FA2 BATCH TRADE TESTS =====================================
+    # =============================================================================
+
+    # =============================================================================
+    # ======== BR-01 REDEEM AMOUNT BINDING REGRESSION TESTS ========================
+    # =============================================================================
+
+    scenario.h1(">>> BR-01 Redeem Amount Binding Regression Tests <<<")
+
+    br01_admin = sp.test_account("BR01Admin")
+    br01_burn_address = sp.test_account("BR01BurnAddress")
+    br01_normal_user = sp.test_account("BR01NormalUser")
+    br01_downward_user = sp.test_account("BR01DownwardUser")
+    br01_upward_user = sp.test_account("BR01UpwardUser")
+    br01_batch_user = sp.test_account("BR01BatchUser")
+    br01_burn_fa2 = MockFA2()
+    br01_redeem_fa2 = MockFA2()
+    br01_contract = BurnRedeemEscrow(
+        admin=br01_admin.address,
+        initial_burn_address=br01_burn_address.address
+    )
+
+    scenario += br01_burn_fa2
+    scenario += br01_redeem_fa2
+    scenario += br01_contract
+
+    scenario += br01_burn_fa2.mint(
+        address=br01_normal_user.address, token_id=0, amount=2
+    ).run(sender=br01_burn_fa2.address)
+    scenario += br01_burn_fa2.mint(
+        address=br01_downward_user.address, token_id=0, amount=2
+    ).run(sender=br01_burn_fa2.address)
+    scenario += br01_burn_fa2.mint(
+        address=br01_upward_user.address, token_id=0, amount=2
+    ).run(sender=br01_burn_fa2.address)
+    scenario += br01_burn_fa2.mint(
+        address=br01_batch_user.address, token_id=0, amount=4
+    ).run(sender=br01_burn_fa2.address)
+    scenario += br01_redeem_fa2.mint(
+        address=br01_contract.address, token_id=0, amount=100
+    ).run(sender=br01_redeem_fa2.address)
+
+    scenario += br01_contract.set_token_pairs(
+        token_pairs=[
+            sp.record(
+                token_pair_id=301,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0,
+                redeem_amount=5
+            ),
+            sp.record(
+                token_pair_id=302,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0,
+                redeem_amount=5
+            ),
+            sp.record(
+                token_pair_id=303,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0,
+                redeem_amount=5
+            ),
+            sp.record(
+                token_pair_id=304,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0,
+                redeem_amount=2
+            ),
+            sp.record(
+                token_pair_id=305,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0,
+                redeem_amount=5
+            )
+        ]
+    ).run(sender=br01_admin)
+    scenario += br01_contract.toggle_pause().run(sender=br01_admin)
+
+    scenario.h2(">>> Matching Redeem Amount Succeeds <<<")
+    scenario += br01_contract.initiate_trade(
+        trades=[
+            sp.record(
+                token_pair_id=301,
+                user_wallet=br01_normal_user.address,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_amount=5,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0
+            )
+        ]
+    ).run(sender=br01_normal_user)
+    scenario.verify(br01_burn_fa2.data.ledger[br01_normal_user.address][0] == 0)
+    scenario.verify(br01_burn_fa2.data.ledger[br01_burn_address.address][0] == 2)
+    scenario.verify(br01_redeem_fa2.data.ledger[br01_normal_user.address][0] == 5)
+    scenario.verify(br01_redeem_fa2.data.ledger[br01_contract.address][0] == 95)
+
+    scenario.h2(">>> Downward Repricing Invalidates Pending Trade <<<")
+    downward_stale_trade = sp.record(
+        token_pair_id=302,
+        user_wallet=br01_downward_user.address,
+        burn_contract_address=br01_burn_fa2.address,
+        burn_token_id=0,
+        burn_amount=2,
+        redeem_amount=5,
+        redeem_contract_address=br01_redeem_fa2.address,
+        redeem_token_id=0
+    )
+    scenario += br01_contract.update_token_pair(
+        token_pair_id=302,
+        burn_contract_address=br01_burn_fa2.address,
+        burn_token_id=0,
+        burn_amount=2,
+        redeem_contract_address=br01_redeem_fa2.address,
+        redeem_token_id=0,
+        redeem_amount=1
+    ).run(sender=br01_admin)
+    scenario += br01_contract.initiate_trade(
+        trades=[downward_stale_trade]
+    ).run(
+        sender=br01_downward_user,
+        valid=False,
+        exception=ERROR_INVALID_TOKEN_PARAMETERS
+    )
+    scenario.verify(br01_burn_fa2.data.ledger[br01_downward_user.address][0] == 2)
+    scenario.verify(br01_burn_fa2.data.ledger[br01_burn_address.address][0] == 2)
+    scenario.verify(br01_redeem_fa2.data.ledger.get(br01_downward_user.address, {}).get(0, 0) == 0)
+    scenario.verify(br01_redeem_fa2.data.ledger[br01_contract.address][0] == 95)
+
+    scenario.h2(">>> Fresh Trade After Update Succeeds <<<")
+    scenario += br01_contract.initiate_trade(
+        trades=[
+            sp.record(
+                token_pair_id=302,
+                user_wallet=br01_downward_user.address,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_amount=1,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0
+            )
+        ]
+    ).run(sender=br01_downward_user)
+    scenario.verify(br01_burn_fa2.data.ledger[br01_downward_user.address][0] == 0)
+    scenario.verify(br01_burn_fa2.data.ledger[br01_burn_address.address][0] == 4)
+    scenario.verify(br01_redeem_fa2.data.ledger[br01_downward_user.address][0] == 1)
+    scenario.verify(br01_redeem_fa2.data.ledger[br01_contract.address][0] == 94)
+
+    scenario.h2(">>> Upward Repricing Invalidates Pending Trade <<<")
+    upward_stale_trade = sp.record(
+        token_pair_id=303,
+        user_wallet=br01_upward_user.address,
+        burn_contract_address=br01_burn_fa2.address,
+        burn_token_id=0,
+        burn_amount=2,
+        redeem_amount=5,
+        redeem_contract_address=br01_redeem_fa2.address,
+        redeem_token_id=0
+    )
+    scenario += br01_contract.update_token_pair(
+        token_pair_id=303,
+        burn_contract_address=br01_burn_fa2.address,
+        burn_token_id=0,
+        burn_amount=2,
+        redeem_contract_address=br01_redeem_fa2.address,
+        redeem_token_id=0,
+        redeem_amount=10
+    ).run(sender=br01_admin)
+    scenario += br01_contract.initiate_trade(
+        trades=[upward_stale_trade]
+    ).run(
+        sender=br01_upward_user,
+        valid=False,
+        exception=ERROR_INVALID_TOKEN_PARAMETERS
+    )
+    scenario.verify(br01_burn_fa2.data.ledger[br01_upward_user.address][0] == 2)
+    scenario.verify(br01_burn_fa2.data.ledger[br01_burn_address.address][0] == 4)
+    scenario.verify(br01_redeem_fa2.data.ledger.get(br01_upward_user.address, {}).get(0, 0) == 0)
+    scenario.verify(br01_redeem_fa2.data.ledger[br01_contract.address][0] == 94)
+
+    scenario.h2(">>> Mixed Batch With Stale Trade Fails Atomically <<<")
+    scenario += br01_contract.update_token_pair(
+        token_pair_id=305,
+        burn_contract_address=br01_burn_fa2.address,
+        burn_token_id=0,
+        burn_amount=2,
+        redeem_contract_address=br01_redeem_fa2.address,
+        redeem_token_id=0,
+        redeem_amount=1
+    ).run(sender=br01_admin)
+    scenario += br01_contract.initiate_trade(
+        trades=[
+            sp.record(
+                token_pair_id=304,
+                user_wallet=br01_batch_user.address,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_amount=2,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0
+            ),
+            sp.record(
+                token_pair_id=305,
+                user_wallet=br01_batch_user.address,
+                burn_contract_address=br01_burn_fa2.address,
+                burn_token_id=0,
+                burn_amount=2,
+                redeem_amount=5,
+                redeem_contract_address=br01_redeem_fa2.address,
+                redeem_token_id=0
+            )
+        ]
+    ).run(
+        sender=br01_batch_user,
+        valid=False,
+        exception=ERROR_INVALID_TOKEN_PARAMETERS
+    )
+    scenario.verify(br01_burn_fa2.data.ledger[br01_batch_user.address][0] == 4)
+    scenario.verify(br01_burn_fa2.data.ledger[br01_burn_address.address][0] == 4)
+    scenario.verify(br01_redeem_fa2.data.ledger.get(br01_batch_user.address, {}).get(0, 0) == 0)
+    scenario.verify(br01_redeem_fa2.data.ledger[br01_contract.address][0] == 94)
+    scenario.verify(br01_contract.data.token_mapping[304].redeem_amount == 2)
+    scenario.verify(br01_contract.data.token_mapping[305].redeem_amount == 1)
+
+    # =============================================================================
+    # ======== END BR-01 REDEEM AMOUNT BINDING REGRESSION TESTS ====================
     # =============================================================================
     
     # =============================================================================

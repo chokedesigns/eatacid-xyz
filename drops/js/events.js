@@ -1037,32 +1037,44 @@ async function handleEventExchange() {
           trades.push({
             prim: 'Pair',
             args: [
-              // 1) burn count + burn contract + burn token
               {
                 prim: 'Pair',
                 args: [
-                  { int: '1' },
                   {
                     prim: 'Pair',
                     args: [
-                      { string: item.contractAddress },
-                      { int: String(item.tokenId) }
+                      { int: '1' },
+                      { string: item.contractAddress }
+                    ]
+                  },
+                  {
+                    prim: 'Pair',
+                    args: [
+                      { int: String(item.tokenId) },
+                      { int: String(redeemToken.redeemAmount) }
                     ]
                   }
                 ]
               },
-              // 2) redeem contract + redeem token
               {
                 prim: 'Pair',
                 args: [
-                  { string: REDEEM_CONTRACT_ADDRESS },
-                  { int: String(redeemToken.tokenId) }
+                  {
+                    prim: 'Pair',
+                    args: [
+                      { string: REDEEM_CONTRACT_ADDRESS },
+                      { int: String(redeemToken.tokenId) }
+                    ]
+                  },
+                  {
+                    prim: 'Pair',
+                    args: [
+                      { int: String(item.tokenPairId) },
+                      { string: myAddr }
+                    ]
+                  }
                 ]
-              },
-              // 3) token_pair_id
-              { int: String(item.tokenPairId) },
-              // 4) recipient address
-              { string: myAddr }
+              }
             ]
           });
         }

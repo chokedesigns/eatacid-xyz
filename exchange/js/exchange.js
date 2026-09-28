@@ -576,9 +576,10 @@ function getBurnCart() {
       const tokenId = row.getAttribute('data-token-id');
       const contractAddress = row.getAttribute('data-contract-address');
       const startingBalance = getDropdownMaxQuantity(dropdown);
+      const redeemAmount = Math.ceil(100 / window.getEditionCount(dropdown));
 
       if (tokenId && contractAddress) {
-        burnCart.push({ tokenId, quantity, contractAddress, startingBalance });
+        burnCart.push({ tokenId, quantity, contractAddress, startingBalance, redeemAmount });
       }
     }
   });
@@ -1120,32 +1121,44 @@ async function handleExchange() {
           trades.push({
             prim: 'Pair',
             args: [
-              // 1) burn count + burn contract + burn token
               {
                 prim: 'Pair',
                 args: [
-                  { int: '1' },
                   {
                     prim: 'Pair',
                     args: [
-                      { string: item.contractAddress },
-                      { int: String(item.tokenId) }
+                      { int: '1' },
+                      { string: item.contractAddress }
+                    ]
+                  },
+                  {
+                    prim: 'Pair',
+                    args: [
+                      { int: String(item.tokenId) },
+                      { int: String(item.redeemAmount) }
                     ]
                   }
                 ]
               },
-              // 2) redeem contract + redeem token
               {
                 prim: 'Pair',
                 args: [
-                  { string: REDEEM_TOKEN_CONTRACT },
-                  { int: String(item.redeemTokenId || 0) }
+                  {
+                    prim: 'Pair',
+                    args: [
+                      { string: REDEEM_TOKEN_CONTRACT },
+                      { int: String(item.redeemTokenId || 0) }
+                    ]
+                  },
+                  {
+                    prim: 'Pair',
+                    args: [
+                      { int: String(item.tokenPairId) },
+                      { string: userWalletAddress }
+                    ]
+                  }
                 ]
-              },
-              // 3) token_pair_id
-              { int: String(item.tokenPairId) },
-              // 4) recipient address
-              { string: userWalletAddress }
+              }
             ]
           });
         }
