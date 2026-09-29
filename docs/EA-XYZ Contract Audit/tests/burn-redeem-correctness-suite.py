@@ -677,6 +677,34 @@ def t10():
     mint(s, r, e.address, 8, 30)
     old = trade(p, a["user"].address)
     s += e.initiate_trade(trades=sp.list([old])).run(sender=a["user"])
+    check_balance(s, b, a["user"].address, 7, 18)
+    check_balance(s, b, a["burn"].address, 7, 2)
+    check_balance(s, r, e.address, 8, 27)
+    check_balance(s, r, a["user"].address, 8, 3)
+    check_core(s, e, a, False, 1); check_pair(s, e, p)
+    operator(s, b, a["user"], e, 7, False)
+    event(s, "T10_REVOKED_AFTER_SUCCESS")
+    s += e.initiate_trade(trades=sp.list([old])).run(
+        sender=a["user"], valid=False, exception="FA2_NOT_OPERATOR"
+    )
+    operator(s, b, a["user"], e, 7)
+    s += b.transfer(transfer(
+        a["user"].address, a["user2"].address, 7, 17
+    )).run(sender=a["user"])
+    event(s, "T10_SHORT_AFTER_SUCCESS")
+    s += e.initiate_trade(trades=sp.list([old])).run(
+        sender=a["user"], valid=False, exception="FA2_INSUFFICIENT_BALANCE"
+    )
+    check_balance(s, b, a["user"].address, 7, 1)
+    check_balance(s, b, a["user2"].address, 7, 17)
+    check_balance(s, b, a["burn"].address, 7, 2)
+    check_balance(s, r, e.address, 8, 27)
+    check_balance(s, r, a["user"].address, 8, 3)
+    s.verify(b.data.call_count == 2); s.verify(r.data.call_count == 1)
+    check_core(s, e, a, False, 1); check_pair(s, e, p)
+    s += b.transfer(transfer(
+        a["user2"].address, a["user"].address, 7, 17
+    )).run(sender=a["user2"])
     s += e.initiate_trade(trades=sp.list([old, old])).run(sender=a["user"])
     check_balance(s, b, a["user"].address, 7, 14)
     check_balance(s, b, a["burn"].address, 7, 6)

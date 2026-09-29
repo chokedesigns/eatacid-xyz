@@ -89,6 +89,7 @@ CASES = {
         "T09_REJECT_ADMIN": [],
     },
     "T10_repeated_trades_and_stale_quotes": {
+        "T10_REVOKED_AFTER_SUCCESS": [], "T10_SHORT_AFTER_SUCCESS": [],
         "T10_STALE": [], "T10_PAUSED_AFTER_SUCCESS": [], "T10_DELETED": [],
     },
     "T11_tez_custody_and_withdrawal": {
