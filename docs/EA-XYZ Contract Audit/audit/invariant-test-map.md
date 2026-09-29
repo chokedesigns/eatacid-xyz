@@ -22,16 +22,16 @@ Test IDs and full scenario names are defined in `test-architecture.md`.
 | I-14 | T07, T09 | P, N, B, S, Bal, Fail, Evt, Bat | Operator-approved exact/aggregate balances succeed; missing/revoked operator and aggregate shortage return deterministic FA2 errors with atomic rollback. |
 | I-15 | T07, T09 | P, N, B, S, Bal, Fail, Evt, Bat | Exact aggregate inventory commits and depletes to zero; one-unit and aggregate shortages preserve all legs/state/events. |
 | I-16 | T06, T08 | P, N, B, S, Bal, Evt, Bat | Recorded same-contract and mixed-contract batches prove one representation per row, exact per-target grouping/content, zero tez, event order, and no decoy/validation-failure calls. |
-| I-17 | T04, T05, T06, T08, T09, T13 | P, N, S, Bal, Fail, Evt, Bat | Valid batches commit; add/trade validation fails early/middle/late; burn/redeem execution failures restore the full snapshot and have no committed events. |
+| I-17 | T04, T05, T06, T08, T09, T13 | P, N, S, Bal, Fail, Evt, Bat | Valid batches commit; add/trade validation fails early/middle/late; burn/redeem failures preserve checked state/balances/events. T09 redeem shortage directly checks rollback of 7 attached mutez, core/pair state, both token legs, and call counts. |
 | I-18 | T09, T10 | P, N, B, S, Bal, Fail, Evt, Bat | Sequential and repeated-pair batch effects/events are additive; after a success, revoked authorization, shortage, pause, or stale terms still fail and roll back. |
 | I-19 | T10 | P, N, S, Bal, Fail, Evt | Fresh post-update terms succeed; each old term set fails binding and deleted ID fails existence, with unchanged balances/storage and no trade event. |
 | I-20 | T02, T07, T09, T12 | P, N, B, S, Bal, Fail, Evt | Deposits remain in the conforming ledger until exact redeem/admin transfer; outsider, zero, shortage, rejection, and wrong-interface recovery preserve custody. |
 | I-21 | T02, T11 | P, N, B, S, Bal, Fail, Evt | Minimum/large default receipts, named-entrypoint tez, partial/full proxy withdrawal, and zero/over/outsider errors assert escrow and recipient proxy balances plus events. |
-| I-22 | T02-T13 | P, N, B, S, Evt, Bat | Output oracle covers every successful event-bearing path, exact tags/types/payloads/count/order, update no-op, empty-list events, and absence after all rejection/backtracking classes. |
+| I-22 | T02-T13 | P, N, B, S, Evt, Bat | Output oracle checks exact compiled EMIT tags/type schemas and rendered payloads/count/order, update no-op, empty-list events, and absence after rejection/backtracking classes. |
 | I-23 | T03, T04, T07, T09, T11 | P, N, B, S, Bal, Fail, Evt, Bat | ID 0, amount 1, exact balances, full depletion, `2**60` token arithmetic, zero amounts, one-unit shortages, duplicate/repeated IDs, and no underflow are direct cases. |
-| I-24 | T07, T12 | P, N, S, Bal, Evt, Bat | Conforming economics are the control; accepting no-op trade/admin transfer succeeds and emits exact events/calls while token balances do not move, explicitly proving the boundary. |
+| I-24 | T07, T12 | P, N, S, Bal, Evt, Bat | Conforming economics are the control; T12's two-row accepting-no-op batch and admin transfer succeed with exact events/calls while token balances do not move, explicitly proving the boundary. |
 | I-25 | T07, T09, T12 | P, N, S, Bal, Fail, Evt, Bat | Call journals prove exact transfer type/target/payload and zero tez; wrong/missing interface and typed rejection use exact deterministic errors and full rollback. |
-| I-26 | T05-T10, T12 | P, N, S, Bal, Fail, Evt, Bat | Every successful single/batch and representative failure expands a five-field escrow snapshot; only conforming external balances/events change on success and nothing changes on failure. |
+| I-26 | T05-T10, T12 | P, N, S, Bal, Fail, Evt, Bat | Representative single/batch successes and failures check core fields and exact pair records; only conforming external balances/events change on success and nothing changes on failure. |
 
 ## Coverage accounting
 

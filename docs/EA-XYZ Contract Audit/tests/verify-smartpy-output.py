@@ -102,7 +102,7 @@ CASES = {
         "T11_WITHDRAW_FULL": [ev("XTZWithdrawn", "sp.record(amount = sp.tez(10), success = True)")],
     },
     "T12_fa2_interface_and_noop_trust_boundary": {
-        "T12_NOOP_TRADE": [TRADE_23],
+        "T12_NOOP_TRADE": [TRADE_23, TRADE_23],
         "T12_NOOP_ADMIN": [ev("TokenTransferred", "sp.record(amount = 4, to_ = {}, token_contract = {}, token_id = 8)".format(USER2, K2))],
         "T12_BAD_ADMIN_INTERFACE": [], "T12_BAD_TRADE_INTERFACE": [],
     },
@@ -128,6 +128,17 @@ TOP_EXEC_RE = re.compile(r"^Executing (?!\(queue\))", re.MULTILINE)
 ENTRYPOINTS = {
     "admin_transfer_token", "admin_withdraw_xtz", "cleanup_token_pairs", "default",
     "initiate_trade", "set_token_pairs", "toggle_pause", "update_token_pair"
+}
+# Log payloads render positive nat and int identically; check their compiled types.
+EVENT_TYPES = {
+    "TokenTransferred": "(pair (pair (nat %amount) (address %to_)) (pair (address %token_contract) (nat %token_id)))",
+    "XTZWithdrawn": "(pair (mutez %amount) (bool %success))",
+    "TokenPairDeleted": "(pair (list %failed_deletions nat) (list %successful_deletions nat))",
+    "XTZReceived": "mutez",
+    "TradeInitiated": "(pair (pair (nat %burn_amount) (nat %redeem_amount)) (pair (nat %token_pair_id) (address %user)))",
+    "TokenPairAdded": "(list nat)",
+    "PauseStateToggled": "bool",
+    "TokenPairUpdated": "(pair (nat %token_pair_id) (list %updated_fields string))",
 }
 
 
@@ -160,6 +171,43 @@ def collect_entrypoints(node, result):
     result.add(annotations[0][1:])
 
 
+def verify_event_types(script):
+    def signature(node):
+        parts = [node["prim"]] + node.get("annots", [])
+        parts += [signature(child) for child in node.get("args", [])]
+        return parts[0] if len(parts) == 1 else "(" + " ".join(parts) + ")"
+
+    observed = {}
+
+    def visit(node):
+        if isinstance(node, list):
+            for child in node:
+                visit(child)
+        elif isinstance(node, dict):
+            if node.get("prim") == "EMIT":
+                annotations = node.get("annots", [])
+                args = node.get("args", [])
+                if len(annotations) != 1 or not annotations[0].startswith("%") or len(args) != 1:
+                    raise ValueError("event lacks one tag and explicit type: {!r}".format(node))
+                tag = annotations[0][1:]
+                if tag in observed:
+                    raise ValueError("duplicate compiled event tag: " + tag)
+                observed[tag] = signature(args[0])
+            for child in node.get("args", []):
+                visit(child)
+
+    visit(script)
+    if set(observed) != set(EVENT_TYPES):
+        raise ValueError("event tags: expected {!r}, observed {!r}".format(
+            sorted(EVENT_TYPES), sorted(observed)
+        ))
+    for tag, expected in EVENT_TYPES.items():
+        if observed[tag] != expected:
+            raise ValueError("{} event type: expected {}, observed {}".format(
+                tag, expected, observed[tag]
+            ))
+
+
 def verify_surface(root):
     path = root / "T01_construction_and_entrypoint_surface" / "step_001_cont_0_contract.json"
     script = json.loads(path.read_text(encoding="utf-8"))
@@ -170,6 +218,7 @@ def verify_surface(root):
         raise ValueError("entrypoint surface: expected {!r}, observed {!r}".format(
             sorted(ENTRYPOINTS), sorted(observed)
         ))
+    verify_event_types(script)
 
 
 def main():
@@ -198,7 +247,7 @@ def main():
             raise ValueError("no downstream failure demonstrated event backtracking")
     except (OSError, ValueError, StopIteration, json.JSONDecodeError) as error:
         return fail(str(error))
-    print("event-verifier: PASS: {} cases; 8 entrypoints; {} staged-event rollbacks".format(
+    print("event-verifier: PASS: {} cases; 8 entrypoints; 8 event types; {} staged-event rollbacks".format(
         verified, rollback_with_staged_event
     ))
     return 0

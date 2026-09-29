@@ -15,7 +15,7 @@ This design implements the denominator in `semantic-model.md`, `security-invaria
 
 The imported fixture contains a compilation target but no test target. Importing it from the suite therefore makes the contract class available without executing the removed legacy tests. The path is repository-relative, so execution must use the repository root as the working directory.
 
-Legacy SmartPy scenarios can assert storage, balances, calls, and failures, but expose no in-scenario event-query API. Exact event proof therefore uses a second, read-only verifier over the pinned compiler's deterministic per-scenario `log.txt` files. The suite places a unique `EVENT_CASE::<id>` heading immediately before each event-relevant call. The verifier segments the corresponding execution, distinguishes committed from failed/backtracked executions, and compares tag, canonical payload, multiplicity, and order against an independent expectation table. It also verifies the compiled parameter surface for the construction/immutability negative obligation.
+Legacy SmartPy scenarios can assert storage, balances, calls, and failures, but expose no in-scenario event-query API. Exact event proof therefore uses a second, read-only verifier over the pinned compiler's deterministic per-scenario `log.txt` files. The suite places a unique `EVENT_CASE::<id>` heading immediately before each event-relevant call. The verifier segments the corresponding execution, distinguishes committed from failed/backtracked executions, and compares tag, canonical payload, multiplicity, and order against an independent expectation table. Rendered values alone do not distinguish positive `nat` from `int`; the verifier separately checks all eight compiled `EMIT` tags and type schemas. It also verifies the compiled parameter surface for the construction/immutability negative obligation.
 
 ## Execution model
 
@@ -44,7 +44,7 @@ Eight small helper groups are sufficient. Helpers construct data or assert expli
 | State assertions | Assert all five escrow fields, every expected six-field pair, size/cardinality, relevant FA2 ledgers/operators/call journals, escrow/proxy tez balances, and unaffected decoys. |
 | Event/output oracle | Add stable case markers; verify compiled entrypoint surface and exact committed event results from compiler logs. |
 
-`snapshot_relevant_state` is an expected-state descriptor, not an opaque serialized comparison. It enumerates all configured pair IDs and all ledger keys/call journals/tez balances in scope. `assert_rollback` expands that descriptor into direct assertions after a failed call. This avoids unsupported big-map equality while proving the complete finite state touched by the scenario.
+State checks are explicit `check_core`, `check_pair`, `check_balance`, `check_call`, and inline assertions; there are no `snapshot_relevant_state` or `assert_rollback` helpers. Representative success/failure cases enumerate the relevant configured IDs and ledger keys rather than compare opaque big maps. T09's redeem-shortage case also attaches 7 mutez and directly asserts unchanged escrow tez, core/pair state, token balances, and call counts.
 
 The tez-admin proxy is used only where recipient balance must be observable. It is constructed as escrow admin, forwards a withdrawal request, accepts the returned tez, and exposes its own contract balance. Ordinary authorization tests use direct deterministic accounts.
 

@@ -611,12 +611,16 @@ def t09():
     check_balance(s, r, e.address, 8, 6)
     s.verify(b.data.call_count == 1); s.verify(r.data.call_count == 0)
     mint(s, b, a["user"].address, 7, 1)
-    # Aggregate redeem inventory one short; the burn operation must roll back.
+    # Aggregate redeem inventory one short; burn and attached tez must roll back.
     s += r.transfer(transfer(e.address, a["user2"].address, 8, 1)).run(sender=e.address)
+    s.verify(e.balance == sp.mutez(0))
     event(s, "T09_REDEEM_SHORT")
     s += e.initiate_trade(trades=sp.list([t, t])).run(
-        sender=a["user"], valid=False, exception="FA2_INSUFFICIENT_BALANCE"
+        sender=a["user"], amount=sp.mutez(7), valid=False,
+        exception="FA2_INSUFFICIENT_BALANCE"
     )
+    s.verify(e.balance == sp.mutez(0))
+    check_core(s, e, a, False, 1); check_pair(s, e, p)
     check_balance(s, b, a["user"].address, 7, 4)
     check_balance(s, b, a["burn"].address, 7, 0)
     check_balance(s, r, e.address, 8, 5)
@@ -786,13 +790,17 @@ def t12():
     p = pair(1, b, r); add(s, e, a["admin"], [p]); unpause(s, e, a["admin"])
     mint(s, b, a["user"].address, 7, 10); mint(s, r, e.address, 8, 10)
     event(s, "T12_NOOP_TRADE")
-    s += e.initiate_trade(trades=sp.list([trade(p, a["user"].address)])).run(sender=a["user"])
+    s += e.initiate_trade(trades=sp.list([
+        trade(p, a["user"].address), trade(p, a["user"].address)
+    ])).run(sender=a["user"])
     check_balance(s, b, a["user"].address, 7, 10)
     check_balance(s, b, a["burn"].address, 7, 0)
     check_balance(s, r, e.address, 8, 10)
     check_balance(s, r, a["user"].address, 8, 0)
-    check_call(s, b, 0, e.address, [(a["user"].address, a["burn"].address, 7, 2)])
-    check_call(s, r, 0, e.address, [(e.address, a["user"].address, 8, 3)])
+    check_call(s, b, 0, e.address, [(a["user"].address, a["burn"].address, 7, 2)] * 2)
+    check_call(s, r, 0, e.address, [(e.address, a["user"].address, 8, 3)] * 2)
+    s.verify(b.data.call_count == 1); s.verify(r.data.call_count == 1)
+    check_core(s, e, a, False, 1); check_pair(s, e, p)
     event(s, "T12_NOOP_ADMIN")
     s += e.admin_transfer_token(token_contract=r.address, token_id=8,
                                 to_=a["user2"].address, amount=4).run(sender=a["admin"])
