@@ -1,0 +1,32 @@
+{
+  "schema": 1,
+  "denominator": {"invariants": 26, "obligations": 181, "entrypoints": 8},
+  "coverage": {
+    "I-01": {"tests": ["T01_construction_and_entrypoint_surface", "T02_privileged_authorization_and_paused_nontrade", "T03_pair_lifecycle_cardinality_and_events", "T07_single_trade_operator_balances_and_custody", "T11_tez_custody_and_withdrawal"], "obligations": ["P", "N", "S"]},
+    "I-02": {"tests": ["T02_privileged_authorization_and_paused_nontrade"], "obligations": ["P", "N", "S", "Bal", "Fail", "Evt"]},
+    "I-03": {"tests": ["T02_privileged_authorization_and_paused_nontrade", "T05_pause_and_trade_presence_validation"], "obligations": ["P", "N", "S", "Bal", "Fail", "Evt"]},
+    "I-04": {"tests": ["T03_pair_lifecycle_cardinality_and_events", "T04_pair_validation_and_add_atomicity"], "obligations": ["P", "N", "B", "S", "Fail", "Evt", "Bat"]},
+    "I-05": {"tests": ["T03_pair_lifecycle_cardinality_and_events", "T04_pair_validation_and_add_atomicity"], "obligations": ["P", "N", "B", "S", "Fail", "Evt", "Bat"]},
+    "I-06": {"tests": ["T03_pair_lifecycle_cardinality_and_events", "T04_pair_validation_and_add_atomicity"], "obligations": ["P", "N", "B", "S", "Fail", "Evt"]},
+    "I-07": {"tests": ["T02_privileged_authorization_and_paused_nontrade", "T03_pair_lifecycle_cardinality_and_events"], "obligations": ["P", "N", "B", "S", "Fail", "Evt", "Bat"]},
+    "I-08": {"tests": ["T05_pause_and_trade_presence_validation", "T08_heterogeneous_batch_grouping_and_routing"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-09": {"tests": ["T06_trade_term_and_wallet_binding"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-10": {"tests": ["T06_trade_term_and_wallet_binding"], "obligations": ["P", "N", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-11": {"tests": ["T07_single_trade_operator_balances_and_custody", "T09_external_failure_atomicity_and_boundaries"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-12": {"tests": ["T07_single_trade_operator_balances_and_custody", "T09_external_failure_atomicity_and_boundaries"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-13": {"tests": ["T06_trade_term_and_wallet_binding", "T07_single_trade_operator_balances_and_custody", "T08_heterogeneous_batch_grouping_and_routing"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-14": {"tests": ["T07_single_trade_operator_balances_and_custody", "T09_external_failure_atomicity_and_boundaries"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-15": {"tests": ["T07_single_trade_operator_balances_and_custody", "T09_external_failure_atomicity_and_boundaries"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-16": {"tests": ["T06_trade_term_and_wallet_binding", "T08_heterogeneous_batch_grouping_and_routing"], "obligations": ["P", "N", "B", "S", "Bal", "Evt", "Bat"]},
+    "I-17": {"tests": ["T04_pair_validation_and_add_atomicity", "T05_pause_and_trade_presence_validation", "T06_trade_term_and_wallet_binding", "T08_heterogeneous_batch_grouping_and_routing", "T09_external_failure_atomicity_and_boundaries", "T13_event_surface_and_backtracking"], "obligations": ["P", "N", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-18": {"tests": ["T09_external_failure_atomicity_and_boundaries", "T10_repeated_trades_and_stale_quotes"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-19": {"tests": ["T10_repeated_trades_and_stale_quotes"], "obligations": ["P", "N", "S", "Bal", "Fail", "Evt"]},
+    "I-20": {"tests": ["T02_privileged_authorization_and_paused_nontrade", "T07_single_trade_operator_balances_and_custody", "T09_external_failure_atomicity_and_boundaries", "T12_fa2_interface_and_noop_trust_boundary"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt"]},
+    "I-21": {"tests": ["T02_privileged_authorization_and_paused_nontrade", "T11_tez_custody_and_withdrawal"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt"]},
+    "I-22": {"tests": ["T02_privileged_authorization_and_paused_nontrade", "T03_pair_lifecycle_cardinality_and_events", "T04_pair_validation_and_add_atomicity", "T05_pause_and_trade_presence_validation", "T06_trade_term_and_wallet_binding", "T07_single_trade_operator_balances_and_custody", "T08_heterogeneous_batch_grouping_and_routing", "T09_external_failure_atomicity_and_boundaries", "T10_repeated_trades_and_stale_quotes", "T11_tez_custody_and_withdrawal", "T12_fa2_interface_and_noop_trust_boundary", "T13_event_surface_and_backtracking"], "obligations": ["P", "N", "B", "S", "Evt", "Bat"]},
+    "I-23": {"tests": ["T03_pair_lifecycle_cardinality_and_events", "T04_pair_validation_and_add_atomicity", "T07_single_trade_operator_balances_and_custody", "T09_external_failure_atomicity_and_boundaries", "T11_tez_custody_and_withdrawal"], "obligations": ["P", "N", "B", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-24": {"tests": ["T07_single_trade_operator_balances_and_custody", "T12_fa2_interface_and_noop_trust_boundary"], "obligations": ["P", "N", "S", "Bal", "Evt", "Bat"]},
+    "I-25": {"tests": ["T07_single_trade_operator_balances_and_custody", "T09_external_failure_atomicity_and_boundaries", "T12_fa2_interface_and_noop_trust_boundary"], "obligations": ["P", "N", "S", "Bal", "Fail", "Evt", "Bat"]},
+    "I-26": {"tests": ["T05_pause_and_trade_presence_validation", "T06_trade_term_and_wallet_binding", "T07_single_trade_operator_balances_and_custody", "T08_heterogeneous_batch_grouping_and_routing", "T09_external_failure_atomicity_and_boundaries", "T10_repeated_trades_and_stale_quotes", "T12_fa2_interface_and_noop_trust_boundary"], "obligations": ["P", "N", "S", "Bal", "Fail", "Evt", "Bat"]}
+  }
+}
