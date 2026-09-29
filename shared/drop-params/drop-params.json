@@ -1,9 +1,31 @@
 {
-  "dropScheduled": false,
-  "dropName": "",
-  "mirrorNetwork": null,
-  "dropDate": null,
-  "dropTime": null,
-  "burnTokens": [],
-  "redeemToken": null
+  "dropScheduled": true,
+  "dropName": "SPLINTERED",
+  "mirrorNetwork": "testnet",
+  "dropDate": {
+    "month": "September",
+    "day": "30",
+    "year": "2026"
+  },
+  "dropTime": {
+    "time": "7:00",
+    "period": "PM",
+    "timezone": "EST"
+  },
+  "burnTokens": [
+    {
+      "collection": "HEN",
+      "enabled": true,
+      "exclude": [
+        "141634"
+      ],
+      "burnAmount": 1
+    }
+  ],
+  "redeemToken": {
+    "collection": "CANAAN",
+    "tokenId": "29",
+    "redeemAmount": 1,
+    "totalSupply": 10
+  }
 }

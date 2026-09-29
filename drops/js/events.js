@@ -2409,13 +2409,18 @@ function updateExchangeButtonState(state) {
   const btn = document.querySelector('.event-cart-exchange-button-no-select.w-button');
   if (!btn) return;
 
-  const isHover = state.hoveringExchange;
+  const forcePreCountdown =
+    window.innerWidth < 992 &&
+    state.countdownPhase === 'pre' &&
+    state.walletConnected &&
+    !!state.selectedTokenId;
+  const isHover = state.hoveringExchange || forcePreCountdown;
 
   // apply text & color
   btn.textContent = isHover ? hoverLabel : defaultLabel;
   btn.style.color = isHover ? hoverColor : defaultColor;
 
-  // Smaller font only when we're showing the long pre-drop countdown on hover
+  // Smaller font whenever we're showing the long pre-drop countdown
   const showingPreCountdown =
     isHover &&
     state.countdownPhase === 'pre' &&
@@ -2688,6 +2693,8 @@ async function bootDropsPage() {
   // 6a) 🔥 Re-hook exchange button state machine (labels/colors/pulse/clickAction)
   subscribeToAppState(updateExchangeButtonState);
   updateExchangeButtonState(AppState); // initial sync (subscribers don't auto-run on subscribe)
+  window.addEventListener('resize', () => updateExchangeButtonState(AppState));
+  window.addEventListener('orientationchange', () => updateExchangeButtonState(AppState));
 
   // 7) Ellipsis on resize/orientation (and tap-to-reveal on touch devices)
   applyEllipsis();
