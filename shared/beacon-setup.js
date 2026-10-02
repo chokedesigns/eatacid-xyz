@@ -228,6 +228,41 @@ disconnectButton
 };
 }
 
+function getMobileWalletControls() {
+const wrapper = document.querySelector('.mobile-nav-status-main');
+
+return {
+pendingSpinner: wrapper?.querySelector('.wallet-pending-spinner.mobile'),
+connectedStatus: wrapper?.querySelector('.status-connected-wallet-div'),
+addressText: wrapper?.querySelector('.status-connected-wallet-address'),
+actionButton: wrapper?.querySelector('.mobile-status-connect-button')
+};
+}
+
+function shortenWalletAddress(address) {
+return `${address.slice(0, 3)}...${address.slice(-4)}`;
+}
+
+function updateMobileWalletState(status, address) {
+const { pendingSpinner, connectedStatus, addressText, actionButton } =
+getMobileWalletControls();
+const isConnected = status === 'connected' && Boolean(address);
+
+if (addressText) {
+addressText.textContent = isConnected ? shortenWalletAddress(address) : '';
+}
+if (pendingSpinner) {
+pendingSpinner.style.display = status === 'pending' ? '' : 'none';
+}
+if (connectedStatus) {
+connectedStatus.style.display = isConnected ? 'flex' : 'none';
+}
+if (actionButton) {
+actionButton.textContent = isConnected ? 'DISCONNECT' : 'CONNECT';
+actionButton.style.display = status === 'pending' ? 'none' : 'inline-block';
+}
+}
+
 // ----------------------------------------------------------------------------
 // Fetch NFT Balances
 // ----------------------------------------------------------------------------
@@ -297,6 +332,8 @@ status,
 address
 };
 
+updateMobileWalletState(status, address);
+
 const {
 pendingButton,
 connectButton,
@@ -324,7 +361,7 @@ if (status === 'connected' && address) {
 if (connectedButton) {
 connectedButton.style.display = 'inline-block';
 connectedButton.textContent =
-`${address.slice(0, 3)}...${address.slice(-4)}`;
+shortenWalletAddress(address);
 
     connectedButton.onmouseover = () => {
       connectedButton.style.display = 'none';
@@ -537,6 +574,17 @@ publishPublicWalletState('unconnected');
 // ----------------------------------------------------------------------------
 // Initialize (safe for loader + dynamic import timing)
 // ----------------------------------------------------------------------------
+function handleMobileWalletAction(event) {
+event.preventDefault();
+
+const status = getPublicWalletState().status;
+if (status === 'unconnected') {
+void requestPublicWalletConnection();
+} else if (status === 'connected') {
+void disconnectWallet();
+}
+}
+
 async function bootWalletButtons() {
 // Guard against double-binding if this module is ever evaluated twice.
 if (window.__EA_WALLET_BUTTONS_BOOTED__) {
@@ -581,6 +629,7 @@ publishPublicWalletState('unconnected');
 connectButton?.addEventListener('click', connectWallet);
 connectedButton?.addEventListener('click', disconnectWallet);
 disconnectButton?.addEventListener('click', disconnectWallet);
+getMobileWalletControls().actionButton?.addEventListener('click', handleMobileWalletAction);
 }
 
 if (document.readyState === 'loading') {
