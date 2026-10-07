@@ -49,6 +49,12 @@ body.first-paint-main.is-testnet .home-viewport {
   block-size: calc(100svh - 125px);
 }
 
+@media (max-width: 767px) {
+  body.first-paint-main.is-testnet .home-viewport {
+    block-size: calc(100svh - 138px);
+  }
+}
+
 body.first-paint-main.is-first-paint-ready .first-paint-chrome,
 body.first-paint-main.is-first-paint-fallback .first-paint-chrome {
   opacity: 1;
