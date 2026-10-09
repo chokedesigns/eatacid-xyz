@@ -12,11 +12,11 @@ export const chainRegistry = {
     pairsMapPath: 'token_mapping',
     escrows: {
       drops: {
-        address: '',
+        address: 'KT1HMCqYqyP9fTDjzm8KAfyPhFn3tpmSW4kc',
         pairsMapPath: ''
       },
       exchange: {
-        address: 'KT1UikSTZgFj68HaShoWWAJoRki6Y9S1s2Y8',
+        address: 'KT1Ue9es4biDzt528YhNctPGcNeqw9nDXnSv',
         pairsMapPath: ''
       }
     },
