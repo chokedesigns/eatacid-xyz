@@ -44,7 +44,18 @@
     "buffer": "6.0.3",
     "ea-drop-params": "1.0.0"
   },
+  "overrides": {
+    "@taquito/core": "19.0.2",
+    "@taquito/http-utils": "19.0.2",
+    "@taquito/local-forging": "19.0.2",
+    "@taquito/rpc": "19.0.2",
+    "@taquito/utils": "19.0.2"
+  },
   "devDependencies": {
+    "@taquito/michel-codec": "19.0.2",
+    "@taquito/michelson-encoder": "19.0.2",
+    "@taquito/signer": "19.0.2",
+    "@taquito/taquito": "19.0.2",
     "concurrently": "^9.2.1",
     "crypto-browserify": "^3.12.1",
     "parcel": "2.16.4",
