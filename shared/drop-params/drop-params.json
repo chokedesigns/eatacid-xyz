@@ -3,12 +3,12 @@
   "dropName": "SPLINTERED",
   "mirrorNetwork": "testnet",
   "dropDate": {
-    "month": "September",
-    "day": "30",
+    "month": "October",
+    "day": "9",
     "year": "2026"
   },
   "dropTime": {
-    "time": "7:00",
+    "time": "3:00",
     "period": "PM",
     "timezone": "EST"
   },
