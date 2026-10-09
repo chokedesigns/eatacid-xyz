@@ -828,9 +828,13 @@ function refreshConnectedState(nfts) {
   // 4) Reset the burn-token panel
   updateEventCartBurnToken();
 
-  const remainingRows = document.querySelectorAll(
-    '.events-wallet-ui-div .w-dyn-list [data-token-id]'
-  ).length;
+  // Hidden redeem/metadata lists do not contribute to burn-token eligibility.
+  const remainingRows = burnTokens.filter(config => config.enabled).reduce((count, config) => {
+    const slug = getCollectionSlug(config.collection.toUpperCase());
+    return count + document.querySelectorAll(
+      `.events-wallet-ui-div .${slug}-collection.w-dyn-list [data-token-id]`
+    ).length;
+  }, 0);
   renderConnectedWalletTokenState(remainingRows);
 }
 

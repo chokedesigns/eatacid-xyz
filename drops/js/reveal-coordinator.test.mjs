@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
+import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
 
 import {
   createInitialRevealBarrier,
@@ -439,4 +440,173 @@ const connectedHandler = eventsSource.slice(
 assert.match(connectedHandler, /renderWalletTokenLoadingState\(\{ clearRows: true \}\)/);
 assert.match(eventsSource, /if \(terminal\) setWalletTokenRegionPending\(false\)/);
 
-console.log('Drops coordinated region reveal tests passed.');
+// Exercise the existing wallet projection and post-trade renderer with retained metadata.
+function createWalletTokenFixture() {
+  const wallet = { ...createFakeElement(), style: {} };
+  const heading = { style: {}, textContent: '' };
+  const spinner = { style: {} };
+  const empty = { style: {}, textContent: 'NO TOKENS IN WALLET!' };
+  const state = { selectedTokenId: null, cartItems: [] };
+  const panes = new Map();
+
+  function row(tokenId, contractAddress) {
+    const owned = { textContent: '' };
+    const item = {
+      dataset: { tokenId, contractAddress },
+      style: {},
+      checkbox: { checked: false },
+      getAttribute(name) { return name === 'data-token-id' ? this.dataset.tokenId : null; },
+      setAttribute(name, value) {
+        if (name === 'data-contract-address') this.dataset.contractAddress = value;
+      },
+      querySelector(selector) {
+        if (selector === '.collection-item-owned-text') return owned;
+        if (selector === '.w-checkbox-input.events_checkbox') return this.checkbox;
+        return null;
+      },
+      remove() { this.pane.rows = this.pane.rows.filter(candidate => candidate !== this); }
+    };
+    item.checkbox.closest = () => item;
+    return item;
+  }
+
+  for (const slug of ['hen', 'intros', 'canaan']) {
+    const pane = {
+      style: { display: 'none' },
+      rows: [],
+      get firstChild() { return this.rows[0]; },
+      set innerHTML(value) { assert.equal(value, ''); this.rows = []; },
+      removeChild(item) { item.remove(); },
+      appendChild(item) { item.pane = this; this.rows.push(item); },
+      querySelector() { return this.rows[0] || null; }
+    };
+    panes.set(slug, pane);
+  }
+  const metadataRow = row('29', 'KT1-redeem');
+  panes.get('canaan').appendChild(metadataRow);
+  const allRows = () => [...panes.values()].flatMap(pane => pane.rows);
+  const context = {
+    AppState: state,
+    burnTokens: [
+      { collection: 'HEN', enabled: true, exclude: [] },
+      { collection: 'INTRODUCTIONS', enabled: false, exclude: [] }
+    ],
+    collections: { HEN: 'KT1-burn', INTRODUCTIONS: 'KT1-disabled', CANAAN: 'KT1-redeem' },
+    tokenMapping: {},
+    window: { cmsRowsByCollection: { HEN: [row('1', 'KT1-burn'), row('2', 'KT1-burn')] } },
+    logger: { log() {} },
+    setRegionPending,
+    resolveBurnTokenRenderIdentities,
+    normalizeString: value => value.trim().toLowerCase(),
+    setEventContractAndTokenAttributes() {}, // Fixture rows already carry their CMS identities.
+    buildEventTokenRow: (original, tokenId) => row(tokenId, original.dataset.contractAddress),
+    wrapTokenRow: item => item,
+    clearBurnTokenUI() {},
+    updateAppState: patch => Object.assign(state, patch),
+    document: {
+      querySelector(selector) {
+        const elements = {
+          '.events-wallet-ui-div': wallet,
+          '.available-burn-tokens-exchange-text': heading,
+          '.available-token-ui-loading---events': spinner,
+          '.no-tokens-in-walet-div---events': empty,
+          '.event-cart-burn-token-div-main': {}
+        };
+        if (selector === '.w-checkbox-input.events_checkbox:checked') {
+          return allRows().find(item => item.checkbox.checked)?.checkbox || null;
+        }
+        const match = selector.match(/^\.(\w+)-collection\.w-dyn-list$/);
+        return match ? panes.get(match[1]) || null : elements[selector] || null;
+      },
+      querySelectorAll(selector) {
+        if (selector === '.w-checkbox-input.events_checkbox:checked') {
+          return allRows().filter(item => item.checkbox.checked).map(item => item.checkbox);
+        }
+        if (selector === '.w-dyn-item[data-token-id]' ||
+            selector === '.events-wallet-ui-div .w-dyn-list [data-token-id]') return allRows();
+        const match = selector.match(
+          /^\.events-wallet-ui-div \.(\w+)-collection\.w-dyn-list \[data-token-id\]$/
+        );
+        assert.ok(match, `Unexpected wallet-token selector: ${selector}`);
+        return panes.get(match[1])?.rows || [];
+      }
+    }
+  };
+  const functions = [
+    'getCollectionSlug', 'computeBalances', 'resetEventsUI', 'refreshConnectedState',
+    'renderBalances', 'updateOwnedTokenCounts', 'getWalletTokenPanes', 'clearWalletTokenRows',
+    'setWalletTokenPanesVisible', 'setWalletTokenRegionPending', 'commitWalletTokenRegion',
+    'renderWalletTokenLoadingState', 'renderConnectedWalletTokenState',
+    'updateTokensWithWalletData', 'updateEventCartBurnToken'
+  ].map(name => {
+    const match = eventsSource.match(new RegExp(`^(?:async )?function ${name}\\([\\s\\S]*?^\\}\\r?$`, 'm'));
+    assert.ok(match, `Missing runtime function: ${name}`);
+    return match[0];
+  });
+  runInNewContext(
+    `const WALLET_TOKEN_PENDING_CLASS = 'drops-wallet-tokens-pending';\n` +
+    functions.join('\n') +
+    '\nglobalThis.walletHarness = { resetEventsUI, refreshConnectedState, updateTokensWithWalletData };',
+    context
+  );
+  return { ...context.walletHarness, wallet, spinner, empty, state, panes, metadataRow, row };
+}
+
+const redeemHolding = { contractAddress: 'KT1-redeem', tokenId: '29', balance: '1' };
+const burnHolding = (tokenId, balance = '1') => ({ contractAddress: 'KT1-burn', tokenId, balance });
+
+function assertWalletTokenTerminal(fixture, eligibleCount) {
+  assert.equal(fixture.empty.style.display, eligibleCount === 0 ? 'flex' : 'none');
+  assert.equal(fixture.empty.textContent, 'NO TOKENS IN WALLET!');
+  assert.equal(fixture.panes.get('hen').rows.length, eligibleCount);
+  assert.equal(fixture.panes.get('hen').style.display, eligibleCount === 0 ? 'none' : 'block');
+  assert.equal(fixture.spinner.style.display, 'none');
+  assert.equal(fixture.wallet.style.visibility, 'visible');
+  assert.equal(fixture.wallet.classList.contains('drops-wallet-tokens-pending'), false);
+  assert.equal(fixture.wallet.getAttribute('aria-busy'), 'false');
+  assert.equal(fixture.state.selectedTokenId, null);
+  assert.equal(fixture.state.cartItems.length, 0);
+  assert.equal(fixture.panes.get('canaan').rows[0], fixture.metadataRow);
+  assert.equal(fixture.panes.get('canaan').style.display, 'none');
+  assert.ok(fixture.panes.get('hen').rows.every(item => !item.checkbox.checked));
+}
+
+// 2 -> 1 keeps the eligible list visible while redeem metadata remains hidden.
+{
+  const fixture = createWalletTokenFixture();
+  await fixture.updateTokensWithWalletData([burnHolding('1'), burnHolding('2'), redeemHolding]);
+  fixture.panes.get('hen').rows[0].checkbox.checked = true;
+  fixture.state.selectedTokenId = '1';
+  fixture.state.cartItems = [{ id: '1' }];
+  fixture.resetEventsUI();
+  fixture.refreshConnectedState([burnHolding('2'), redeemHolding]);
+  assertWalletTokenTerminal(fixture, 1);
+}
+
+// 1 -> 0 ignores retained redeem rows and configured-but-disabled collection rows.
+for (const depletedBurn of [[], [burnHolding('1', '0')]]) {
+  const fixture = createWalletTokenFixture();
+  await fixture.updateTokensWithWalletData([burnHolding('1'), redeemHolding]);
+  fixture.panes.get('hen').rows[0].checkbox.checked = true;
+  fixture.state.selectedTokenId = '1';
+  fixture.state.cartItems = [{ id: '1' }];
+  fixture.panes.get('intros').appendChild(fixture.row('7', 'KT1-disabled'));
+  fixture.resetEventsUI();
+  fixture.refreshConnectedState([
+    ...depletedBurn, redeemHolding,
+    { contractAddress: 'KT1-disabled', tokenId: '7', balance: '1' }
+  ]);
+  assertWalletTokenTerminal(fixture, 0);
+  assert.equal(fixture.panes.get('intros').rows.length, 1);
+}
+
+// Initial zero and an explicit 0 -> 1 refresh use the existing cached-CMS projection.
+for (const depletedBurn of [[], [burnHolding('1', '0')]]) {
+  const fixture = createWalletTokenFixture();
+  await fixture.updateTokensWithWalletData([...depletedBurn, redeemHolding]);
+  assertWalletTokenTerminal(fixture, 0);
+  await fixture.updateTokensWithWalletData([burnHolding('1'), redeemHolding]);
+  assertWalletTokenTerminal(fixture, 1);
+}
+
+console.log('Drops coordinated region reveal and wallet refresh tests passed.');
