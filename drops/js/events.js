@@ -543,6 +543,13 @@ function renderBurnTokenUI(container, data) {
   }
 }
 
+function getBurnAmountForContract(contractAddress) {
+  const config = burnTokens.find(t => t.enabled &&
+    normalizeString(collections[t.collection]) === normalizeString(contractAddress));
+  const amount = config?.burnAmount;
+  return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+}
+
 /**
  * Returns the one selected burn‑token’s contractAddress, tokenId,
  * and the user’s current on‑screen balance (oldBalance).
@@ -768,7 +775,7 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
 }
 
 /**
- * Polls until each traded token’s on‑chain balance has dropped to zero (or timeout).
+ * Polls until balances have decreased by the configured burn amount (or timeout).
  */
 async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval = 3000) {
   return pollForSharedNFTUpdate({
@@ -816,12 +823,13 @@ function refreshConnectedState(nfts) {
   // 2) Update the “Owned” counts on existing CMS rows
   updateOwnedTokenCounts(nfts);
 
-  // 3) Remove any rows for tokens the user no longer owns
+  // 3) Remove unowned rows and burn rows below the configured quantity
   const balances = computeBalances(nfts);
   document.querySelectorAll('.w-dyn-item[data-token-id]').forEach(wrapper => {
     const { tokenId, contractAddress } = wrapper.dataset;
     const key = `${contractAddress}:${tokenId}`;
-    if (!balances[key]) {
+    const burnAmount = getBurnAmountForContract(contractAddress);
+    if (!balances[key] || (burnAmount != null && balances[key] < burnAmount)) {
       wrapper.remove();
     }
   });
@@ -1006,7 +1014,15 @@ async function handleEventExchange() {
 
     // Gather burn-cart items
     const { contractAddress, tokenId, oldBalance } = getSelectedEventTokenWithBalance();
-    const burnCart = [{ contractAddress, tokenId, quantity: 1, startingBalance: oldBalance }];
+    const burnAmount = getBurnAmountForContract(contractAddress);
+    if (burnAmount == null) throw new Error('Burn amount must be a positive safe integer.');
+    if (!Number.isSafeInteger(redeemToken.redeemAmount) || redeemToken.redeemAmount <= 0) {
+      throw new Error('Redeem amount must be a positive safe integer.');
+    }
+    if (!Number.isFinite(oldBalance) || oldBalance < burnAmount) {
+      throw new Error('Insufficient tokens for the configured burn amount.');
+    }
+    const burnCart = [{ contractAddress, tokenId, quantity: burnAmount, startingBalance: oldBalance }];
     logger.log('📜 Burn cart:', burnCart);
 
     // Build or skip operator-approval ops
@@ -1038,51 +1054,49 @@ async function handleEventExchange() {
     const tradeOperations = Object.entries(tradesByContract).map(([contract, items]) => {
       const trades = [];
       items.forEach(item => {
-        for (let i = 0; i < item.quantity; i++) {
-          trades.push({
-            prim: 'Pair',
-            args: [
-              {
-                prim: 'Pair',
-                args: [
-                  {
-                    prim: 'Pair',
-                    args: [
-                      { int: '1' },
-                      { string: item.contractAddress }
-                    ]
-                  },
-                  {
-                    prim: 'Pair',
-                    args: [
-                      { int: String(item.tokenId) },
-                      { int: String(redeemToken.redeemAmount) }
-                    ]
-                  }
-                ]
-              },
-              {
-                prim: 'Pair',
-                args: [
-                  {
-                    prim: 'Pair',
-                    args: [
-                      { string: REDEEM_CONTRACT_ADDRESS },
-                      { int: String(redeemToken.tokenId) }
-                    ]
-                  },
-                  {
-                    prim: 'Pair',
-                    args: [
-                      { int: String(item.tokenPairId) },
-                      { string: myAddr }
-                    ]
-                  }
-                ]
-              }
-            ]
-          });
-        }
+        trades.push({
+          prim: 'Pair',
+          args: [
+            {
+              prim: 'Pair',
+              args: [
+                {
+                  prim: 'Pair',
+                  args: [
+                    { int: String(item.quantity) },
+                    { string: item.contractAddress }
+                  ]
+                },
+                {
+                  prim: 'Pair',
+                  args: [
+                    { int: String(item.tokenId) },
+                    { int: String(redeemToken.redeemAmount) }
+                  ]
+                }
+              ]
+            },
+            {
+              prim: 'Pair',
+              args: [
+                {
+                  prim: 'Pair',
+                  args: [
+                    { string: REDEEM_CONTRACT_ADDRESS },
+                    { int: String(redeemToken.tokenId) }
+                  ]
+                },
+                {
+                  prim: 'Pair',
+                  args: [
+                    { int: String(item.tokenPairId) },
+                    { string: myAddr }
+                  ]
+                }
+              ]
+            }
+          ]
+        });
       });
       return {
         kind: 'transaction',
@@ -1757,9 +1771,11 @@ async function updateTokensWithWalletData(nfts) {
 
   const eligible = nfts.filter(nft => {
     const entry = burnTokens.find(t =>
+      t.enabled &&
       normalizeString(nft.contractAddress) === normalizeString(collections[t.collection]) &&
       !t.exclude.includes(nft.tokenId) &&
-      Number(nft.balance) > 0
+      Number.isSafeInteger(t.burnAmount) && t.burnAmount > 0 &&
+      Number(nft.balance) >= t.burnAmount
     );
     return Boolean(entry);
   });

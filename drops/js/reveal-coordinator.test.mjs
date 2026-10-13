@@ -488,8 +488,8 @@ function createWalletTokenFixture() {
   const context = {
     AppState: state,
     burnTokens: [
-      { collection: 'HEN', enabled: true, exclude: [] },
-      { collection: 'INTRODUCTIONS', enabled: false, exclude: [] }
+      { collection: 'HEN', enabled: true, exclude: [], burnAmount: 1 },
+      { collection: 'INTRODUCTIONS', enabled: false, exclude: [], burnAmount: 1 }
     ],
     collections: { HEN: 'KT1-burn', INTRODUCTIONS: 'KT1-disabled', CANAAN: 'KT1-redeem' },
     tokenMapping: {},
@@ -533,7 +533,7 @@ function createWalletTokenFixture() {
     }
   };
   const functions = [
-    'getCollectionSlug', 'computeBalances', 'resetEventsUI', 'refreshConnectedState',
+    'getCollectionSlug', 'getBurnAmountForContract', 'computeBalances', 'resetEventsUI', 'refreshConnectedState',
     'renderBalances', 'updateOwnedTokenCounts', 'getWalletTokenPanes', 'clearWalletTokenRows',
     'setWalletTokenPanesVisible', 'setWalletTokenRegionPending', 'commitWalletTokenRegion',
     'renderWalletTokenLoadingState', 'renderConnectedWalletTokenState',
