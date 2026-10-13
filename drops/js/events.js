@@ -11,6 +11,7 @@ const ENABLE_DESKTOP_ELLIPSIS_TEST = true;
 import eventsNetworkConfig from './events-config.js';
 import dropParams from 'ea-drop-params';
 import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
+import { startDropCountdown, formatDropCountdown } from '../../shared/drop-countdown.js';
 import { createPublicLogger } from '../../shared/public-logger.js';
 import {
   PUBLIC_WALLET_STATE_EVENT,
@@ -1397,7 +1398,7 @@ function updateDropDateTime() {
         dateEl.innerHTML = 'CONFIG ERROR: BAD DATE';
       } else {
         const { date } = validation;
-        const opts = { weekday: "long", month: "long", day: "2-digit" };
+        const opts = { weekday: "long", month: "long", day: "2-digit", timeZone: "UTC" };
         dateEl.innerHTML = date.toLocaleDateString("en-US", opts).toUpperCase();
       }
     }
@@ -2143,7 +2144,7 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus) {
  * Starts the countdown to the drop; handles pre-drop timer, standby,
  * and transitions by driving AppState only.
  *
- * - Uses shared computeDropInstant(dropDate, dropTime) for timezone-aware Date.
+ * - Uses the canonical schedule and shared synchronized UTC countdown owner.
  * - Displays "N DAYS • HH:MM:SS", "1 DAY • HH:MM:SS", "0 DAYS • HH:MM:SS",
  *   or "TODAY • HH:MM:SS" depending on local calendar day.
  */
@@ -2196,115 +2197,36 @@ function startCountdown() {
     return;
   }
 
-  const dropDateTime = result.date;
-  logger.log("[startCountdown] Drop date/time:", dropDateTime);
-
-  // initial phase = pre
-  updateAppState({ countdownPhase: 'pre', currentCountdown: '00:00:00' });
-
-  // if already past drop → immediately standby + poll
-  if (new Date() >= dropDateTime) {
-    logger.log("[startCountdown] Past drop time; entering standby immediately");
-    updateAppState({ countdownPhase: 'standby' });
-    setCountdownText("STANDBY…");
-
-    return new Promise(resolveInitialStatus => {
-      let initialStatusResolved = false;
+  // Countdown targets the published schedule; manual unpause still owns LIVE.
+  const countdown = startDropCountdown({
+    startAtMs: result.date.getTime(),
+    onTick(time) {
+      const text = formatDropCountdown(result.date.getTime(), time);
+      setCountdownText(text);
+      updateAppState({ countdownPhase: 'pre', currentCountdown: text });
+    },
+    onExpire() {
+      AppState.countdownTimerId = null;
+      updateAppState({ countdownPhase: 'standby', currentCountdown: 'STANDBY…' });
+      setCountdownText('STANDBY…');
       let receivedPauseStatus = false;
-      const resolveOnce = () => {
-        if (initialStatusResolved) return;
-        initialStatusResolved = true;
-        resolveInitialStatus();
-      };
-
       pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS, 3000, paused => {
         if (paused === true) {
           receivedPauseStatus = true;
           setCountdownText('STANDBY…');
-          resolveOnce();
         } else if (paused == null && !receivedPauseStatus) {
           setCountdownText('STATUS UNAVAILABLE');
-          resolveOnce();
         }
-      })
-        .then(() => {
-          logger.log('[startCountdown] Unpaused → LIVE');
-          setCountdownText('LIVE NOW!');
-          updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
-          resolveOnce();
-        })
-        .catch(err => {
-          console.error('[startCountdown] pollForUnpause error:', err);
-          setCountdownText('STATUS UNAVAILABLE');
-          resolveOnce();
-        });
-    });
-  }
-
-  /**
-   * Called every second before drop: updates the timer, transitions phases.
-   */
-  function tick() {
-    const diffMs = dropDateTime - new Date();
-
-    if (diffMs <= 0) {
-      // stop the pre-drop interval
-      clearInterval(AppState.countdownTimerId);
-      AppState.countdownTimerId = null;
-
-      logger.log("[startCountdown] Hit zero → entering standby");
-      updateAppState({ countdownPhase: 'standby' });
-      setCountdownText("STANDBY…");
-
-      pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS)
-        .then(() => {
-          logger.log("[startCountdown] Unpaused → LIVE");
-          setCountdownText("LIVE NOW!");
-          updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
-        })
-        .catch(err => console.error("[startCountdown] pollForUnpause error:", err));
-      return;
+      }).then(() => {
+        setCountdownText('LIVE NOW!');
+        updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
+      }).catch(err => {
+        console.error('[startCountdown] pollForUnpause error:', err);
+        setCountdownText('STATUS UNAVAILABLE');
+      });
     }
-
-    // still pre-drop: update "DAYS • HH:MM:SS" / "TODAY • HH:MM:SS" / "0 DAYS • HH:MM:SS"
-    const now      = new Date();
-    const totalSec = Math.floor(diffMs / 1000);
-
-    let s      = totalSec;
-    const days = Math.floor(s / 86400); s -= days * 86400;
-    const hrs  = Math.floor(s / 3600);  s -= hrs * 3600;
-    const mins = Math.floor(s / 60);    s -= mins * 60;
-    const secs = s;
-
-    const hh = pad(hrs);
-    const mm = pad(mins);
-    const ss = pad(secs);
-
-    // Local-day comparison for TODAY vs 0 DAYS
-    const sameLocalDay = dropDateTime.toDateString() === now.toDateString();
-
-    let labelPart;
-    if (days > 0) {
-      labelPart = (days === 1) ? '1 DAY' : `${days} DAYS`;
-    } else {
-      labelPart = sameLocalDay ? 'TODAY' : '0 DAYS';
-    }
-
-    const timePart  = `${hh}:${mm}:${ss}`;
-    const formatted = `${labelPart} • ${timePart}`;
-
-    setCountdownText(formatted);
-
-    // If you already switched to storing the formatted label+time for the exchange hover,
-    // keep it consistent here:
-    updateAppState({ currentCountdown: formatted });
-  }
-
-  // kick off the first tick immediately
-  tick();
-
-  // schedule recurring ticks and store the handle in AppState
-  AppState.countdownTimerId = setInterval(tick, 1000);
+  });
+  AppState.countdownTimerId = countdown.timerId;
 }
 
 // =============================================================================

@@ -8,6 +8,7 @@
     "shared/drop-params"
   ],
   "scripts": {
+    "test:drop-time": "node --test --experimental-test-isolation=none shared/drop-time.test.mjs shared/drop-countdown.test.mjs drops/js/countdown.test.mjs",
     "dropparams:json": "node shared/drop-params/gen-drop-params-json.mjs",
     "dropparams:transaction": "node scripts/drop-params-transaction.mjs",
     "dropparams:authoring-service": "node scripts/drop-params-authoring-service.mjs",

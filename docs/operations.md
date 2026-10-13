@@ -62,6 +62,8 @@ Stop the command with `Ctrl+C` in its terminal. Local Parcel development exercis
 
 ## 4. Drop-parameter workflow
 
+For schedule/time regressions, run `npm run test:drop-time` from the outer repository and `npm run test:runtime` from Admin. The countdown requires browser access to `https://timeapi.io/api/time/current/zone?timeZone=UTC`; a blocked request, provider failure, stale sample, suspension, or clock discontinuity shows `TIME UNAVAILABLE` until synchronization succeeds. It retries automatically, including on visibility/resume and connectivity recovery. Do not substitute the device clock or a chain block timestamp when the reference is unavailable. This time reference affects the published countdown only; manual contract unpause remains a separate action.
+
 The ownership chain is:
 
 ```text

@@ -23,38 +23,12 @@ function normalizeDropTimezone(raw) {
   return SUPPORTED_DROP_TIMEZONES.includes(v) ? v : null;
 }
 
-/**
- * @returns {boolean} True if DST is in effect for `date` (host environment).
- *
- * NOTE: This uses the *host* environment's timezone offsets, which is not
- * perfect, but it's good enough to flip CST→CDT, EST→EDT, PST→PDT on the
- * right part of the calendar.
- */
-function isDST(date = new Date()) {
-  const janOffset = new Date(date.getFullYear(), 0, 1).getTimezoneOffset();
-  const julOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
-  return date.getTimezoneOffset() < Math.max(janOffset, julOffset);
-}
-
-/**
- * Given a base US timezone ("CST" | "EST" | "PST") and a calendar date,
- * return the correct standard/DST abbreviation ("CST"/"CDT", etc.).
- *
- * @param {string} stdAbbrev
- * @param {Date} date
- * @returns {string}
- */
-function getTzAbbrev(stdAbbrev, date) {
-  const map = {
-    CST: { std: 'CST', dst: 'CDT' },
-    EST: { std: 'EST', dst: 'EDT' },
-    PST: { std: 'PST', dst: 'PDT' }
-  };
-  const key   = stdAbbrev?.toUpperCase();
-  const entry = map[key];
-  if (!entry) return stdAbbrev;
-  return isDST(date) ? entry.dst : entry.std;
-}
+// Authored abbreviations denote seasonal US zones, not fixed UTC offsets.
+const DROP_ZONES = {
+  CST: { name: 'America/Chicago', offsets: [6, 5] },
+  EST: { name: 'America/New_York', offsets: [5, 4] },
+  PST: { name: 'America/Los_Angeles', offsets: [8, 7] }
+};
 
 // -----------------------------------------------------------------------------
 // DATE PARSING (STRICT)
@@ -165,12 +139,12 @@ export function validateDropDate(dropDate) {
     return { ok: false, error: 'BAD_DATE' };
   }
 
-  // Build a naive local Date and make sure nothing "rolls over"
-  const candidate = new Date(year, monthIndex, day);
+  // Calendar validation must not depend on the viewer's timezone.
+  const candidate = new Date(Date.UTC(year, monthIndex, day));
   if (
-    candidate.getFullYear() !== year ||
-    candidate.getMonth()    !== monthIndex ||
-    candidate.getDate()     !== day
+    candidate.getUTCFullYear() !== year ||
+    candidate.getUTCMonth()    !== monthIndex ||
+    candidate.getUTCDate()     !== day
   ) {
     // This catches things like "November 31" turning into December 1
     return { ok: false, error: 'BAD_DATE' };
@@ -279,24 +253,30 @@ export function computeDropInstant(dropDate, dropTime) {
   }
   const { hour, minute } = timeCheck;
 
-  // 4) Decide DST variant ("EST" vs "EDT", etc.) using a safe date
-  const safeCalendarDate = new Date(year, monthIndex, day);
-  const tzAbbrev = getTzAbbrev(tzBase, safeCalendarDate);
-
-  // 5) Build a stable Date string using a canonical month name,
-  //    but *only* after we've proven the Y-M-D combo is valid.
-  const monthName = MONTHS_FULL[monthIndex];
-  const hh = String(((hour + 11) % 12) + 1); // convert back to 1–12 for display
-  const mm = String(minute).padStart(2, '0');
-  const period = hour >= 12 ? 'PM' : 'AM';
-
-  const baseLabel = `${monthName} ${day}, ${year} ${hh}:${mm} ${period}`;
-  const fullLabel = `${baseLabel} ${tzAbbrev}`;
-  const dropDateTime = new Date(fullLabel);
-
-  if (!Number.isFinite(dropDateTime.getTime())) {
+  // Round-trip both possible offsets through the named zone's own DST rules.
+  // Zero matches is a spring gap; two matches is an ambiguous autumn fold.
+  // Neither can publish one instant with the existing authoring schema.
+  const zone = DROP_ZONES[tzBase];
+  let matches;
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone.name, hourCycle: 'h23',
+      year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric'
+    });
+    matches = zone.offsets.map(offset => new Date(
+      Date.UTC(year, monthIndex, day, hour, minute) + offset * 3600000
+    )).filter(date => {
+      const parts = Object.fromEntries(formatter.formatToParts(date).map(p => [p.type, p.value]));
+      return Number(parts.year) === year && Number(parts.month) === monthIndex + 1
+        && Number(parts.day) === day && Number(parts.hour) === hour
+        && Number(parts.minute) === minute;
+    });
+  } catch {
     return { ok: false, error: 'BAD_DATE_TZ' };
   }
-
-  return { ok: true, date: dropDateTime };
+  if (matches.length !== 1) {
+    return { ok: false, error: 'BAD_DATE_TZ' };
+  }
+  return { ok: true, date: matches[0] };
 }
