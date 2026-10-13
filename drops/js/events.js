@@ -11,7 +11,7 @@ const ENABLE_DESKTOP_ELLIPSIS_TEST = true;
 import eventsNetworkConfig from './events-config.js';
 import dropParams from 'ea-drop-params';
 import { computeDropInstant, validateDropDate } from '../../shared/drop-time.js';
-import { startDropCountdown, formatDropCountdown } from '../../shared/drop-countdown.js';
+import { startDropCountdown, formatDropCountdown, TIME_UNAVAILABLE } from '../../shared/drop-countdown.js';
 import { createPublicLogger } from '../../shared/public-logger.js';
 import {
   PUBLIC_WALLET_STATE_EVENT,
@@ -2090,29 +2090,64 @@ function displayDefaultTokens() {
 // COUNTDOWN & CONTRACT UNPAUSE
 // =============================================================================
 
+let publicCountdownOwner = null;
+let publicCountdownResume = null;
+
+function stopPublicCountdown() {
+  if (publicCountdownResume) {
+    window.removeEventListener('pageshow', publicCountdownResume);
+    publicCountdownResume = null;
+  }
+  const owner = publicCountdownOwner;
+  publicCountdownOwner = null; // Invalidate callbacks before aborting their work.
+  owner?.countdown?.stop();
+  owner?.abort.abort();
+  if (owner) window.removeEventListener('pagehide', owner.onPagehide);
+  AppState.countdownTimerId = null;
+}
+
+function waitForUnpauseRetry(interval, signal) {
+  return new Promise(resolve => {
+    const finish = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener('abort', finish);
+      resolve();
+    };
+    const timer = setTimeout(finish, interval);
+    signal?.addEventListener('abort', finish, { once: true });
+    if (signal?.aborted) finish();
+  });
+}
+
 /**
  * Polls the escrow contract’s storage until its `paused` flag flips to false,
  * then re-fetches & re-renders the user's NFTs.
  */
-async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus) {
+async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
+  signal, isCurrent = () => true
+} = {}) {
   if (!networkConfigAvailable) {
     console.error(networkUnavailableMessage);
     return;
   }
 
+  if (signal?.aborted || !isCurrent()) return;
   // entering standby-polling: mark on-chain paused
   updateAppState({ contractPaused: true });
 
   logger.log(`[pollForUnpause] polling ${contractAddress} every ${interval}ms`);
   let attempt = 0;
-  while (true) {
+  while (!signal?.aborted && isCurrent()) {
     attempt++;
     logger.log(`[pollForUnpause] attempt #${attempt}`);
     try {
       const res = await fetch(
-        `${TZKT_BASE}/v1/contracts/${contractAddress}/storage`
+        `${TZKT_BASE}/v1/contracts/${contractAddress}/storage`,
+        { signal }
       );
+      if (signal?.aborted || !isCurrent()) return;
       const storage = await res.json();
+      if (signal?.aborted || !isCurrent()) return;
       logger.log(`[pollForUnpause] paused =`, storage.paused);
 
       const paused = typeof storage.paused === 'boolean' ? storage.paused : null;
@@ -2126,17 +2161,19 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus) {
           const account = AppState.activeAccount;
           if (account) {
             const nfts = await fetchNFTs(account.address);
-            if (AppState.activeAccount?.address !== account.address) return;
+            if (signal?.aborted || !isCurrent() || AppState.activeAccount?.address !== account.address) return;
             await updateTokensWithWalletData(nfts);
           }
         }
         return;
       }
     } catch (err) {
+      if (signal?.aborted || !isCurrent()) return;
       console.error(`[pollForUnpause] fetch error:`, err);
       onPauseStatus?.(null);
     }
-    await new Promise(resolve => setTimeout(resolve, interval));
+    if (signal?.aborted || !isCurrent()) return;
+    await waitForUnpauseRetry(interval, signal);
   }
 }
 
@@ -2149,6 +2186,7 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus) {
  *   or "TODAY • HH:MM:SS" depending on local calendar day.
  */
 function startCountdown() {
+  stopPublicCountdown();
   const countdownEl = document.querySelector('.drop-details-drop-date-countdown-text');
   const countdownElMobile = document.querySelector('.drop-details-drop-date-countdown-text-mobile');
 
@@ -2197,36 +2235,63 @@ function startCountdown() {
     return;
   }
 
+  const owner = { abort: new AbortController(), countdown: null, onPagehide: null };
+  publicCountdownOwner = owner;
+  const isCurrent = () => publicCountdownOwner === owner && !owner.abort.signal.aborted;
+  owner.onPagehide = event => {
+    if (!isCurrent()) return;
+    stopPublicCountdown();
+    setCountdownText(TIME_UNAVAILABLE);
+    updateAppState({ countdownPhase: 'pre', currentCountdown: TIME_UNAVAILABLE });
+    // A cached page keeps only one resume hook, with no active timer or request.
+    if (event.persisted) {
+      const resume = () => {
+        if (publicCountdownResume !== resume) return;
+        window.removeEventListener('pageshow', resume);
+        publicCountdownResume = null;
+        startCountdown();
+      };
+      publicCountdownResume = resume;
+      window.addEventListener('pageshow', resume, { once: true });
+    }
+  };
+  window.addEventListener('pagehide', owner.onPagehide);
+
   // Countdown targets the published schedule; manual unpause still owns LIVE.
-  const countdown = startDropCountdown({
+  owner.countdown = startDropCountdown({
     startAtMs: result.date.getTime(),
     onTick(time) {
+      if (!isCurrent()) return;
       const text = formatDropCountdown(result.date.getTime(), time);
       setCountdownText(text);
       updateAppState({ countdownPhase: 'pre', currentCountdown: text });
     },
     onExpire() {
+      if (!isCurrent()) return;
       AppState.countdownTimerId = null;
       updateAppState({ countdownPhase: 'standby', currentCountdown: 'STANDBY…' });
       setCountdownText('STANDBY…');
       let receivedPauseStatus = false;
       pollForUnpause(BURN_REDEEM_CONTRACT_ADDRESS, 3000, paused => {
+        if (!isCurrent()) return;
         if (paused === true) {
           receivedPauseStatus = true;
           setCountdownText('STANDBY…');
         } else if (paused == null && !receivedPauseStatus) {
           setCountdownText('STATUS UNAVAILABLE');
         }
-      }).then(() => {
+      }, { signal: owner.abort.signal, isCurrent }).then(() => {
+        if (!isCurrent()) return;
         setCountdownText('LIVE NOW!');
         updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
       }).catch(err => {
+        if (!isCurrent()) return;
         console.error('[startCountdown] pollForUnpause error:', err);
         setCountdownText('STATUS UNAVAILABLE');
       });
     }
   });
-  AppState.countdownTimerId = countdown.timerId;
+  AppState.countdownTimerId = owner.countdown.timerId;
 }
 
 // =============================================================================

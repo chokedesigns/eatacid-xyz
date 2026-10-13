@@ -3,17 +3,19 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import { computeDropInstant } from '../../shared/drop-time.js';
-import { startDropCountdown, formatDropCountdown } from '../../shared/drop-countdown.js';
+import { startDropCountdown, formatDropCountdown, TIME_UNAVAILABLE } from '../../shared/drop-countdown.js';
 import { BASE, clockFixture, flush } from '../../shared/drop-countdown.fixtures.mjs';
 
 const source = readFileSync(new URL('./events.js', import.meta.url), 'utf8');
-const countdownSource = source.slice(source.indexOf('function startCountdown() {'),
+const countdownSource = source.slice(source.indexOf('let publicCountdownOwner'), source.indexOf('async function pollForUnpause('))
+  + source.slice(source.indexOf('function startCountdown() {'),
   source.indexOf('// EXCHANGE BUTTON STATE MANAGEMENT', source.indexOf('function startCountdown() {')));
 
 test('public countdown uses synchronized time on both pills and retains manual-unpause standby/live', async () => {
   const f = clockFixture(7 * 86400000);
   const pills = [{}, {}]; const state = {}; let polls = 0; let unpause;
   const context = vm.createContext({
+    window: f.window, AbortController, TIME_UNAVAILABLE,
     document: { querySelector: selector => selector.endsWith('-mobile') ? pills[1] : pills[0] },
     applyEllipsis() {}, updateAppState: patch => Object.assign(state, patch), AppState: state,
     console, logger: { log() {} },
@@ -50,6 +52,7 @@ test('public sync failure stays unavailable, recovers and does not poll release 
   const f = clockFixture(-86400000); f.fail = true;
   const pill = {}; const state = {};
   const context = vm.createContext({ document: { querySelector: () => pill }, applyEllipsis() {},
+    window: f.window, AbortController, TIME_UNAVAILABLE,
     updateAppState: patch => Object.assign(state, patch), AppState: state, console,
     dropDate: {}, dropTime: {}, computeDropInstant: () => ({ ok: true, date: new Date(BASE + 60000) }),
     formatDropCountdown, startDropCountdown: options => startDropCountdown({ ...options, ...f.options }),
@@ -60,5 +63,5 @@ test('public sync failure stays unavailable, recovers and does not poll release 
   f.fail = false; f.tick(5000); await flush();
   assert.match(pill.textContent, /00:00:55$/);
   assert.equal(state.countdownPhase, 'pre');
-  f.clock.invalidate('test cleanup'); f.timers.clear();
+  vm.runInContext('stopPublicCountdown();', context);
 });
