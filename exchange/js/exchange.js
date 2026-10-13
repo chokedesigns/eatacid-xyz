@@ -962,12 +962,16 @@ function handleDropdownChange(event) {
 // FETCH TOKEN PAIR ID
 // -----------------------------------------------------
 
-async function fetchTokenPairId(burnContractAddress, burnTokenId) {
+async function fetchTokenPairId(item) {
   return fetchSharedTokenPairId({
     tzktBase: TZKT_BASE,
     escrowAddress: BURN_REDEEM_CONTRACT,
-    burnContractAddress,
-    burnTokenId
+    burnContractAddress: item.contractAddress,
+    burnTokenId: item.tokenId,
+    burnAmount: 1,
+    redeemContractAddress: REDEEM_TOKEN_CONTRACT,
+    redeemTokenId: item.redeemTokenId ?? 0,
+    redeemAmount: item.redeemAmount
   });
 }
 
@@ -1099,7 +1103,7 @@ async function handleExchange() {
 
     // Lookup token_pair_id for each burn item.
     for (let item of burnCart) {
-      item.tokenPairId = await fetchTokenPairId(item.contractAddress, item.tokenId);
+      item.tokenPairId = await fetchTokenPairId(item);
       if (item.tokenPairId === null) {
         showModal('ERROR', `[TOKEN MAPPING NOT FOUND FOR ${item.tokenId}]`);
         console.warn(`❌ Skipping trade for ${item.tokenId} (No token_pair_id found)`);

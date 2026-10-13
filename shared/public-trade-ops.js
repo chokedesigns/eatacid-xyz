@@ -2,58 +2,100 @@ const DEBUG = false;
 const dlog = (...args) => { if (DEBUG) console.log(...args); };
 
 /**
- * Looks up the on-chain token_pair_id for a given burn contract and token.
+ * Resolves one active token_pair_id matching all six intended trade terms.
+ * The configured indexer and escrow scope the mapping; ambiguity fails closed.
  *
  * @param {Object} args
  * @param {string} args.tzktBase
  * @param {string} args.escrowAddress
  * @param {string} args.burnContractAddress
  * @param {number|string} args.burnTokenId
- * @returns {Promise<number|null>}
+ * @param {number|string} args.burnAmount
+ * @param {string} args.redeemContractAddress
+ * @param {number|string} args.redeemTokenId
+ * @param {number|string} args.redeemAmount
+ * @returns {Promise<string|null>} Exact nat pair ID, or null on absence/error/ambiguity.
  */
 export async function fetchTokenPairId({
   tzktBase,
   escrowAddress,
   burnContractAddress,
-  burnTokenId
+  burnTokenId,
+  burnAmount,
+  redeemContractAddress,
+  redeemTokenId,
+  redeemAmount
 }) {
   try {
+    if (![tzktBase, escrowAddress, burnContractAddress, redeemContractAddress].every(
+      value => typeof value === 'string' && value.length > 0 && value.trim() === value
+    )) {
+      throw new Error('Missing or invalid token pair address/indexer context.');
+    }
+    const terms = {
+      burn_contract_address: burnContractAddress,
+      burn_token_id: exactNat(burnTokenId),
+      burn_amount: exactNat(burnAmount, true),
+      redeem_contract_address: redeemContractAddress,
+      redeem_token_id: exactNat(redeemTokenId),
+      redeem_amount: exactNat(redeemAmount, true)
+    };
+    if (Object.values(terms).some(value => value == null)) {
+      throw new Error('Missing or invalid token pair ID/amount terms.');
+    }
     dlog(`\u{1F50D} Fetching token_pair_id for ${burnContractAddress}, token ${burnTokenId}`);
 
-    const url =
-      `${tzktBase}/v1/contracts/${escrowAddress}` +
-      `/bigmaps/token_mapping/keys?active=true&limit=10000`;
-
-    const response = await fetch(url);
-    await assertTzktResponseOk(response, 'fetch token_pair_id mapping');
-    const raw = await response.json();
-    dlog("\u{1F4DC} Retrieved raw token_mapping data:", raw);
-
-    const tokenMappings = (raw || []).filter(
-      (entry) => entry && entry.active !== false && entry.value != null
-    );
-
-    dlog("\u{1F4DC} Filtered active token_mapping data:", tokenMappings);
-
-    const burnContract = String(burnContractAddress).toLowerCase();
-    const tokenId = String(burnTokenId);
-    const matching = tokenMappings.find(
-      (entry) =>
-        String(entry.value.burn_contract_address).toLowerCase() === burnContract &&
-        String(entry.value.burn_token_id) === tokenId
-    );
-
-    if (matching) {
-      dlog(`\u2705 Found token_pair_id: ${matching.key}`);
-      return Number(matching.key);
+    const limit = 10000;
+    let matchingId = null;
+    // Inspect the complete mapping before accepting a match. A full page is
+    // insufficient evidence of uniqueness; a paging cap fails closed as well.
+    for (let page = 0; page < 100; page++) {
+      const url = `${tzktBase}/v1/contracts/${escrowAddress}` +
+        `/bigmaps/token_mapping/keys?active=true&limit=${limit}&offset=${page * limit}&sort.asc=id`;
+      const response = await fetch(url);
+      await assertTzktResponseOk(response, 'fetch token_pair_id mapping');
+      const raw = await response.json();
+      if (!Array.isArray(raw) || raw.length > limit) {
+        throw new Error('Unexpected token_mapping response.');
+      }
+      for (const entry of raw) {
+        const value = entry?.value;
+        if (entry?.active === false || value == null) continue;
+        if (value.burn_contract_address !== terms.burn_contract_address ||
+            value.redeem_contract_address !== terms.redeem_contract_address ||
+            exactNat(value.burn_token_id) !== terms.burn_token_id ||
+            exactNat(value.burn_amount, true) !== terms.burn_amount ||
+            exactNat(value.redeem_token_id) !== terms.redeem_token_id ||
+            exactNat(value.redeem_amount, true) !== terms.redeem_amount) continue;
+        if (matchingId !== null) {
+          throw new Error('Ambiguous token pair: multiple active mappings match the intended trade terms.');
+        }
+        matchingId = exactNat(entry.key);
+        if (matchingId === null) throw new Error('Invalid token_pair_id in matching mapping.');
+      }
+      if (raw.length < limit) {
+        if (matchingId !== null) {
+          dlog(`\u2705 Found token_pair_id: ${matchingId}`);
+          return matchingId;
+        }
+        console.warn(`\u274C No token_pair_id matching intended trade terms for ${burnContractAddress} / ${burnTokenId}`);
+        return null;
+      }
     }
-
-    console.warn(`\u274C No token_pair_id for ${burnContractAddress} / ${burnTokenId}`);
-    return null;
+    throw new Error('Token pair mapping paging cap reached before uniqueness could be established.');
   } catch (error) {
     console.error("\u274C Error fetching token_pair_id:", error);
     return null;
   }
+}
+
+function exactNat(value, positive = false) {
+  if (typeof value === 'number' && (!Number.isSafeInteger(value) || value < 0)) return null;
+  if (typeof value !== 'number' && typeof value !== 'string') return null;
+  const text = String(value);
+  if (!/^\d+$/.test(text)) return null;
+  const nat = BigInt(text);
+  return positive && nat === 0n ? null : nat.toString();
 }
 
 /**

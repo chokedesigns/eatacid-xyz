@@ -714,12 +714,16 @@ function stampRowAttributes(row, contractAddress) {
 // HELPERS: BLOCKCHAIN CALLS
 // =============================================================================
 
-async function fetchTokenPairId(burnContractAddress, burnTokenId) {
+async function fetchTokenPairId(burnContractAddress, burnTokenId, burnAmount) {
   return fetchSharedTokenPairId({
     tzktBase: TZKT_BASE,
     escrowAddress: BURN_REDEEM_CONTRACT_ADDRESS,
     burnContractAddress,
-    burnTokenId
+    burnTokenId,
+    burnAmount,
+    redeemContractAddress: REDEEM_CONTRACT_ADDRESS,
+    redeemTokenId: redeemToken.tokenId,
+    redeemAmount: redeemToken.redeemAmount
   });
 }
 
@@ -1035,7 +1039,7 @@ async function handleEventExchange() {
 
     // Lookup token_pair_id for each burn item
     for (let item of burnCart) {
-      item.tokenPairId = await fetchTokenPairId(item.contractAddress, item.tokenId);
+      item.tokenPairId = await fetchTokenPairId(item.contractAddress, item.tokenId, item.quantity);
       if (item.tokenPairId == null) {
         console.warn(`❌ Token mapping not found for ${item.tokenId}`);
         showModal('ERROR', `[TOKEN MAPPING NOT FOUND FOR ${item.tokenId}]`);
