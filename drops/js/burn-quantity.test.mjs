@@ -121,7 +121,7 @@ test('Shared NFT polling waits for the full configured burn delta', async () => 
   });
   assert.equal(reads, 2); assert.equal(nfts[0].balance, 3);
 });
-test('Public confirmed refresh removes insufficient burn holdings and retains owned non-burn rows', () => {
+test('Public confirmed refresh removes insufficient burn holdings and retains owned non-burn rows', async () => {
   const f = fixture(); let eligibleCount;
   const makeRow = (contractAddress, tokenId) => ({ dataset: { contractAddress, tokenId }, removed: false,
     remove() { this.removed = true; } });
@@ -133,9 +133,10 @@ test('Public confirmed refresh removes insufficient burn holdings and retains ow
     computeBalances: () => ({ 'burn-contract:1': 1, 'burn-contract:2': 2, 'redeem-contract:7': 3 }),
     updateEventCartBurnToken() {}, getCollectionSlug: () => 'hen',
     renderConnectedWalletTokenState: count => { eligibleCount = count; },
+    updateTokensWithWalletData: async () => {},
   });
-  vm.runInContext(section('function refreshConnectedState(', '// HELPERS: REDEEM'), f.context);
-  f.context.refreshConnectedState([]);
+  vm.runInContext(section('async function refreshConnectedState(', '// HELPERS: REDEEM'), f.context);
+  await f.context.refreshConnectedState([]);
   assert.equal(rows[0].removed, true); assert.equal(rows[1].removed, false);
   assert.equal(rows[2].removed, false, 'Owned metadata/redeem rows retain their previous behavior');
   assert.equal(eligibleCount, 1);

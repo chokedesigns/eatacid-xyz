@@ -496,6 +496,9 @@ function createWalletTokenFixture() {
     window: { cmsRowsByCollection: { HEN: [row('1', 'KT1-burn'), row('2', 'KT1-burn')] } },
     logger: { log() {} },
     setRegionPending,
+    isCurrentWalletProjection,
+    walletRefreshGeneration: 1,
+    synchronizedWalletAddress: 'tz1-wallet-fixture',
     resolveBurnTokenRenderIdentities,
     normalizeString: value => value.trim().toLowerCase(),
     setEventContractAndTokenAttributes() {}, // Fixture rows already carry their CMS identities.
@@ -569,6 +572,10 @@ function assertWalletTokenTerminal(fixture, eligibleCount) {
   assert.equal(fixture.panes.get('canaan').rows[0], fixture.metadataRow);
   assert.equal(fixture.panes.get('canaan').style.display, 'none');
   assert.ok(fixture.panes.get('hen').rows.every(item => !item.checkbox.checked));
+  const tokenIds = fixture.panes.get('hen').rows.map(item => item.dataset.tokenId);
+  assert.equal(new Set(tokenIds).size, tokenIds.length, 'Wallet projection contains no duplicate token rows');
+  assert.equal(fixture.panes.get('intros').rows.length, 0, 'Disabled collection rows clear during projection');
+  assert.equal(fixture.panes.get('intros').style.display, 'none');
 }
 
 // 2 -> 1 keeps the eligible list visible while redeem metadata remains hidden.
@@ -579,11 +586,19 @@ function assertWalletTokenTerminal(fixture, eligibleCount) {
   fixture.state.selectedTokenId = '1';
   fixture.state.cartItems = [{ id: '1' }];
   fixture.resetEventsUI();
-  fixture.refreshConnectedState([burnHolding('2'), redeemHolding]);
+  await fixture.refreshConnectedState([burnHolding('2'), redeemHolding]);
   assertWalletTokenTerminal(fixture, 1);
+  assert.deepEqual(fixture.panes.get('hen').rows.map(item => item.dataset.tokenId), ['2']);
+
+  // Repeated refreshes replace the projection; newly owned rows can return.
+  for (const ids of [['2'], ['1', '2'], ['1'], ['1']]) {
+    await fixture.refreshConnectedState([...ids.map(tokenId => burnHolding(tokenId)), redeemHolding]);
+    assertWalletTokenTerminal(fixture, ids.length);
+    assert.deepEqual(fixture.panes.get('hen').rows.map(item => item.dataset.tokenId), ids);
+  }
 }
 
-// 1 -> 0 ignores retained redeem rows and configured-but-disabled collection rows.
+// 1 -> 0 retains redeem metadata and clears configured-but-disabled wallet rows.
 for (const depletedBurn of [[], [burnHolding('1', '0')]]) {
   const fixture = createWalletTokenFixture();
   await fixture.updateTokensWithWalletData([burnHolding('1'), redeemHolding]);
@@ -592,12 +607,12 @@ for (const depletedBurn of [[], [burnHolding('1', '0')]]) {
   fixture.state.cartItems = [{ id: '1' }];
   fixture.panes.get('intros').appendChild(fixture.row('7', 'KT1-disabled'));
   fixture.resetEventsUI();
-  fixture.refreshConnectedState([
+  await fixture.refreshConnectedState([
     ...depletedBurn, redeemHolding,
     { contractAddress: 'KT1-disabled', tokenId: '7', balance: '1' }
   ]);
   assertWalletTokenTerminal(fixture, 0);
-  assert.equal(fixture.panes.get('intros').rows.length, 1);
+  assert.equal(fixture.panes.get('intros').rows.length, 0);
 }
 
 // Initial zero and an explicit 0 -> 1 refresh use the existing cached-CMS projection.

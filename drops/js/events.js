@@ -813,16 +813,22 @@ function resetEventsUI() {
 // =============================================================================
 
 /**
- * Refreshes the UI after a trade: re‑stamps rows, updates token grid, 
+ * Refreshes the UI after a trade: projects canonical templates, updates token grid,
  * removes sold‑out rows, and resets the burn‑token panel.
  *
  * @param {Array} nfts - Updated list of NFTs.
  */
-function refreshConnectedState(nfts) {
-  renderWalletTokenLoadingState();
+async function refreshConnectedState(nfts) {
+  const generation = walletRefreshGeneration;
+  const address = synchronizedWalletAddress;
 
-  // 1) Re‑map CMS rows with correct token IDs & contracts
-  setEventContractAndTokenAttributes();
+  // 1) Rebuild current holdings without recapturing wallet-native rows as CMS.
+  await updateTokensWithWalletData(nfts);
+  if (!isCurrentWalletProjection({
+    generation, address,
+    currentGeneration: walletRefreshGeneration,
+    currentAddress: synchronizedWalletAddress
+  })) return;
 
   // 2) Update the “Owned” counts on existing CMS rows
   updateOwnedTokenCounts(nfts);
@@ -1183,7 +1189,7 @@ async function handleEventExchange() {
       currentGeneration: walletRefreshGeneration,
       currentAddress: synchronizedWalletAddress
     })) {
-      refreshConnectedState(refreshedNFTs);
+      await refreshConnectedState(refreshedNFTs);
     }
 
     // After balances reflect, swap spinner to checkbox & finalize
@@ -1308,11 +1314,12 @@ function updateFlames() {
 // CMS ROW MAPPING & ROW BUILDERS
 // =============================================================================
 
-/**
- * Scans each collection’s Webflow wrapper (.w-dyn-item), groups rows by collection key,
- * and stamps each with its tokenId and contractAddress.
- */
+let canonicalCMSRowsByCollection = null;
+
+/** Captures detached canonical templates once, before any wallet projection. */
 function setEventContractAndTokenAttributes() {
+  if (canonicalCMSRowsByCollection) return;
+
   // 1) Find all rows for each collection
   const allRows = findCMSRows(Object.keys(collections));
 
@@ -1322,8 +1329,14 @@ function setEventContractAndTokenAttributes() {
     rows.forEach(row => stampRowAttributes(row, contractAddress));
   });
 
-  // 3) Expose map for lookups elsewhere
-  window.cmsRowsByCollection = allRows;
+  // 3) Retain detached templates so DOM balances, selections and native IDs
+  // never become the source for the next wallet render or disconnected preview.
+  canonicalCMSRowsByCollection = Object.freeze(Object.fromEntries(
+    Object.entries(allRows).map(([key, rows]) => [
+      key, Object.freeze(rows.map(row => row.cloneNode(true)))
+    ])
+  ));
+  window.cmsRowsByCollection = canonicalCMSRowsByCollection;
   logger.log("CMS rows grouped by collection:", window.cmsRowsByCollection);
 }
 
@@ -1641,8 +1654,8 @@ function updateOwnedTokenCounts(nfts) {
 const WALLET_TOKEN_PENDING_CLASS = 'drops-wallet-tokens-pending';
 
 function getWalletTokenPanes() {
-  return ['hen', 'introductions']
-    .map(coll => document.querySelector(`.${coll}-collection.w-dyn-list`))
+  return ['HEN', 'INTRODUCTIONS']
+    .map(coll => document.querySelector(`.${getCollectionSlug(coll)}-collection.w-dyn-list`))
     .filter(Boolean);
 }
 
@@ -1791,7 +1804,7 @@ async function updateTokensWithWalletData(nfts) {
     const key     = config.collection.toUpperCase();
     const slug    = getCollectionSlug(key);
     const parent  = document.querySelector(`.${slug}-collection.w-dyn-list`);
-    const cmsRows = (window.cmsRowsByCollection[key] || [])
+    const cmsRows = [...(window.cmsRowsByCollection[key] || [])]
                       .sort((a, b) => Number(a.dataset.tokenId) - Number(b.dataset.tokenId));
 
     resolveBurnTokenRenderIdentities({
@@ -2092,8 +2105,8 @@ function resolveRedeemImage(row) {
  */
 function displayDefaultTokens() {
   logger.log("Displaying default tokens.");
-  ['hen','introductions'].forEach(coll => {
-    const pane = document.querySelector(`.${coll}-collection.w-dyn-list`);
+  ['HEN', 'INTRODUCTIONS'].forEach(coll => {
+    const pane = document.querySelector(`.${getCollectionSlug(coll)}-collection.w-dyn-list`);
     if (!pane) return;
     pane.style.display = 'none';
     while (pane.firstChild) pane.removeChild(pane.firstChild);
@@ -2180,8 +2193,10 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
         if (AppState.walletConnected) {
           const account = AppState.activeAccount;
           if (account) {
+            const generation = walletRefreshGeneration;
             const nfts = await fetchNFTs(account.address);
-            if (signal?.aborted || !isCurrent() || AppState.activeAccount?.address !== account.address) return;
+            if (signal?.aborted || !isCurrent() || generation !== walletRefreshGeneration ||
+                AppState.activeAccount?.address !== account.address) return;
             await updateTokensWithWalletData(nfts);
           }
         }

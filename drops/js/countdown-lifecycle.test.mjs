@@ -51,6 +51,7 @@ function fixture({ past = false, pendingTime = false, wallet = false } = {}) {
     fetch: (url, options) => new Promise((resolve, reject) => storage.push({ url, options, resolve, reject })),
     fetchNFTs: () => new Promise(resolve => nft.push(resolve)),
     updateTokensWithWalletData: async () => { walletRenders++; },
+    walletRefreshGeneration: 0,
     setTimeout: fn => { const id = ++waitId; waits.set(id, fn); return id; },
     clearTimeout: id => waits.delete(id),
   });
@@ -166,6 +167,21 @@ test('teardown during body parsing or wallet refresh prevents late phase and wal
     assert.equal(h.walletRenders(), 0); assert.notEqual(h.state.countdownPhase, 'live');
     assert.equal(h.listenerCount(), 0);
   }
+});
+
+test('standby NFT response cannot repaint after disconnect and reconnect to the same address', async () => {
+  const h = fixture({ past: true, wallet: true });
+  h.call('startCountdown()'); await flush();
+  h.storage[0].resolve({ json: async () => ({ paused: false }) }); await flush();
+  assert.equal(h.nft.length, 1);
+  h.state.activeAccount = null; h.state.walletConnected = false;
+  h.call('walletRefreshGeneration++');
+  h.state.activeAccount = { address: 'inert-wallet' }; h.state.walletConnected = true;
+  h.call('walletRefreshGeneration++');
+  h.nft[0]([]); await flush();
+  assert.equal(h.walletRenders(), 0);
+  assert.equal(h.errors.length, 0);
+  h.call('stopPublicCountdown()');
 });
 
 test('replacement with invalid configuration still disposes the previous owner', async () => {
