@@ -106,6 +106,11 @@ let synchronizedWalletAddress;
 let walletRefreshGeneration = 0;
 let exchangeWalletTokensPending = true;
 let exchangeWalletLifecycleStatus = 'pending';
+let verifiedWalletQuantities = new WeakMap();
+let walletBalancesVerified = false;
+let walletBalanceRefreshFailed = false;
+let confirmedTradeRefresh = null;
+let exchangeConnectLabel;
 
 // =============================================================================
 // GLOBAL UTILITIES
@@ -133,11 +138,11 @@ window.getEditionCount = function (dropdown) {
  * Compatibility hook for legacy local callers after a confirmed connected refresh.
  * Shared wallet startup now enters through synchronizeExchangeWalletState().
  *
- * @param {Array} nfts - Array of NFTs fetched from the wallet.
+ * Ownership is always resolved through the shared verified wallet lifecycle.
  */
-window.receiveNFTs = function (nfts) {
-  logger.log('Processing NFTs through Exchange wallet-token lifecycle:', nfts);
-  renderConnectedWalletTokenState(nfts);
+window.receiveNFTs = function () {
+  // Legacy notifications cannot establish which wallet owns the supplied rows.
+  receivePublicWalletState(getPublicWalletState());
 };
 
 // =============================================================================
@@ -203,19 +208,17 @@ function hideModal() {
 
 /**
  * Resets the entire UI, including dropdowns, rows, and the burn cart.
- * - Clears dropdown selections and repopulates options based on edition counts.
+ * - Clears dropdown selections and disables quantities until ownership is verified.
  * - Makes all rows visible and removes assigned data attributes.
  * - Clears the burn cart and resets the total display.
  */
 function resetUI() {
   logger.log('Executing resetUI...');
 
-  // Reset dropdown selections: repopulate options based on edition count.
+  // Edition counts determine reward terms, never available burn quantities.
   const dropdowns = document.querySelectorAll('.token-qty.w-select');
   dropdowns.forEach((dropdown) => {
-    resetDropdown(dropdown);
-    populateDropdown(dropdown, window.getEditionCount(dropdown));
-    dropdown.value = ''; // Ensure no selection
+    setDropdownState(dropdown);
   });
 
   // Reset all rows: ensure visibility and remove data attributes.
@@ -310,8 +313,40 @@ function isDropdownActionable(dropdown) {
     dropdown &&
     !dropdown.disabled &&
     !exchangeWalletTokensPending &&
+    walletBalancesVerified &&
+    exchangeWalletLifecycleStatus === 'connected' &&
     synchronizedWalletAddress
   );
+}
+
+function getSelectedOwnedQuantity(dropdown) {
+  if (!isDropdownActionable(dropdown) || !/^[1-9]\d*$/.test(dropdown.value)) return 0;
+  const quantity = Number(dropdown.value);
+  const owned = verifiedWalletQuantities.get(dropdown) || 0;
+  return Number.isSafeInteger(quantity) && quantity <= owned ? quantity : 0;
+}
+
+function isCurrentExchangeWallet(address, generation) {
+  return exchangeWalletLifecycleStatus === 'connected' &&
+    synchronizedWalletAddress === address && generation === walletRefreshGeneration;
+}
+
+function synchronizeVerifiedExchangeAccount(account, generation) {
+  if (generation === walletRefreshGeneration && account?.address !== synchronizedWalletAddress) {
+    synchronizeExchangeWalletState({ status: account ? 'connected' : 'unconnected', account });
+  }
+}
+
+function assertExchangeCartCurrent(address, generation, cart) {
+  if (!isCurrentExchangeWallet(address, generation) || !walletBalancesVerified) {
+    throw new Error('Wallet balances changed. Refresh balances and select quantities again.');
+  }
+  const currentCart = getBurnCart();
+  if (currentCart.length !== cart.length || currentCart.some((item, index) =>
+    ['contractAddress', 'tokenId', 'quantity', 'startingBalance', 'redeemAmount'].some(key =>
+      item[key] !== cart[index][key]))) {
+    throw new Error('Burn cart changed. Select verified quantities and try again.');
+  }
 }
 
 function resetBurnCartDisplay() {
@@ -351,9 +386,13 @@ function renderExchangeBottomAction() {
   const walletDisconnected = !actionPending && !walletConnected;
 
   setExchangeActionControlVisibility(pending, actionPending, 'block');
-  setExchangeActionControlVisibility(connect, walletDisconnected, 'inline-block');
-  setExchangeActionControlVisibility(empty, !actionPending && walletConnected && !exchangeState.hasCartItems, 'block');
-  setExchangeActionControlVisibility(live, !actionPending && walletConnected && exchangeState.hasCartItems, 'block');
+  if (connect) {
+    exchangeConnectLabel ??= connect.textContent;
+    connect.textContent = walletBalanceRefreshFailed ? 'RETRY BALANCES' : exchangeConnectLabel;
+  }
+  setExchangeActionControlVisibility(connect, walletDisconnected || walletBalanceRefreshFailed, 'inline-block');
+  setExchangeActionControlVisibility(empty, !actionPending && walletConnected && !walletBalanceRefreshFailed && !exchangeState.hasCartItems, 'block');
+  setExchangeActionControlVisibility(live, !actionPending && walletConnected && walletBalancesVerified && exchangeState.hasCartItems, 'block');
 }
 
 function getExchangeWalletLifecycleStatus(walletState) {
@@ -391,6 +430,9 @@ function commitPaneState(paneElements, {
 
 function renderWalletTokenLoadingState() {
   exchangeWalletTokensPending = true;
+  walletBalancesVerified = false;
+  walletBalanceRefreshFailed = false;
+  verifiedWalletQuantities = new WeakMap();
   setBurnTokensHeaderText('', false);
   getExchangePaneElements().forEach((paneElements) => {
     paneElements.wrapper?.classList.add(EXCHANGE_WALLET_PENDING_CLASS);
@@ -406,6 +448,9 @@ function renderWalletTokenLoadingState() {
 
 function renderDisconnectedWalletTokenState() {
   exchangeWalletTokensPending = false;
+  walletBalancesVerified = false;
+  walletBalanceRefreshFailed = false;
+  verifiedWalletQuantities = new WeakMap();
   resetUI();
   setContractAndTokenAttributes();
   setBurnTokensHeaderText('ELIGIBLE BURN TOKENS', true);
@@ -424,8 +469,11 @@ function renderDisconnectedWalletTokenState() {
 
 function renderConnectedWalletTokenFailureState() {
   exchangeWalletTokensPending = false;
+  walletBalancesVerified = false;
+  walletBalanceRefreshFailed = true;
+  verifiedWalletQuantities = new WeakMap();
   setContractAndTokenAttributes();
-  setBurnTokensHeaderText('AVAILABLE BURN TOKENS', true);
+  setBurnTokensHeaderText('BALANCES UNAVAILABLE. RETRY BALANCES BELOW.', true);
 
   const panes = getExchangePaneElements();
   logger.debug('Rendering Exchange wallet-token fetch failure state:', panes.map((paneElements) => ({
@@ -443,7 +491,7 @@ function renderConnectedWalletTokenFailureState() {
       setDropdownState(row.querySelector('.token-qty.w-select'));
       row.style.display = 'none';
     });
-    commitPaneState(paneElements, { noTokensVisible: true, terminal: true });
+    commitPaneState(paneElements, { terminal: true });
   });
 
   resetBurnCartDisplay();
@@ -451,11 +499,20 @@ function renderConnectedWalletTokenFailureState() {
 }
 
 function renderConnectedWalletTokenState(nfts) {
+  if (exchangeWalletLifecycleStatus !== 'connected' || !synchronizedWalletAddress) return;
+  if (!Array.isArray(nfts) || nfts.some(nft =>
+    !nft?.contractAddress || nft.tokenId == null ||
+    !/^\d+$/.test(String(nft.balance)) || !Number.isSafeInteger(Number(nft.balance)))) {
+    throw new TypeError('Invalid wallet balances. Retry balances.');
+  }
   exchangeWalletTokensPending = false;
+  walletBalanceRefreshFailed = false;
+  verifiedWalletQuantities = new WeakMap();
   setContractAndTokenAttributes();
   setBurnTokensHeaderText('AVAILABLE BURN TOKENS', true);
 
   const paneResults = processWalletNFTs(nfts);
+  walletBalancesVerified = true;
   getExchangePaneElements().forEach((paneElements) => {
     const result = paneResults[paneElements.key] || { eligibleCount: 0 };
     commitPaneState(paneElements, {
@@ -470,22 +527,46 @@ function renderConnectedWalletTokenState(nfts) {
 
 async function refreshExchangeWallet(account, generation, nftsPromise) {
   try {
-    const nfts = await (nftsPromise || fetchNFTs(account.address));
+    const trade = confirmedTradeRefresh;
+    const nfts = trade
+      ? await pollForNFTUpdate(account.address, trade)
+      : await (nftsPromise || fetchNFTs(account.address));
 
     if (
-      generation !== walletRefreshGeneration ||
-      synchronizedWalletAddress !== account.address
+      !isCurrentExchangeWallet(account.address, generation)
     ) {
       return;
     }
 
+    if (trade) assertTradedBalancesRefreshed(nfts, trade);
     renderConnectedWalletTokenState(nfts);
+    confirmedTradeRefresh = null;
   } catch (error) {
     if (
-      generation === walletRefreshGeneration &&
-      synchronizedWalletAddress === account.address
+      isCurrentExchangeWallet(account.address, generation)
     ) {
       console.error('Error refreshing Exchange wallet-token state:', error);
+      renderConnectedWalletTokenFailureState();
+    }
+  }
+}
+
+async function retryExchangeBalances() {
+  if (exchangeInFlight || !walletBalanceRefreshFailed) return;
+  const address = synchronizedWalletAddress;
+  const generation = ++walletRefreshGeneration;
+  renderWalletTokenLoadingState();
+  try {
+    const account = await getVerifiedPublicActiveAccount();
+    if (!isCurrentExchangeWallet(address, generation)) return;
+    if (!account || account.address !== address) {
+      synchronizeVerifiedExchangeAccount(account, generation);
+      return;
+    }
+    await refreshExchangeWallet(account, generation);
+  } catch (error) {
+    if (isCurrentExchangeWallet(address, generation)) {
+      console.error('Error retrying Exchange wallet balances:', error);
       renderConnectedWalletTokenFailureState();
     }
   }
@@ -495,6 +576,9 @@ function synchronizeExchangeWalletState(walletState) {
   exchangeWalletLifecycleStatus = getExchangeWalletLifecycleStatus(walletState);
 
   if (exchangeWalletLifecycleStatus === 'pending') {
+    ++walletRefreshGeneration;
+    synchronizedWalletAddress = undefined;
+    confirmedTradeRefresh = null;
     renderWalletTokenLoadingState();
     return;
   }
@@ -504,11 +588,12 @@ function synchronizeExchangeWalletState(walletState) {
     : null;
   const address = account?.address || null;
 
-  if (address === synchronizedWalletAddress && !exchangeWalletTokensPending) {
+  if (address === synchronizedWalletAddress) {
     updateCartButtons();
     return;
   }
 
+  confirmedTradeRefresh = null;
   synchronizedWalletAddress = address;
   const generation = ++walletRefreshGeneration;
 
@@ -570,7 +655,8 @@ function getBurnCart() {
   dropdowns.forEach((dropdown) => {
     if (!isDropdownActionable(dropdown)) return;
 
-    const quantity = parseInt(dropdown.value) || 0;
+    const quantity = getSelectedOwnedQuantity(dropdown);
+    if (dropdown.value && !quantity) throw new Error('Invalid burn quantity. Select a verified owned quantity.');
     if (quantity > 0) {
       const row = dropdown.closest('.collection-item-01-div');
       const tokenId = row.getAttribute('data-token-id');
@@ -589,10 +675,7 @@ function getBurnCart() {
 }
 
 function getDropdownMaxQuantity(dropdown) {
-  return Array.from(dropdown.options || []).reduce((max, option) => {
-    const value = parseInt(option.value, 10);
-    return Number.isFinite(value) ? Math.max(max, value) : max;
-  }, 0);
+  return isDropdownActionable(dropdown) ? verifiedWalletQuantities.get(dropdown) || 0 : 0;
 }
 
 /**
@@ -691,6 +774,7 @@ function processWalletNFTs(nfts) {
 
       if (match) {
         eligibleCount += 1;
+        verifiedWalletQuantities.set(dropdown, Number(match.balance));
         setDropdownState(dropdown, {
           maxQty: Number(match.balance),
           enabled: true
@@ -712,15 +796,14 @@ function processWalletNFTs(nfts) {
 // =============================================================================
 
 /**
- * Updates a dropdown's options based on the provided maximum quantity.
+ * Updates a dropdown's options using its verified owned quantity.
  * Exposed globally for use across modules.
  *
  * @param {HTMLElement} dropdown - The dropdown element.
- * @param {number} maxQty - The maximum number of options to add.
  */
-window.updateDropdownOptions = function(dropdown, maxQty) {
-  resetDropdown(dropdown);
-  populateDropdown(dropdown, maxQty);
+window.updateDropdownOptions = function(dropdown) {
+  const maxQty = getDropdownMaxQuantity(dropdown);
+  setDropdownState(dropdown, { maxQty, enabled: maxQty > 0 });
 };
 
 /**
@@ -781,7 +864,7 @@ function updateBurnCart() {
   dropdowns.forEach((dropdown, index) => {
     if (!isDropdownActionable(dropdown)) return;
 
-    const quantity = parseInt(dropdown.value) || 0;
+    const quantity = getSelectedOwnedQuantity(dropdown);
     if (quantity === 0) return; // Skip if no quantity is selected.
 
     logger.log(`Processing dropdown #${index + 1}:`, dropdown);
@@ -915,7 +998,7 @@ function updateTotal() {
     const row = dropdown.closest('.collection-item-01-div');
     if (row && row.style.display === 'none') return; // Skip hidden rows
 
-    const quantity = parseInt(dropdown.value) || 0;
+    const quantity = getSelectedOwnedQuantity(dropdown);
     const redeemValue = Math.ceil(100 / window.getEditionCount(dropdown)); // Redeem value per item
 
     total += quantity * redeemValue;
@@ -1027,6 +1110,17 @@ async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval
   });
 }
 
+function assertTradedBalancesRefreshed(nfts, tradedTokens) {
+  if (!Array.isArray(nfts) || tradedTokens.some(token => {
+    const match = nfts.find(nft => nft.contractAddress === token.contractAddress &&
+      String(nft.tokenId) === String(token.tokenId));
+    return match && (!Number.isSafeInteger(Number(match.balance)) ||
+      Number(match.balance) > token.startingBalance - token.quantity);
+  })) {
+    throw new Error('Confirmed trade balances are still updating. Retry balances.');
+  }
+}
+
 // -----------------------------------------------------
 // POLL FOR TRANSACTION CONFIRMATION
 // -----------------------------------------------------
@@ -1065,6 +1159,10 @@ async function handleExchange() {
 
   if (exchangeInFlight) return;
   exchangeInFlight = true;
+  let generation = walletRefreshGeneration;
+  const address = synchronizedWalletAddress;
+  let tradeConfirmed = false;
+  let countdownInterval;
 
   try {
     logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
@@ -1074,6 +1172,7 @@ async function handleExchange() {
 
     // Ensure wallet is connected.
     const activeAccount = await getVerifiedPublicActiveAccount();
+    synchronizeVerifiedExchangeAccount(activeAccount, generation);
     if (!activeAccount) {
       console.error('❌ No wallet connected.');
       showModal('ERROR', '[NO WALLET CONNECTED.]');
@@ -1085,6 +1184,7 @@ async function handleExchange() {
 
     // Gather burn-cart items.
     const burnCart = getBurnCart();
+    assertExchangeCartCurrent(userWalletAddress, generation, burnCart);
     if (burnCart.length === 0) {
       console.error('❌ Burn cart is empty. Cannot proceed.');
       showModal('ERROR', '[BURN CART IS EMPTY.]');
@@ -1186,10 +1286,20 @@ async function handleExchange() {
     logger.log('🚀 Sending batched approval and trade operations:', JSON.stringify(batchedOps, null, 2));
 
     // Step 2: Prompt wallet to sign and send.
+    const sendingAccount = await getVerifiedPublicActiveAccount();
+    synchronizeVerifiedExchangeAccount(sendingAccount, generation);
+    if (!sendingAccount || sendingAccount.address !== userWalletAddress) {
+      throw new Error('Wallet changed. Refresh balances and select quantities again.');
+    }
+    assertExchangeCartCurrent(userWalletAddress, generation, burnCart);
     const opResponse = await window.dAppClient.requestOperation({
       operationDetails: batchedOps
     });
     logger.log('✅ Operation submitted!', opResponse);
+    if (isCurrentExchangeWallet(userWalletAddress, generation)) {
+      generation = ++walletRefreshGeneration;
+      renderWalletTokenLoadingState();
+    }
 
     // Update modal to processing state.
     showModal('PROCESSING...', '[APPROVING TRANSFERS + EXECUTING BURN... ️‍🔥]');
@@ -1200,6 +1310,7 @@ async function handleExchange() {
 
     // Step 3: Poll for on-chain confirmation.
     await pollForConfirmation(opHash);
+    tradeConfirmed = true;
 
     // Step 4: Show success in the modal.
     showModal('SUCCESS!', `[BURN COMPLETE. ✅]`);
@@ -1225,14 +1336,10 @@ async function handleExchange() {
     }
 
     // Start a 30-second countdown in text6.
-    let countdownInterval;
     if (text6) {
       text6.style.display = 'block';
       countdownInterval = startCountdown(30, text6);
     }
-
-    // Reset just the exchange UI (cart + totals), not the entire page.
-    resetExchangeUI();
 
     // Wait for the actual NFT balances to update on-chain.
     const tradedTokens = burnCart.map(item => ({
@@ -1241,10 +1348,21 @@ async function handleExchange() {
       quantity: item.quantity,
       startingBalance: item.startingBalance
     }));
-    const refreshedNFTs = await pollForNFTUpdate(userWalletAddress, tradedTokens);
-    if (synchronizedWalletAddress === userWalletAddress) {
-      refreshConnectedState(refreshedNFTs);
+    if (!isCurrentExchangeWallet(userWalletAddress, generation)) {
+      setTimeout(hideModal, 3000);
+      return;
     }
+    confirmedTradeRefresh = tradedTokens;
+    // Reset to unavailable quantities until the confirmed burn is reflected.
+    resetExchangeUI();
+    const refreshedNFTs = await pollForNFTUpdate(userWalletAddress, tradedTokens);
+    if (!isCurrentExchangeWallet(userWalletAddress, generation)) {
+      setTimeout(hideModal, 3000);
+      return;
+    }
+    assertTradedBalancesRefreshed(refreshedNFTs, tradedTokens);
+    refreshConnectedState(refreshedNFTs);
+    confirmedTradeRefresh = null;
 
     // After balances reflect, swap spinner to checkbox & finalize.
     if (text6) {
@@ -1260,9 +1378,19 @@ async function handleExchange() {
     setTimeout(hideModal, 3000);
   } catch (error) {
     console.error('❌ Error during exchange process:', error);
-    showModal('ERROR', `${error.message || 'Unknown issue'}`);
+    if (tradeConfirmed && !isCurrentExchangeWallet(address, generation)) {
+      setTimeout(hideModal, 3000);
+      return;
+    }
+    if (isCurrentExchangeWallet(address, generation) && !walletBalancesVerified) {
+      renderConnectedWalletTokenFailureState();
+    }
+    showModal(tradeConfirmed ? 'BURN COMPLETE. ✅' : 'ERROR', tradeConfirmed
+      ? '[BALANCE REFRESH FAILED. USE RETRY BALANCES BELOW.]'
+      : `${error.message || 'Unknown issue'}`);
     setTimeout(hideModal, 3000);
   } finally {
+    clearInterval(countdownInterval);
     exchangeInFlight = false;
   }
 
@@ -1289,25 +1417,7 @@ async function handleExchange() {
 // -----------------------------------------------------
 
 function resetExchangeUI() {
-  const dropdowns = document.querySelectorAll('.token-qty.w-select');
-  dropdowns.forEach(dropdown => {
-    dropdown.value = '';
-    resetDropdown(dropdown);
-    populateDropdown(dropdown, window.getEditionCount(dropdown));
-  });
-
-  const burnCartContainer = document.querySelector('.burn-cart-display');
-  if (burnCartContainer) {
-    const emptyCartDiv = burnCartContainer.querySelector('.empty-cart-div');
-    const burnCartStructureDiv = burnCartContainer.querySelector('.burn-cart-display-structure-div');
-    if (emptyCartDiv && burnCartStructureDiv) {
-      burnCartStructureDiv.innerHTML = '';
-      emptyCartDiv.style.display = 'block';
-      burnCartStructureDiv.style.display = 'none';
-    }
-  }
-
-  resetTotalDisplay();
+  renderWalletTokenLoadingState();
 }
 
 function renderNetworkUnavailable() {
@@ -1348,11 +1458,10 @@ function bootExchangePage() {
   renderWalletTokenLoadingState();
 
   setTimeout(() => {
-    // Initialize dropdowns with token edition counts.
+    // Initialize quantities without claiming wallet ownership.
     const dropdowns = document.querySelectorAll('.token-qty.w-select');
     dropdowns.forEach((dropdown) => {
-      const editionCount = window.getEditionCount(dropdown);
-      window.updateDropdownOptions(dropdown, editionCount);
+      window.updateDropdownOptions(dropdown);
     });
 
     // Initialize CMS row attributes.
@@ -1402,6 +1511,10 @@ function bootExchangePage() {
     if (exchangeConnectButton) {
       exchangeConnectButton.addEventListener('click', async (event) => {
         event.preventDefault();
+        if (walletBalanceRefreshFailed) {
+          await retryExchangeBalances();
+          return;
+        }
         logger.log('Exchange Connect button clicked.');
         await requestPublicWalletConnection();
       });

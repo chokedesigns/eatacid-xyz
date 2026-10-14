@@ -159,10 +159,12 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
     window: { dAppClient: { requestOperation: async payload => { sent.push(payload); return { transactionHash: 'inert-hash' }; } } },
     networkConfigAvailable: true, network: 'testnet', EXPLORER_BASE: 'https://inert.explorer.test',
     exchangeInFlight: false, logger: { log() {} }, console: { error: (...args) => errors.push(args), warn() {} },
-    showModal() {}, hideModal() {}, setTimeout() {},
+    showModal() {}, hideModal() {}, setTimeout() {}, clearInterval() {},
     document: { querySelector: selector => selector === '.loading-modal-div' ? { querySelector: () => null } : null },
     resetEventsUI() {}, resetExchangeUI() {}, pollForConfirmation: async () => {}, pollForNFTUpdate: async () => [],
     walletRefreshGeneration: 0, synchronizedWalletAddress: 'inert-wallet', isCurrentWalletProjection: () => true, refreshConnectedState() {},
+    exchangeWalletLifecycleStatus: 'connected', walletBalancesVerified: true, confirmedTradeRefresh: null,
+    renderWalletTokenLoadingState() {}, renderConnectedWalletTokenFailureState() {},
   });
   let code;
   if (drops) {
@@ -170,8 +172,11 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
     code += section(source, 'function getBurnAmountForContract(', '/**\n * Returns the one selected');
     code += section(source, 'let eventExchangeInFlight', '// UI STATE TOGGLING:');
   } else {
+    // Supply the page's current ownership guards as well as its trading functions.
+    code = section(source, 'function isCurrentExchangeWallet(', 'function resetBurnCartDisplay(');
     // Exchange's helper ends at its next section heading, not the entire approval/polling region.
-    code = section(source, 'async function fetchTokenPairId(', '// -----------------------------------------------------');
+    code += section(source, 'async function fetchTokenPairId(', '// -----------------------------------------------------');
+    code += section(source, 'function assertTradedBalancesRefreshed(', '// -----------------------------------------------------');
     // Include the nested countdown helper and handleExchange's closing brace.
     code += section(source, 'async function handleExchange()', '// -----------------------------------------------------\n// RESET EXCHANGE UI');
   }
