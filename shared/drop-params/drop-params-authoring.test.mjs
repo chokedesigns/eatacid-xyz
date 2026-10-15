@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { spawn } from "node:child_process";
+import fsPromises, { mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
+import { syncBuiltinESMExports } from "node:module";
 import path from "node:path";
+import { createInterface } from "node:readline";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -78,6 +81,131 @@ function staleLockMetadata(token) {
     acquiredAt: "2000-01-01T00:00:00.000Z"
   };
 }
+
+async function deletionFixture() {
+  const child = spawn("powershell.exe", [
+    "-NoLogo", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+    "-File", path.join(testDirectory, "fixtures", "delete-pending-claim.ps1")
+  ], { stdio: ["pipe", "pipe", "pipe"], windowsHide: true });
+  let errors = "";
+  child.stderr.setEncoding("utf8");
+  child.stderr.on("data", chunk => { errors += chunk; });
+  const lines = createInterface({ input: child.stdout });
+  const exited = new Promise(resolve => child.once("exit", resolve));
+  function response() {
+    return new Promise((resolve, reject) => {
+      const finish = (complete, value) => {
+        clearTimeout(timer);
+        lines.off("line", onLine);
+        child.off("error", onError);
+        child.off("exit", onExit);
+        complete(value);
+      };
+      const onLine = line => {
+        try { finish(resolve, JSON.parse(line)); }
+        catch (error) { finish(reject, error); }
+      };
+      const onError = error => finish(reject, error);
+      const onExit = code => finish(reject, new Error(`deletion fixture exited ${code}: ${errors}`));
+      const timer = setTimeout(() => finish(reject, new Error(`deletion fixture timed out: ${errors}`)), 10_000);
+      lines.once("line", onLine);
+      child.once("error", onError);
+      child.once("exit", onExit);
+    });
+  }
+  async function close() {
+    child.stdin.end();
+    const timer = setTimeout(() => child.kill(), 10_000);
+    try { assert.equal(await exited, 0, errors); }
+    finally { clearTimeout(timer); lines.close(); }
+  }
+  try { assert.equal((await response()).status, "ready"); }
+  catch (error) { child.kill(); lines.close(); throw error; }
+  return {
+    async request(action, claimPath) {
+      const reply = response();
+      child.stdin.write(`${JSON.stringify({ action, path: claimPath })}\n`);
+      return reply;
+    },
+    close
+  };
+}
+
+test("Windows delete-pending claim reads wait and recover without losing ownership", {
+  skip: process.platform !== "win32"
+}, async () => {
+  const fixture = await deletionFixture();
+  const originalOpen = fsPromises.open;
+  let owner = null;
+  let acquired = null;
+  let outcome = null;
+  try {
+    owner = await acquireDropParamsLock();
+    const claimPath = lockClaimPathForTest(owner.metadata.token);
+    const pending = await fixture.request("hold", claimPath);
+    assert.deepEqual(pending, { status: "pending", deletePending: true, openError: 5 });
+    let failures = 0;
+    let retried;
+    const secondRead = new Promise(resolve => { retried = resolve; });
+    fsPromises.open = async (...args) => {
+      try { return await originalOpen(...args); }
+      catch (error) {
+        if (args[0] === claimPath && error.code === "EPERM" && ++failures === 2) retried();
+        throw error;
+      }
+    };
+    syncBuiltinESMExports();
+    outcome = acquireDropParamsLock().then(
+      lock => { acquired = lock; return { kind: "acquired" }; },
+      error => ({ kind: "rejected", error })
+    );
+    const firstOutcome = await Promise.race([secondRead.then(() => ({ kind: "retried" })), outcome]);
+    assert.equal(firstOutcome.kind, "retried", firstOutcome.error?.stack);
+    assert.equal(acquired, null, "a pending claim must never be treated as an absent owner");
+    assert.equal((await fixture.request("release")).status, "released");
+    assert.equal((await outcome).kind, "acquired");
+    assert.equal(await owner.release(), false, "old owner cannot remove the new owner's claim");
+    await assert.rejects(acquireDropParamsLock({ timeoutMs: 30, retryMs: 5 }), /Timed out waiting/);
+    assert.equal((await inspectDropParamsLock()).metadata.token, acquired.metadata.token);
+    assert.equal(await acquired.release(), true);
+    assert.equal(await acquired.release(), false);
+    assert.equal((await inspectDropParamsLock()).state, "unlocked");
+    assert.deepEqual(await readdir(DROP_PARAMS_PATHS.transactionLock), []);
+  } finally {
+    fsPromises.open = originalOpen;
+    syncBuiltinESMExports();
+    await fixture.close();
+    if (outcome) await outcome;
+    if (acquired) await acquired.release();
+    if (owner) await owner.release();
+  }
+});
+
+test("claim read permission errors remain bounded and preserve the actual owner", async () => {
+  const owner = await acquireDropParamsLock();
+  const claimPath = lockClaimPathForTest(owner.metadata.token);
+  const originalOpen = fsPromises.open;
+  try {
+    for (const code of ["EACCES", "EPERM"]) {
+      const denied = Object.assign(new Error(`persistent ${code}`), { code });
+      let attempts = 0;
+      fsPromises.open = async (...args) => {
+        if (args[0] === claimPath) { attempts += 1; throw denied; }
+        return originalOpen(...args);
+      };
+      syncBuiltinESMExports();
+      await assert.rejects(acquireDropParamsLock(), error => error === denied);
+      assert.equal(attempts, code === "EPERM" && process.platform === "win32" ? 201 : 1);
+      assert.deepEqual(await readdir(DROP_PARAMS_PATHS.transactionLock), [path.basename(claimPath)]);
+      assert.equal(JSON.parse(await readFile(claimPath, "utf8")).token, owner.metadata.token);
+    }
+  } finally {
+    fsPromises.open = originalOpen;
+    syncBuiltinESMExports();
+    assert.equal((await inspectDropParamsLock()).metadata.token, owner.metadata.token);
+    assert.equal(await owner.release(), true);
+  }
+});
 
 test("current and active canonical fixtures validate", () => {
   assert.equal(validateDropParams(currentDropParams).ok, true);

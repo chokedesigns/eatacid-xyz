@@ -124,7 +124,19 @@ async function readLockSnapshot(claimPath) {
   }
   let handle;
   try {
-    handle = await open(claimPath, "r");
+    // Windows can deny opens while a released claim is delete-pending.
+    // Wait briefly for removal; never interpret an access denial as no owner.
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        handle = await open(claimPath, "r");
+        break;
+      } catch (error) {
+        if (process.platform !== "win32" || error?.code !== "EPERM" || attempt >= 200) {
+          throw error;
+        }
+        await sleep(5);
+      }
+    }
     const [lockStat, text] = await Promise.all([
       handle.stat(),
       handle.readFile("utf8")
