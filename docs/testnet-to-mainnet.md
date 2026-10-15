@@ -60,7 +60,7 @@ Do not add a workflow override for this cutover.
 | Exchange escrow | `mainnet.escrows.exchange.address` | Blank; strict resolver has no fallback | MISSING |
 | ACID COIN | `mainnet.collections['ACID COIN']` | Blank | MISSING |
 | Mainnet mirrors | `mainnet.mirrors` | `{}`; canonical token IDs render by identity | APPROVED EMPTY MIRROR POLICY + VERIFIED IN SOURCE |
-| Drop parameters | `shared/drop-params/drop-params.js` | Unscheduled initial Mainnet state; retained future-drop metadata is inactive | UNSCHEDULED STATE APPROVED + VERIFIED IN SOURCE |
+| Drop parameters | `shared/drop-params/drop-params.js` | Scheduled testnet parameters: `dropScheduled: true`, `mirrorNetwork: 'testnet'`; see section 8 | KNOWN IN SOURCE; approved unscheduled Mainnet target requires A5 implementation and verification |
 
 Current validator result:
 
@@ -93,7 +93,7 @@ Admin is separately owned. Its selector persists `ea.admin.network`, clears the 
 | Pair-map path | Surface path, then `mainnet.pairsMapPath` | Surface blank; fallback `token_mapping` | Path proved by deployed storage | Deployment-unverified | Deployed storage schema | Named active big map exists on each escrow | Yes |
 | Pair IDs/metadata | `mainnet.pairIdRanges.*`; escrow big maps | Both `{ start: 0, end: null }` | Approved contract-scoped IDs and pair manifest | No | Admin/contract pair handoff | Compare every active burn/redeem field | Yes |
 | Mainnet mirrors | `mainnet.mirrors` | `{}` | Approved empty; canonical IDs use identity rendering | Yes | Collection identity owner | Deterministic rendering regression; live identity evidence at deployment | No for pre-deployment source readiness |
-| Drop parameters | `shared/drop-params/drop-params.js` | See section 8 | Initial Mainnet state unscheduled | Yes | Release/drop owner | Source/projection equality and unscheduled UI | No until a future drop is scheduled |
+| Drop parameters | `shared/drop-params/drop-params.js` | Scheduled testnet parameters; see section 8 | Initial Mainnet state unscheduled | Current source known; Mainnet target not applied | Release/drop owner | Source/projection equality and unscheduled UI | No until a future drop is scheduled |
 | Redeem inventory/supply | Escrow holdings; `redeemToken.totalSupply` | Declared `10`; Mainnet live unknown | Approved funded inventory and truthful assumption | No | Treasury/Admin handoff | Escrow FA2 balances and exposure reconciliation | Yes |
 | Pause authority/state | Deployed escrow storage/custody | Unknown | Named reachable authority; both paused | No | Contract/Admin handoff | Storage read and authority confirmation | Yes |
 | Administrator/provenance | Deployment records/storage | No Mainnet record in outer repo | Complete evidence per contract | No | Contract deployment handoff | Origination, code/version, storage/admin comparison | Yes |
@@ -196,21 +196,23 @@ Expected: both repositories clean; no unexpected `.env*`; process `NETWORK` blan
 
 `shared/drop-params/drop-params.js` is authoritative. Never hand-edit generated `shared/drop-params/drop-params.json` or `admin-ui/src/drop-params.mirror.json`.
 
+The current source contains scheduled testnet parameters. The approved initial Mainnet unscheduled state remains a future target, conditional on the approved source edit, projection/mirror reconciliation, and UI verification at A5; it is not the checked-in state or evidence of Mainnet readiness.
+
 | Field | Current source value | Mainnet-approved value | Approval/source | Validation |
 | --- | --- | --- | --- | --- |
-| `dropScheduled` | `false` | `false` (initial Mainnet cutover has no scheduled drop) | Approved decision | Correct unscheduled UI |
+| `dropScheduled` | `true` | `false` (target: initial Mainnet cutover has no scheduled drop) | Approved target decision; apply at A5 | Verify unscheduled UI after approved source edit |
 | `dropName` | `SPLINTERED` |  | Release/drop owner | Approved identity |
 | `mirrorNetwork` | `testnet` |  | Collection owner | Approved mirror policy/registry |
-| burn collections | HEN; INTRODUCTIONS |  | Drop owner | Registry and pairs agree |
-| enabled flags | HEN true; INTRODUCTIONS false |  | Drop owner | Only approved actionable |
-| exclusions | HEN `141634`; INTRODUCTIONS blank |  | Drop owner | Exact eligibility review |
-| burn amounts | `1` each |  | Pair manifest | Equals deployed pairs |
+| burn collections | HEN only; INTRODUCTIONS absent |  | Drop owner | Registry and pairs agree |
+| enabled flags | HEN `true`; no INTRODUCTIONS entry |  | Drop owner | Only approved actionable |
+| exclusions | HEN `141634`; no INTRODUCTIONS entry |  | Drop owner | Exact eligibility review |
+| burn amounts | HEN `1` |  | Pair manifest | Equals deployed pairs |
 | redeem collection/token | CANAAN `29` |  | Drop owner/inventory | Address, metadata, balance |
 | redeem amount | `1` |  | Pair manifest | Equals deployed pair |
 | declared total supply | `10` |  | Treasury/inventory | Reconciles to inventory/exposure |
-| schedule | May 28, 2026, 9:00 PM EST |  | Release/drop owner | Timezone/date/countdown review |
+| schedule | October 9, 2026, 3:00 PM; authored timezone `EST` |  | Release/drop owner | Timezone/date/countdown review |
 
-The checked-in scheduled date is past as of September 22, 2026. The release/drop owner must explicitly approve a new schedule or unscheduled state before staging-mainnet readiness.
+`shared/drop-time.js` interprets the authored `EST` value as the seasonal `America/New_York` zone: this schedule resolves to October 9, 2026, 19:00 UTC. The checked-in scheduled date is past as of October 15, 2026; `dropScheduled` remains `true`. The release/drop owner must explicitly approve a new schedule or unscheduled state before staging-mainnet readiness.
 
 After an approved source edit:
 
