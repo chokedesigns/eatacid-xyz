@@ -176,6 +176,75 @@ test("service validation rejects an active candidate without burn tokens before 
   assert.equal(executeCalls, 0);
 });
 
+test("EA-XYZ-P3-T004: service rejects same-contract validate/preview/apply before writer execution", async () => {
+  let executeCalls = 0;
+  let snapshotReads = 0;
+  const api = createDropParamsAuthoringApi({
+    readSnapshot: async () => { snapshotReads += 1; return snapshot(); },
+    readWriterState: async () => writer(),
+    execute: async () => { executeCalls += 1; }
+  });
+  for (const operation of ["CREATE", "EDIT"]) {
+    for (const multi of [false, true]) {
+      const candidate = activeFixture();
+      candidate.redeemToken.collection = "HEN";
+      candidate.redeemToken.tokenId = "0";
+      if (multi) candidate.burnTokens.unshift({
+        collection: "INTRODUCTIONS", enabled: true, exclude: [], burnAmount: 2
+      });
+      const request = { operation, candidate };
+      for (const method of ["validate", "preview", "apply"]) {
+        const body = { ...request };
+        if (method !== "validate") body.expectedSourceVersion = "a".repeat(64);
+        if (method === "apply") Object.assign(body, {
+          candidateHash: "b".repeat(64), planHash: "c".repeat(64), previewToken: "d".repeat(64)
+        });
+        await assert.rejects(api[method](body), error =>
+          error.code === "validation_failed" && error.statusCode === 422 &&
+          error.details.errors.some(item =>
+            item.path === `$.burnTokens[${multi ? 1 : 0}].collection` &&
+            item.code === "contract_mismatch"
+          )
+        );
+      }
+    }
+  }
+  assert.equal(snapshotReads, 0);
+  assert.equal(executeCalls, 0);
+});
+
+test("EA-XYZ-P3-T004: service preserves distinct-contract single/multi CREATE and EDIT plans", async () => {
+  for (const operation of ["CREATE", "EDIT"]) {
+    for (const multi of [false, true]) {
+      const base = snapshot(operation === "CREATE" ? INACTIVE_DROP_PARAMS : activeFixture());
+      let executeRequest = null;
+      const api = createDropParamsAuthoringApi({
+        readSnapshot: async () => structuredClone(base),
+        readWriterState: async () => writer(),
+        execute: async requestValue => {
+          executeRequest = requestValue;
+          return { status: "completed", outcome: operation === "CREATE" ? "created" : "edited" };
+        }
+      });
+      const candidate = activeFixture();
+      candidate.dropName = "DISTINCT CONTRACTS";
+      if (multi) candidate.burnTokens.push({
+        collection: "INTRODUCTIONS", enabled: true, exclude: [], burnAmount: 2
+      });
+      assert.deepEqual((await api.validate({ operation, candidate })).candidate, candidate);
+      const request = { operation, expectedSourceVersion: base.sourceVersion, candidate };
+      const preview = await api.preview(request);
+      assert.equal(executeRequest, null);
+      assert.deepEqual(JSON.parse(preview.effects.files.outerJson.after), candidate);
+      assert.equal((await api.apply({
+        ...request, candidateHash: preview.candidateHash,
+        planHash: preview.planHash, previewToken: preview.previewToken
+      })).ok, true);
+      assert.deepEqual(executeRequest.candidate, candidate);
+    }
+  }
+});
+
 test("completed apply returns transaction state without rebuild synchronization metadata", async () => {
   const base = snapshot();
   const operation = base.params.dropScheduled ? "EDIT" : "CREATE";

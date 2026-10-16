@@ -261,6 +261,21 @@ function validateFullAuthored(params, errors, { requireScheduled }) {
     validateDecimalTokenId(params.redeemToken.tokenId, "$.redeemToken.tokenId", errors);
     validatePositiveSafeInteger(params.redeemToken.redeemAmount, "$.redeemToken.redeemAmount", errors);
     validatePositiveSafeInteger(params.redeemToken.totalSupply, "$.redeemToken.totalSupply", errors);
+
+    const networkCollections = chainRegistry[params.mirrorNetwork]?.collections;
+    const redeemContract = networkCollections?.[params.redeemToken.collection];
+    if (params.dropScheduled === true && !isPlaceholderAddress(redeemContract) && Array.isArray(params.burnTokens)) {
+      params.burnTokens.forEach((burnToken, index) => {
+        if (burnToken?.enabled === true && networkCollections[burnToken.collection] === redeemContract) {
+          addError(
+            errors,
+            `$.burnTokens[${index}].collection`,
+            "must resolve to a contract address distinct from redeemToken.collection",
+            "contract_mismatch"
+          );
+        }
+      });
+    }
   }
 }
 

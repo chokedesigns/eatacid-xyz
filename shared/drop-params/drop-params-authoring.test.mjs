@@ -30,6 +30,7 @@ import {
   verifyDropParamsEquality
 } from "./drop-params-projector.mjs";
 import currentDropParams from "./drop-params.js";
+import { chainRegistry } from "../chain-registry.js";
 import { normalize as normalizeAdminDropParams } from "../../admin-ui/src/features/drops/drops.data.js";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -326,6 +327,67 @@ test("collection validation is scoped to the selected registry network", () => {
   assert.equal(validateDropParams(INACTIVE_DROP_PARAMS, {
     operation: DROP_PARAMS_OPERATIONS.INACTIVE
   }).ok, true);
+});
+
+test("EA-XYZ-P3-T004: active single and multi-collection drops reject equal burn/redeem contracts", () => {
+  for (const mirrorNetwork of ["testnet", "mainnet"]) {
+    for (const operation of ["canonical", "authored", "active"]) {
+      const candidate = activeFixture();
+      candidate.mirrorNetwork = mirrorNetwork;
+      candidate.redeemToken.collection = "HEN";
+      candidate.redeemToken.tokenId = "0";
+      for (const multi of [false, true]) {
+        if (multi) candidate.burnTokens.unshift({
+          collection: "INTRODUCTIONS", enabled: true, exclude: [], burnAmount: 2
+        });
+        const result = validateDropParams(candidate, { operation });
+        assert.equal(result.ok, false);
+        assert.deepEqual(result.errors, [{
+          path: `$.burnTokens[${multi ? 1 : 0}].collection`,
+          message: "must resolve to a contract address distinct from redeemToken.collection",
+          code: "contract_mismatch"
+        }]);
+      }
+    }
+  }
+});
+
+test("EA-XYZ-P3-T004: compare resolved addresses for every enabled burn in the selected network", () => {
+  const collections = chainRegistry.testnet.collections;
+  const original = collections.INTRODUCTIONS;
+  try {
+    collections.INTRODUCTIONS = collections.HEN;
+    const candidate = activeFixture();
+    candidate.redeemToken.collection = "HEN";
+    candidate.burnTokens.push({
+      collection: "INTRODUCTIONS", enabled: true, exclude: [], burnAmount: 2
+    });
+    const result = validateDropParams(candidate, { operation: "active" });
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.errors.map(error => [error.path, error.code]), [
+      ["$.burnTokens[0].collection", "contract_mismatch"],
+      ["$.burnTokens[1].collection", "contract_mismatch"]
+    ]);
+    candidate.burnTokens[0].collection = "CANAAN";
+    candidate.mirrorNetwork = "mainnet";
+    assert.equal(validateDropParams(candidate, { operation: "active" }).ok, true);
+  } finally {
+    collections.INTRODUCTIONS = original;
+  }
+});
+
+test("EA-XYZ-P3-T004: distinct contracts and disabled same-contract rows preserve the schema", async () => {
+  for (const mirrorNetwork of ["testnet", "mainnet"]) {
+    const candidate = activeFixture();
+    candidate.mirrorNetwork = mirrorNetwork;
+    candidate.burnTokens.push({
+      collection: "INTRODUCTIONS", enabled: true, exclude: [], burnAmount: 2
+    }, {
+      collection: "CANAAN", enabled: false, exclude: [""], burnAmount: 1
+    });
+    assert.equal(validateDropParams(candidate, { operation: "active" }).ok, true);
+    assert.deepEqual(await evaluateSerializedDropParams(candidate), candidate);
+  }
 });
 
 test("legacy disabled-row empty exclusion sentinel round-trips", async () => {
