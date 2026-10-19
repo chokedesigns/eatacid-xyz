@@ -1010,6 +1010,16 @@ async function handleEventExchange() {
     // Step 1: Show waiting for wallet confirmation modal
     showModal('PROCESSING...', '[WAITING FOR WALLET CONFIRMATION...]');
 
+    // Own the projection before the account read so that await cannot adopt a
+    // replacement wallet's generation for the previously selected trade.
+    const walletGeneration = walletRefreshGeneration;
+    const isCurrentTradeAccount = account => isCurrentWalletProjection({
+      generation: walletGeneration,
+      address: account?.address,
+      currentGeneration: walletRefreshGeneration,
+      currentAddress: synchronizedWalletAddress
+    });
+
     // Ensure wallet is connected
     const activeAccount = await getVerifiedPublicActiveAccount();
     if (!activeAccount) {
@@ -1019,7 +1029,7 @@ async function handleEventExchange() {
       return;
     }
     const myAddr = activeAccount.address;
-    const walletGeneration = walletRefreshGeneration;
+    if (!isCurrentTradeAccount(activeAccount)) throw new Error('Wallet changed. Please select your token again.');
     logger.log('✅ User wallet address:', myAddr);
 
     // Gather burn-cart items
@@ -1125,6 +1135,19 @@ async function handleEventExchange() {
       : tradeOperations;
 
     logger.log('🚀 Sending batched approval and trade operations:', JSON.stringify(batchedOps, null, 2));
+
+    // Approval/mapping reads and this final account read can outlive the wallet
+    // or selection that authorized the cart. Keep the final checks synchronous
+    // with the wallet request, including after the last pre-send await.
+    const currentAccount = await getVerifiedPublicActiveAccount();
+    if (currentAccount?.address !== myAddr || !isCurrentTradeAccount(currentAccount)) {
+      throw new Error('Wallet changed. Please select your token again.');
+    }
+    const selected = getSelectedEventTokenWithBalance();
+    if (selected.contractAddress !== contractAddress || selected.tokenId !== tokenId ||
+        selected.oldBalance !== oldBalance || getBurnAmountForContract(selected.contractAddress) !== burnAmount) {
+      throw new Error('Selected token or balance changed. Please select your token again.');
+    }
 
     // Step 2: Prompt wallet to sign and send
     const opResponse = await window.dAppClient.requestOperation({
