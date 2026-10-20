@@ -344,7 +344,7 @@ const walletPendingBranch = eventsSource.slice(
 assert.match(walletPendingBranch, /walletRefreshGeneration\+\+/);
 assert.match(walletPendingBranch, /renderWalletTokenLoadingState\(\)/);
 assert.doesNotMatch(walletPendingBranch, /handleWalletDisconnected/);
-assert.match(eventsSource, /if \(!isCurrentWalletProjection\(\{/);
+assert.match(eventsSource, /if \(request !== walletHoldingsRequest \|\| !isCurrentWalletProjection\(\{/);
 assert.match(eventsSource, /renderConnectedWalletTokenState\(eligible\.length\)/);
 
 const postTradeRefresh = eventsSource.slice(
@@ -354,8 +354,8 @@ const postTradeRefresh = eventsSource.slice(
 const postTradePoll = postTradeRefresh.indexOf(
   'const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokens)'
 );
-const postTradeGuard = postTradeRefresh.indexOf('if (isCurrentWalletProjection({', postTradePoll);
-const postTradeCommit = postTradeRefresh.indexOf('refreshConnectedState(refreshedNFTs)', postTradeGuard);
+const postTradeGuard = postTradeRefresh.indexOf('if (holdingsRequest === walletHoldingsRequest && isCurrentWalletProjection({', postTradePoll);
+const postTradeCommit = postTradeRefresh.indexOf('refreshConnectedState(refreshedNFTs, holdingsRequest)', postTradeGuard);
 assert.match(postTradeRefresh, /const walletGeneration = walletRefreshGeneration/);
 assert.match(postTradeRefresh, /generation: walletGeneration/);
 assert.match(postTradeRefresh, /currentGeneration: walletRefreshGeneration/);
@@ -381,6 +381,8 @@ assert.ok(postTradePoll > -1 && postTradeGuard > postTradePoll && postTradeCommi
       synchronizedWalletAddress: 'tz1-trader',
       tradedTokens: [{ contractAddress: 'KT1-burn', tokenId: '3' }],
       walletGeneration: 8,
+      holdingsRequest: 1, walletHoldingsRequest: 1,
+      renderConnectedWalletTokenFailureState() {}, updateEventCartBurnToken() {},
       walletRefreshGeneration: 8
     };
 
@@ -391,7 +393,11 @@ assert.ok(postTradePoll > -1 && postTradeGuard > postTradePoll && postTradeCommi
     context.synchronizedWalletAddress = address;
     context.walletRefreshGeneration = generation;
     pendingNFTs.resolve(refreshedNFTs);
-    await refresh;
+    await refresh.catch(error => {
+      assert.equal(error.message, 'Wallet session changed. Retry balances.');
+      assert.notEqual(generation, 8);
+      assert.equal(address, 'tz1-trader');
+    });
 
     return { commits, refreshedNFTs };
   }
@@ -498,6 +504,7 @@ function createWalletTokenFixture() {
     setRegionPending,
     isCurrentWalletProjection,
     walletRefreshGeneration: 1,
+    walletHoldingsRequest: 0, confirmedDropsTrades: new Map(), dropsBalanceRefreshFailed: false,
     synchronizedWalletAddress: 'tz1-wallet-fixture',
     resolveBurnTokenRenderIdentities,
     normalizeString: value => value.trim().toLowerCase(),
@@ -540,7 +547,7 @@ function createWalletTokenFixture() {
     'renderBalances', 'updateOwnedTokenCounts', 'getWalletTokenPanes', 'clearWalletTokenRows',
     'setWalletTokenPanesVisible', 'setWalletTokenRegionPending', 'commitWalletTokenRegion',
     'renderWalletTokenLoadingState', 'renderConnectedWalletTokenState',
-    'updateTokensWithWalletData', 'updateEventCartBurnToken'
+    'updateTokensWithWalletData', 'updateEventCartBurnToken', 'assertDropsTradeBalances'
   ].map(name => {
     const match = eventsSource.match(new RegExp(`^(?:async )?function ${name}\\([\\s\\S]*?^\\}\\r?$`, 'm'));
     assert.ok(match, `Missing runtime function: ${name}`);

@@ -52,6 +52,7 @@ function fixture({ past = false, pendingTime = false, wallet = false } = {}) {
     fetchNFTs: () => new Promise(resolve => nft.push(resolve)),
     updateTokensWithWalletData: async () => { walletRenders++; },
     walletRefreshGeneration: 0,
+    walletHoldingsRequest: 0,
     setTimeout: fn => { const id = ++waitId; waits.set(id, fn); return id; },
     clearTimeout: id => waits.delete(id),
   });

@@ -818,13 +818,14 @@ function resetEventsUI() {
  *
  * @param {Array} nfts - Updated list of NFTs.
  */
-async function refreshConnectedState(nfts) {
+async function refreshConnectedState(nfts, request = ++walletHoldingsRequest) {
+  if (request !== walletHoldingsRequest) return;
   const generation = walletRefreshGeneration;
   const address = synchronizedWalletAddress;
 
   // 1) Rebuild current holdings without recapturing wallet-native rows as CMS.
   await updateTokensWithWalletData(nfts);
-  if (!isCurrentWalletProjection({
+  if (request !== walletHoldingsRequest || !isCurrentWalletProjection({
     generation, address,
     currentGeneration: walletRefreshGeneration,
     currentAddress: synchronizedWalletAddress
@@ -997,8 +998,12 @@ async function handleEventExchange() {
     return;
   }
 
-  if (eventExchangeInFlight) return;
+  if (eventExchangeInFlight || confirmedDropsTrades.has(synchronizedWalletAddress)) return;
   eventExchangeInFlight = true;
+  let tradeConfirmed = false;
+  let tradeAddress;
+  let holdingsRequest;
+  let countdownInterval;
 
   // Base URL for block-explorer links
   const EXPLORER_BASE = network === 'mainnet'
@@ -1029,6 +1034,7 @@ async function handleEventExchange() {
       return;
     }
     const myAddr = activeAccount.address;
+    tradeAddress = myAddr;
     if (!isCurrentTradeAccount(activeAccount)) throw new Error('Wallet changed. Please select your token again.');
     logger.log('✅ User wallet address:', myAddr);
 
@@ -1164,6 +1170,14 @@ async function handleEventExchange() {
 
     // Step 4: Poll for on-chain confirmation
     await pollForConfirmation(opHash);
+    tradeConfirmed = true;
+    confirmedDropsTrades.set(myAddr, burnCart);
+    if (synchronizedWalletAddress === myAddr) {
+      holdingsRequest = ++walletHoldingsRequest;
+      renderWalletTokenLoadingState({ clearRows: true });
+      updateAppState({ selectedTokenId: null });
+      updateEventCartBurnToken();
+    }
 
     // Step 5: Show success in the modal
     showModal('SUCCESS!', '[BURN COMPLETE. ✅]');
@@ -1189,7 +1203,6 @@ async function handleEventExchange() {
     }
 
     // Start a 30-second countdown in text6
-    let countdownInterval;
     if (text6) {
       text6.style.display = 'block';
       countdownInterval = startCountdown(30, text6);
@@ -1206,13 +1219,15 @@ async function handleEventExchange() {
       startingBalance: item.startingBalance
     }));
     const refreshedNFTs = await pollForNFTUpdate(myAddr, tradedTokens);
-    if (isCurrentWalletProjection({
+    if (holdingsRequest === walletHoldingsRequest && isCurrentWalletProjection({
       generation: walletGeneration,
       address: myAddr,
       currentGeneration: walletRefreshGeneration,
       currentAddress: synchronizedWalletAddress
     })) {
-      await refreshConnectedState(refreshedNFTs);
+      await refreshConnectedState(refreshedNFTs, holdingsRequest);
+    } else if (holdingsRequest === walletHoldingsRequest && synchronizedWalletAddress === myAddr) {
+      throw new Error('Wallet session changed. Retry balances.');
     }
 
     // After balances reflect, swap spinner to checkbox & finalize
@@ -1228,10 +1243,19 @@ async function handleEventExchange() {
     // Close modal after 3s
     setTimeout(hideModal, 3000);
   } catch (error) {
+    if (tradeConfirmed && (tradeAddress !== synchronizedWalletAddress ||
+        holdingsRequest !== walletHoldingsRequest)) return;
     console.error('❌ Error during exchange process:', error);
-    showModal('ERROR', `${error.message || 'Unknown issue'}`);
+    if (tradeConfirmed) {
+      renderConnectedWalletTokenFailureState();
+      updateEventCartBurnToken();
+    }
+    showModal(tradeConfirmed ? 'BURN COMPLETE. ✅' : 'ERROR', tradeConfirmed
+      ? '[BALANCES STILL UPDATING. USE RETRY BALANCES.]'
+      : `${error.message || 'Unknown issue'}`);
     setTimeout(hideModal, 3000);
   } finally {
+    clearInterval(countdownInterval);
     eventExchangeInFlight = false;
   }
 
@@ -1774,10 +1798,12 @@ function renderConnectedWalletTokenState(eligibleCount) {
 }
 
 function renderConnectedWalletTokenFailureState() {
+  dropsBalanceRefreshFailed = true;
+  updateAppState({ selectedTokenId: null });
   clearWalletTokenRows();
   renderBalances({});
   commitWalletTokenRegion({
-    headingText: 'AVAILABLE BURN TOKENS',
+    headingText: 'BALANCES UNAVAILABLE — RETRY BALANCES',
     headingVisible: true,
     terminal: true
   });
@@ -1791,6 +1817,7 @@ function renderConnectedWalletTokenFailureState() {
  * @param {Array} nfts - Array of NFT objects.
  */
 async function updateTokensWithWalletData(nfts) {
+  assertDropsTradeBalances(nfts);
   logger.log("updateTokensWithWalletData called with NFTs:", nfts);
 
   const prevRow = document.querySelector('.w-checkbox-input.events_checkbox:checked')
@@ -1873,6 +1900,9 @@ async function updateTokensWithWalletData(nfts) {
   }
 
   renderConnectedWalletTokenState(eligible.length);
+  confirmedDropsTrades.delete(synchronizedWalletAddress);
+  dropsBalanceRefreshFailed = false;
+  updateAppState({});
 }
 
 // =============================================================================
@@ -2217,10 +2247,22 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
           const account = AppState.activeAccount;
           if (account) {
             const generation = walletRefreshGeneration;
+            let request = walletHoldingsRequest;
             const nfts = await fetchNFTs(account.address);
             if (signal?.aborted || !isCurrent() || generation !== walletRefreshGeneration ||
+                request !== walletHoldingsRequest ||
                 AppState.activeAccount?.address !== account.address) return;
-            await updateTokensWithWalletData(nfts);
+            try {
+              request = ++walletHoldingsRequest;
+              await updateTokensWithWalletData(nfts);
+            } catch (error) {
+              if (request === walletHoldingsRequest && generation === walletRefreshGeneration &&
+                  !signal?.aborted && isCurrent()) {
+                renderConnectedWalletTokenFailureState();
+                updateEventCartBurnToken();
+              }
+              throw error;
+            }
           }
         }
         return;
@@ -2369,6 +2411,11 @@ function computeExchangeButtonState({
   contractPaused,
   redeemSupply
 }) {
+  if (walletConnected && dropsBalanceRefreshFailed) {
+    return { defaultLabel: 'RETRY BALANCES', hoverLabel: 'RETRY BALANCES',
+      defaultColor: '#363636', hoverColor: '#d4d4d4', pulse: false,
+      liveClass: false, clickAction: retryDropsBalances };
+  }
   // — SOLD‑OUT state: only when live, supply is zero, walletConnected & tokenSelected —
   if (
     countdownPhase === 'live' &&
@@ -2564,6 +2611,10 @@ function attachExchangeButtonHandlers() {
 
 let synchronizedWalletAddress;
 let walletRefreshGeneration = 0;
+let walletHoldingsRequest = 0;
+let dropsBalanceRefreshFailed = false;
+// Retain unverified burns across account changes, including same-address reconnects.
+const confirmedDropsTrades = new Map();
 let dropsWalletSyncReady = false;
 let pendingPublicWalletState = null;
 
@@ -2619,10 +2670,13 @@ function handleWalletDisconnected() {
 }
 
 async function refreshDropsWallet(account, generation, nftsPromise) {
+  const request = ++walletHoldingsRequest;
   try {
-    const nfts = await (nftsPromise || fetchNFTs(account.address));
+    const nfts = await (nftsPromise || (confirmedDropsTrades.has(account.address)
+      ? pollForNFTUpdate(account.address, confirmedDropsTrades.get(account.address))
+      : fetchNFTs(account.address)));
 
-    if (!isCurrentWalletProjection({
+    if (request !== walletHoldingsRequest || !isCurrentWalletProjection({
       generation,
       address: account.address,
       currentGeneration: walletRefreshGeneration,
@@ -2633,7 +2687,7 @@ async function refreshDropsWallet(account, generation, nftsPromise) {
 
     await updateTokensWithWalletData(nfts);
   } catch (error) {
-    if (isCurrentWalletProjection({
+    if (request === walletHoldingsRequest && isCurrentWalletProjection({
       generation,
       address: account.address,
       currentGeneration: walletRefreshGeneration,
@@ -2646,10 +2700,47 @@ async function refreshDropsWallet(account, generation, nftsPromise) {
   }
 }
 
+function assertDropsTradeBalances(nfts) {
+  const trade = confirmedDropsTrades.get(synchronizedWalletAddress);
+  if (!trade) return;
+  if (!Array.isArray(nfts) || trade.some(token => {
+    const matches = nfts.filter(nft => normalizeString(nft.contractAddress) === normalizeString(token.contractAddress) &&
+      String(nft.tokenId) === String(token.tokenId));
+    return matches.length > 1 || matches.some(nft =>
+      !Number.isSafeInteger(Number(nft.balance)) || Number(nft.balance) < 0 ||
+      Number(nft.balance) > token.startingBalance - token.quantity);
+  })) throw new Error('Confirmed trade balances are still updating. Retry balances.');
+}
+
+async function retryDropsBalances() {
+  if (eventExchangeInFlight || !dropsBalanceRefreshFailed) return;
+  const address = synchronizedWalletAddress;
+  const generation = walletRefreshGeneration;
+  const request = ++walletHoldingsRequest;
+  renderWalletTokenLoadingState({ clearRows: true });
+  try {
+    const account = await getVerifiedPublicActiveAccount();
+    if (request !== walletHoldingsRequest || generation !== walletRefreshGeneration ||
+        address !== synchronizedWalletAddress) return;
+    if (!account || account.address !== address) {
+      synchronizeDropsWalletState({ status: account ? 'connected' : 'unconnected', account });
+      return;
+    }
+    await refreshDropsWallet(account, generation);
+  } catch (error) {
+    if (request !== walletHoldingsRequest || generation !== walletRefreshGeneration) return;
+    console.error('Error retrying Drops wallet balances:', error);
+    renderConnectedWalletTokenFailureState();
+    updateEventCartBurnToken();
+  }
+}
+
 function synchronizeDropsWalletState(walletState) {
   if (!walletState || walletState.status === 'pending') {
     synchronizedWalletAddress = undefined;
     walletRefreshGeneration++;
+    walletHoldingsRequest++;
+    dropsBalanceRefreshFailed = false;
     renderWalletTokenLoadingState();
     return;
   }
@@ -2663,6 +2754,8 @@ function synchronizeDropsWalletState(walletState) {
 
   synchronizedWalletAddress = address;
   const generation = ++walletRefreshGeneration;
+  walletHoldingsRequest++;
+  dropsBalanceRefreshFailed = false;
 
   if (!account) {
     handleWalletDisconnected();

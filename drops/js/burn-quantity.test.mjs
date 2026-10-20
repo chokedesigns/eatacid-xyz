@@ -38,11 +38,14 @@ function fixture({ amount = 2, balance = 5, redeemAmount = 3, enabled = true, fa
     },
     pollForNFTUpdate: async (_, tokens) => { refreshes.push(structuredClone(tokens)); return []; },
     walletRefreshGeneration: 1, synchronizedWalletAddress: 'inert-wallet',
+    walletHoldingsRequest: 0, confirmedDropsTrades: new Map(), dropsBalanceRefreshFailed: false,
+    renderWalletTokenLoadingState() {}, updateAppState() {}, updateEventCartBurnToken() {}, clearInterval() {},
     isCurrentWalletProjection: () => true, refreshConnectedState() {},
   });
   const helper = source.includes('function getBurnAmountForContract(')
     ? section('function getBurnAmountForContract(', '/**\n * Returns the one selected') : '';
-  vm.runInContext(helper + section('let eventExchangeInFlight', '// UI STATE TOGGLING:'), context);
+  vm.runInContext(helper + section('function assertDropsTradeBalances(', 'async function retryDropsBalances(') +
+    section('let eventExchangeInFlight', '// UI STATE TOGGLING:'), context);
   return { context, config, approvals, operations, refreshes, errors, details,
     send: () => context.handleEventExchange() };
 }

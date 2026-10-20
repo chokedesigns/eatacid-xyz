@@ -5,6 +5,7 @@ import vm from 'node:vm';
 import test from 'node:test';
 import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
 import { isCurrentWalletProjection, setRegionPending } from './reveal-coordinator.js';
+import { pollForNFTUpdate as pollForSharedNFTUpdate } from '../../shared/public-trade-ops.js';
 
 // Run the page's current functions against inert CMS, wallet and indexer boundaries.
 const root = process.env.EA_T005_SOURCE_ROOT
@@ -168,6 +169,165 @@ function assertPending(h) {
   for (const pane of Object.values(h.panes)) assert.equal(pane.style.display, 'none');
   assert.equal(h.wallet['aria-busy'], 'true'); assert.equal(h.spinner.style.display, 'flex');
 }
+
+function tradeFixture(h, { confirmation = Promise.resolve(), holdings = [nft('0', 'HEN', 5)] } = {}) {
+  const modals = [];
+  Object.assign(h.context, {
+    getVerifiedPublicActiveAccount: async () => h.state.activeAccount,
+    getSelectedEventTokenWithBalance: () => ({ contractAddress: 'contract-HEN', tokenId: '0', oldBalance: 5 }),
+    buildApprovalOps: async () => [], fetchTokenPairId: async () => '11',
+    redeemToken: { collection: 'CANAAN', tokenId: '29', redeemAmount: 1 },
+    REDEEM_CONTRACT_ADDRESS: 'contract-CANAAN', BURN_REDEEM_CONTRACT_ADDRESS: 'escrow',
+    networkConfigAvailable: true, network: 'testnet', showModal: (...args) => modals.push(args), hideModal() {},
+    resetEventsUI() {}, setTimeout() {}, pollForConfirmation: () => confirmation,
+    pollForSharedNFTUpdate: args => pollForSharedNFTUpdate({ ...args, timeout: 0, interval: 0 }),
+    fetchNFTs: async () => holdings,
+  });
+  h.window.dAppClient = { requestOperation: async () => ({ transactionHash: 'inert-hash' }) };
+  h.document.appendChild(new Element('loading-modal-div'));
+  vm.runInContext([
+    section('async function pollForNFTUpdate(', '// HELPERS: UI RESET'),
+    section('let eventExchangeInFlight', '// UI STATE TOGGLING:'),
+    section('function computeExchangeButtonState(', '/**\n * Renders the exchange button'),
+  ].join('\n'), h.context);
+  return { modals, send: () => h.context.handleEventExchange(), setHoldings: value => { holdings = value; } };
+}
+
+test('EA-XYZ-P3-T013: timeout cannot publish pre-burn holdings; retry preserves applied status and recovers', async () => {
+  const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+  const trade = tradeFixture(h); await trade.send();
+  assert.deepEqual(h.ids('HEN'), [], 'Burn 2 from 5 must not republish 5 after timeout');
+  assert.equal(h.call('eventExchangeInFlight'), false);
+  assert.equal(trade.modals.at(-1)[0], 'BURN COMPLETE. ✅');
+  const button = h.context.computeExchangeButtonState({ walletConnected: true });
+  assert.equal(button.defaultLabel, 'RETRY BALANCES');
+  await button.clickAction();
+  assert.deepEqual(h.ids('HEN'), [], 'Repeated stale retry remains unavailable');
+  trade.setHoldings([nft('0', 'HEN', 4)]); await h.context.retryDropsBalances();
+  assert.deepEqual(h.ids('HEN'), [], 'Partial burn delta remains unavailable');
+  trade.setHoldings([nft('0', 'HEN', 3)]); await h.context.retryDropsBalances();
+  assert.deepEqual(h.ids('HEN'), ['0']);
+  assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');
+  assert.equal(h.call('dropsBalanceRefreshFailed'), false); assertCanonical(h);
+});
+
+for (const holdings of [[nft('0', 'HEN', 3)], [nft('0', 'HEN', 0)], []]) {
+  test(`EA-XYZ-P3-T013: proven timeout refetch succeeds (balance=${holdings[0]?.balance ?? 'absent'})`, async () => {
+    const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+    const trade = tradeFixture(h, { holdings }); await trade.send();
+    assert.equal(h.errors.length, 0); assert.equal(h.call('dropsBalanceRefreshFailed'), false);
+    assert.deepEqual(h.ids('HEN'), holdings[0]?.balance ? ['0'] : []);
+    assert.equal(trade.modals.at(-1)[0], 'SUCCESS!'); assertCanonical(h);
+  });
+}
+
+test('EA-XYZ-P3-T013: successful polling verifies the full delta before publication', async () => {
+  const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+  const trade = tradeFixture(h, { holdings: [nft('0', 'HEN', 3)] });
+  let polls = 0;
+  h.context.pollForSharedNFTUpdate = args => pollForSharedNFTUpdate({ ...args, timeout: 1000, interval: 0,
+    fetchNFTs: async () => [nft('0', 'HEN', ++polls === 1 ? 4 : 3)] });
+  await trade.send(); assert.equal(polls, 2);
+  assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');
+  assert.equal(h.errors.length, 0);
+});
+
+for (const fail of [false, true]) {
+  test(`EA-XYZ-P3-T013: pre-confirmation request cannot overwrite verified holdings (failure=${fail})`, async () => {
+    const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+    const old = deferred();
+    const oldRefresh = h.context.refreshDropsWallet({ address: 'wallet-A' }, h.call('walletRefreshGeneration'), old.promise);
+    const trade = tradeFixture(h, { holdings: [nft('0', 'HEN', 3)] }); await trade.send();
+    if (fail) old.reject(new Error('old request failed')); else old.resolve([nft('0', 'HEN', 5)]);
+    await oldRefresh;
+    assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');
+    assert.equal(h.errors.length, 0); assert.equal(h.call('dropsBalanceRefreshFailed'), false);
+  });
+}
+
+for (const change of ['replacement', 'reconnect', 'pending']) {
+  test(`EA-XYZ-P3-T013: late poll cannot overwrite ${change}; original wallet retains burn requirement`, async () => {
+    const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+    const trade = tradeFixture(h); const old = deferred();
+    h.context.fetchNFTs = () => old.promise;
+    const run = trade.send(); await flush();
+    if (change === 'pending') h.context.synchronizeDropsWalletState({ status: 'pending' });
+    else {
+      if (change === 'reconnect') h.disconnect();
+      h.connect(change === 'replacement' ? 'wallet-B' : 'wallet-A',
+        Promise.resolve(change === 'reconnect' ? [nft('0', 'HEN', 5)] : [nft('2')]));
+    }
+    await flush(); old.resolve([nft('0', 'HEN', 5)]); await run;
+    assert.deepEqual(h.ids('HEN'), change === 'replacement' ? ['2'] : []);
+    h.disconnect(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+    assert.deepEqual(h.ids('HEN'), [], 'Reconnect cannot erase an unverified burn');
+    assert.equal(h.call('dropsBalanceRefreshFailed'), true);
+  });
+}
+
+test('EA-XYZ-P3-T013: confirmation after same-address reconnect revokes stale rows and permits verified recovery', async () => {
+  const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+  const confirmation = deferred(); const trade = tradeFixture(h, { confirmation: confirmation.promise });
+  const run = trade.send(); await flush(); h.disconnect();
+  h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+  confirmation.resolve(); await run;
+  assert.deepEqual(h.ids('HEN'), []); assert.equal(h.call('dropsBalanceRefreshFailed'), true);
+  trade.setHoldings([nft('0', 'HEN', 3)]); await h.context.retryDropsBalances();
+  assert.deepEqual(h.ids('HEN'), ['0']);
+});
+
+test('EA-XYZ-P3-T013: newer verified refresh wins over an older trade poll in the same wallet session', async () => {
+  const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+  const trade = tradeFixture(h); const old = deferred(); h.context.fetchNFTs = () => old.promise;
+  const run = trade.send(); await flush();
+  await h.context.refreshDropsWallet({ address: 'wallet-A' }, h.call('walletRefreshGeneration'),
+    Promise.resolve([nft('0', 'HEN', 3)]));
+  old.resolve([nft('0', 'HEN', 5)]); await run;
+  assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');
+  assert.equal(h.call('dropsBalanceRefreshFailed'), false); assert.equal(h.errors.length, 0);
+});
+
+for (const older of ['standby', 'trade']) {
+  test(`EA-XYZ-P3-T013: ${older} NFT completion cannot overwrite the newer verified producer`, async () => {
+    const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+    const trade = tradeFixture(h, { holdings: [nft('0', 'HEN', 3)] }); const old = deferred();
+    Object.assign(h.context, { TZKT_BASE: 'https://inert.invalid',
+      fetch: async () => ({ json: async () => ({ paused: false }) }) });
+    vm.runInContext(section('async function pollForUnpause(', 'function startCountdown('), h.context);
+    h.context.fetchNFTs = () => old.promise;
+    const first = older === 'standby' ? h.context.pollForUnpause('escrow') : trade.send();
+    await flush(); h.context.fetchNFTs = async () => [nft('0', 'HEN', 3)];
+    if (older === 'standby') await trade.send(); else await h.context.pollForUnpause('escrow');
+    old.resolve([nft('0', 'HEN', 5)]); await first;
+    assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');
+    assert.equal(h.errors.length, 0); assert.equal(h.call('dropsBalanceRefreshFailed'), false);
+  });
+}
+
+for (const fail of [false, true]) {
+  test(`EA-XYZ-P3-T013: overlapping retry ignores older completion (failure=${fail})`, async () => {
+    const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+    const trade = tradeFixture(h); await trade.send();
+    const old = deferred(); h.context.fetchNFTs = () => old.promise;
+    const retry = h.context.retryDropsBalances(); await flush();
+    h.context.fetchNFTs = async () => [nft('0', 'HEN', 3)];
+    await h.context.retryDropsBalances();
+    if (fail) old.reject(new Error('old retry failed')); else old.resolve([nft('0', 'HEN', 5)]);
+    await retry;
+    assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');
+    assert.equal(h.call('dropsBalanceRefreshFailed'), false);
+  });
+}
+
+test('EA-XYZ-P3-T013: provider failure after applied burn stays recoverable and blocks another send', async () => {
+  const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
+  const trade = tradeFixture(h); h.context.fetchNFTs = async () => { throw new Error('indexer unavailable'); };
+  await trade.send(); assert.equal(trade.modals.at(-1)[0], 'BURN COMPLETE. ✅');
+  assert.deepEqual(h.ids('HEN'), []); const modalCount = trade.modals.length;
+  await trade.send(); assert.equal(trade.modals.length, modalCount);
+  h.context.fetchNFTs = async () => [nft('0', 'HEN', 3)]; await h.context.retryDropsBalances();
+  assert.deepEqual(h.ids('HEN'), ['0']); assert.equal(h.call('eventExchangeInFlight'), false);
+});
 
 test('FIND-P2-002: confirmed refreshes retain every canonical template and reproject current native holdings', async () => {
   const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0'), nft('1'), nft('7', 'INTRODUCTIONS')])); await flush();

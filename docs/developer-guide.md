@@ -157,6 +157,8 @@ The runtime independently resolves configured parameter/countdown state, escrow 
 
 For a trade, Drops verifies the active wallet, builds any required operator approvals through `shared/public-trade-ops.js`, looks up the pair ID through TzKT, composes the page-specific `initiate_trade` operation, sends the batch through the shared Beacon client, verifies expected confirmation, polls changed NFT balances, and refreshes the UI. Contract source and deployment concerns remain in the contract subtree.
 
+After confirmation, Drops clears actionable holdings until the full expected burn delta is verified. Timeout or refresh failure retains the applied-operation status and exposes `RETRY BALANCES` on the exchange button. Unverified burn requirements survive wallet changes within the page session, including reconnects; wallet and holdings-request guards reject older asynchronous completions. A retry or later wallet refresh must satisfy those requirements before publishing quantities again.
+
 ## Exchange architecture
 
 The Webflow shell supplies two tab panes and serialized CMS rows for THE 419 SCRIPT and CANAAN. `exchange/js/exchange-config.js` projects the active registry collections, redeem-token contract, and strictly resolved Exchange escrow. If required strict configuration is absent, the surface renders unavailable rather than falling back to the legacy top-level escrow.
