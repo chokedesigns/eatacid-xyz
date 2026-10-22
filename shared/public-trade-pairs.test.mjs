@@ -164,7 +164,7 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
     resetEventsUI() {}, resetExchangeUI() {}, pollForConfirmation: async () => {}, pollForNFTUpdate: async () => [],
     walletRefreshGeneration: 0, synchronizedWalletAddress: 'inert-wallet', isCurrentWalletProjection: () => true, refreshConnectedState() {},
     walletHoldingsRequest: 0, confirmedDropsTrades: new Map(), updateAppState() {}, updateEventCartBurnToken() {},
-    exchangeWalletLifecycleStatus: 'connected', walletBalancesVerified: true, confirmedTradeRefresh: null,
+    exchangeWalletLifecycleStatus: 'connected', walletBalancesVerified: true, confirmedExchangeTrades: new Map(),
     renderWalletTokenLoadingState() {}, renderConnectedWalletTokenFailureState() {},
   });
   let code;

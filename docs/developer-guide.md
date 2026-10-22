@@ -167,6 +167,8 @@ The Webflow shell supplies two tab panes and serialized CMS rows for THE 419 SCR
 
 For exchange execution, the page obtains the verified active account and burn cart, uses `shared/public-trade-ops.js` for operator approvals and pair lookup, groups page-specific `initiate_trade` payloads, submits the batch through the shared Beacon client, verifies confirmation against the configured escrow and entrypoint, polls for balance changes, and refreshes row/cart state.
 
+Confirmed Exchange burns retain their full expected balance delta per wallet within the page session until holdings publication verifies it. Pending, disconnect, account replacement, and same-address reconnect preserve this requirement. Confirmation invalidates an in-flight reconnect snapshot for the same wallet; stale or failed refreshes keep quantities unavailable and expose the existing balance retry control.
+
 ## Webflow integration boundary
 
 ### Webflow owns

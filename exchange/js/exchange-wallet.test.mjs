@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import { pollForNFTUpdate } from '../../shared/public-trade-ops.js';
 
 // Execute the complete page module with inert DOM, wallet and indexer boundaries.
 const source = readFileSync(process.env.EA_T013_SOURCE || new URL('./exchange.js', import.meta.url), 'utf8')
@@ -194,10 +195,11 @@ test('Post-trade delayed success and failure cannot overwrite a new wallet proje
   for (const reconnect of [false, true]) for (const fail of [false, true]) {
     const h = fixture(), poll = deferred(); await h.connect(); h.select(); h.poll = () => poll.promise;
     const trade = h.trade(); await flush(); unavailable(h);
-    h.disconnect(); await h.connect(reconnect ? 'wallet-A' : 'wallet-B', [nft(2)]);
+    h.poll = async opts => opts.fetchNFTs(opts.address);
+    h.disconnect(); await h.connect(reconnect ? 'wallet-A' : 'wallet-B', [nft(reconnect ? 0 : 2)]);
     if (fail) poll.reject(new Error('inert old poll')); else poll.resolve([nft(31)]);
     await trade;
-    assert.equal(h.dropdowns[0].disabled, false); assert.equal(h.dropdowns[0].options.length, 3);
+    assert.equal(h.dropdowns[0].disabled, reconnect); assert.equal(h.dropdowns[0].options.length, reconnect ? 1 : 3);
     assert.equal(h.controls.connect.style.display, 'none'); assert.equal(h.intervals.size, 0);
   }
 });
@@ -261,13 +263,15 @@ test('Retry results are ignored after wallet change, pending, disconnect or same
     h.fetchRows = async () => { throw new Error('inert outage'); }; await h.trade();
     const refresh = deferred(); h.poll = () => refresh.promise;
     const retry = h.controls.connect.click(); await flush(); unavailable(h);
+    h.poll = async opts => opts.fetchNFTs(opts.address);
     if (transition === 'switch') await h.connect('wallet-B', [nft(2)]);
     else if (transition === 'pending') h.state({ status: 'pending' });
-    else { h.disconnect(); if (transition === 'reconnect') await h.connect('wallet-A', [nft(2)]); }
+    else { h.disconnect(); if (transition === 'reconnect') await h.connect('wallet-A', [nft(0)]); }
     if (fail) refresh.reject(new Error('inert stale retry')); else refresh.resolve([nft(0)]);
     await retry;
     if (transition === 'switch' || transition === 'reconnect') {
-      assert.equal(h.dropdowns[0].options.length, 3); assert.equal(h.dropdowns[0].disabled, false);
+      assert.equal(h.dropdowns[0].options.length, transition === 'reconnect' ? 1 : 3);
+      assert.equal(h.dropdowns[0].disabled, transition === 'reconnect');
     } else unavailable(h);
   }
 });
@@ -298,3 +302,120 @@ test('Duplicate clicks are held through confirmation and release after refresh o
   confirmation.resolve(); await trade;
   h.disconnect(); await h.connect(); h.select(); await h.trade(); assert.equal(h.sent.length, 2);
 });
+
+for (const transition of ['disconnect', 'pending', 'replacement']) {
+  for (const response of ['outage', 'stale', 'partial', 'other-token-stale']) {
+    test(`FIND-P3-014: ${transition}/${response} retains the full confirmed delta and recovers`, async () => {
+      const h = fixture(); await h.connect('wallet-A', [nft(5), nft(3, 'KT1Canaan')]);
+      h.select('2'); h.select('1', 1);
+      h.fetchRows = async () => { throw new Error('inert post-confirmation outage'); };
+      await h.trade(); unavailable(h);
+      assert.match(h.modal.querySelector('.loading-modal-text').innerHTML, /BURN COMPLETE/);
+      if (transition === 'disconnect') h.disconnect();
+      if (transition === 'pending') h.state({ status: 'pending' });
+      if (transition === 'replacement') {
+        await h.connect('wallet-B', [nft(2)]);
+        assert.equal(h.dropdowns[0].options.length, 3, 'Wallet A cannot constrain wallet B');
+      }
+      const stale = response === 'partial' ? [nft(4), nft(2, 'KT1Canaan')]
+        : response === 'other-token-stale' ? [nft(3), nft(3, 'KT1Canaan')]
+        : [nft(5), nft(3, 'KT1Canaan')];
+      h.fetchRows = async () => {
+        if (response === 'outage') throw new Error('inert reconnect outage');
+        return stale;
+      };
+      await h.connect('wallet-A', stale); unavailable(h);
+      assert.equal(h.controls.connect.textContent, 'RETRY BALANCES');
+      h.select(); await h.trade(); assert.equal(h.sent.length, 1, 'No second wallet request for stale holdings');
+      h.fetchRows = async () => stale;
+      await h.controls.connect.click(); unavailable(h);
+      h.fetchRows = async () => [nft(3), nft(2, 'KT1Canaan')];
+      await h.controls.connect.click();
+      assert.deepEqual(h.dropdowns.map(d => d.options.length), [4, 3]);
+      assert.equal(h.controls.connect.textContent, 'CONNECT');
+      assert.equal(h.intervals.size, 0);
+      // Once verified, ordinary reconnect uses the shared snapshot again.
+      h.disconnect(); await h.connect('wallet-A', [nft(6)]);
+      assert.equal(h.dropdowns[0].options.length, 7);
+      h.fetchRows = async () => [nft(5)]; h.select(); await h.trade();
+      assert.equal(h.sent.length, 2, 'A fresh authorized trade remains usable');
+    });
+  }
+}
+
+for (const transition of ['disconnect', 'pending', 'replacement', 'reconnect']) {
+  test(`FIND-P3-014: confirmation during ${transition} records the original wallet burn`, async () => {
+    const h = fixture(), confirmation = deferred(); await h.connect('wallet-A', [nft(5)]); h.select('2');
+    h.confirm = () => confirmation.promise;
+    const trade = h.trade(); await flush();
+    if (transition === 'pending') h.state({ status: 'pending' });
+    else if (transition === 'replacement') await h.connect('wallet-B', [nft(2)]);
+    else { h.disconnect(); if (transition === 'reconnect') await h.connect('wallet-A', [nft(5)]); }
+    h.fetchRows = async () => [nft(5)]; confirmation.resolve(); await trade;
+    assert.match(h.modal.querySelector('.loading-modal-text').innerHTML, /SUCCESS|BURN COMPLETE/);
+    if (transition === 'replacement') {
+      assert.equal(h.dropdowns[0].options.length, 3);
+      assert.equal(h.polls.length, 0, 'Detached confirmation cannot refresh the replacement wallet');
+    } else unavailable(h);
+    if (transition !== 'reconnect') await h.connect('wallet-A', [nft(5)]);
+    unavailable(h);
+    h.fetchRows = async () => [nft(4)]; await h.controls.connect.click(); unavailable(h);
+    h.fetchRows = async () => [nft(3)]; await h.controls.connect.click();
+    assert.equal(h.dropdowns[0].options.length, 4);
+    assert.equal(h.intervals.size, 0); assert.equal(h.sent.length, 1);
+  });
+}
+
+for (const fail of [false, true]) {
+  test(`FIND-P3-014: confirmation supersedes an unresolved reconnect snapshot (${fail ? 'failure' : 'success'})`, async () => {
+    const h = fixture(), confirmation = deferred(), snapshot = deferred();
+    await h.connect(); h.select(); h.confirm = () => confirmation.promise;
+    const trade = h.trade(); await flush(); h.disconnect(); h.account = { address: 'wallet-A' };
+    h.state({ status: 'connected', account: h.account, nftsPromise: snapshot.promise });
+    h.fetchRows = async () => [nft(1)]; confirmation.resolve(); await trade; unavailable(h);
+    h.fetchRows = async () => []; await h.controls.connect.click();
+    assert.equal(h.controls.empty.style.display, 'block');
+    if (fail) snapshot.reject(new Error('inert obsolete snapshot')); else snapshot.resolve([nft(31)]);
+    await flush();
+    assert.equal(h.controls.empty.style.display, 'block');
+    assert.equal(h.controls.connect.style.display, 'none');
+    assert.equal(h.dropdowns[0].options.length, 1);
+    assert.equal(h.sent.length, 1); assert.equal(h.intervals.size, 0);
+  });
+}
+
+test('FIND-P3-014: two wallets retain independent unverified burns until each recovers', async () => {
+  const h = fixture();
+  for (const address of ['wallet-A', 'wallet-B']) {
+    await h.connect(address, [nft(5)]); h.select('2');
+    h.fetchRows = async () => { throw new Error('inert outage'); }; await h.trade(); unavailable(h);
+  }
+  h.fetchRows = async () => [nft(4)]; await h.connect('wallet-A', [nft(4)]); unavailable(h);
+  h.fetchRows = async () => [nft(3)]; await h.controls.connect.click();
+  assert.equal(h.dropdowns[0].options.length, 4);
+  h.fetchRows = async () => [nft(4)]; await h.connect('wallet-B', [nft(4)]); unavailable(h);
+  h.fetchRows = async () => [nft(3)]; await h.controls.connect.click();
+  assert.equal(h.dropdowns[0].options.length, 4); assert.equal(h.sent.length, 2);
+});
+
+for (const [balance, quantity, stale, remaining] of [[1, 1, 1, 0], [5, 2, 4, 3]]) {
+  test(`FIND-P3-014: shared timeout/refetch cannot publish ${stale} after burning ${quantity} from ${balance}`, async () => {
+    const h = fixture(); await h.connect('wallet-A', [nft(balance)]); h.select(String(quantity));
+    h.poll = opts => pollForNFTUpdate({ ...opts, timeout: 0 });
+    h.fetchRows = async () => { throw new Error('inert initial refresh failure'); };
+    await h.trade(); unavailable(h);
+    assert.match(h.modal.querySelector('.loading-modal-text').innerHTML, /BURN COMPLETE/);
+    h.fetchRows = async () => [nft(stale)];
+    h.disconnect(); await h.connect('wallet-A', [nft(stale)]); unavailable(h);
+    h.context.window.receiveNFTs([nft(balance)]); await flush(); unavailable(h);
+    h.select(); await h.trade(); assert.equal(h.sent.length, 1);
+    await h.controls.connect.click(); unavailable(h);
+    h.fetchRows = async () => remaining ? [nft(remaining)] : [];
+    await h.controls.connect.click();
+    assert.equal(h.dropdowns[0].options.length, remaining + 1);
+    assert.equal(h.controls.connect.style.display, 'none');
+    assert.equal(h.controls.empty.style.display, 'block');
+    assert.equal(h.intervals.size, 0);
+    assert.ok(h.polls.every(opts => opts.fetchBeforePolling && opts.refetchOnTimeout));
+  });
+}

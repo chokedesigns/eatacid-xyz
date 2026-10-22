@@ -109,7 +109,8 @@ let exchangeWalletLifecycleStatus = 'pending';
 let verifiedWalletQuantities = new WeakMap();
 let walletBalancesVerified = false;
 let walletBalanceRefreshFailed = false;
-let confirmedTradeRefresh = null;
+// Unverified applied burns belong to their wallet for the lifetime of this page.
+const confirmedExchangeTrades = new Map();
 let exchangeConnectLabel;
 
 // =============================================================================
@@ -505,6 +506,8 @@ function renderConnectedWalletTokenState(nfts) {
     !/^\d+$/.test(String(nft.balance)) || !Number.isSafeInteger(Number(nft.balance)))) {
     throw new TypeError('Invalid wallet balances. Retry balances.');
   }
+  const trade = confirmedExchangeTrades.get(synchronizedWalletAddress);
+  if (trade) assertTradedBalancesRefreshed(nfts, trade);
   exchangeWalletTokensPending = false;
   walletBalanceRefreshFailed = false;
   verifiedWalletQuantities = new WeakMap();
@@ -523,11 +526,12 @@ function renderConnectedWalletTokenState(nfts) {
   });
 
   updateBurnCart();
+  confirmedExchangeTrades.delete(synchronizedWalletAddress);
 }
 
 async function refreshExchangeWallet(account, generation, nftsPromise) {
   try {
-    const trade = confirmedTradeRefresh;
+    const trade = confirmedExchangeTrades.get(account.address);
     const nfts = trade
       ? await pollForNFTUpdate(account.address, trade)
       : await (nftsPromise || fetchNFTs(account.address));
@@ -538,9 +542,7 @@ async function refreshExchangeWallet(account, generation, nftsPromise) {
       return;
     }
 
-    if (trade) assertTradedBalancesRefreshed(nfts, trade);
     renderConnectedWalletTokenState(nfts);
-    confirmedTradeRefresh = null;
   } catch (error) {
     if (
       isCurrentExchangeWallet(account.address, generation)
@@ -578,7 +580,6 @@ function synchronizeExchangeWalletState(walletState) {
   if (exchangeWalletLifecycleStatus === 'pending') {
     ++walletRefreshGeneration;
     synchronizedWalletAddress = undefined;
-    confirmedTradeRefresh = null;
     renderWalletTokenLoadingState();
     return;
   }
@@ -593,7 +594,6 @@ function synchronizeExchangeWalletState(walletState) {
     return;
   }
 
-  confirmedTradeRefresh = null;
   synchronizedWalletAddress = address;
   const generation = ++walletRefreshGeneration;
 
@@ -1311,6 +1311,18 @@ async function handleExchange() {
     // Step 3: Poll for on-chain confirmation.
     await pollForConfirmation(opHash);
     tradeConfirmed = true;
+    const tradedTokens = burnCart.map(item => ({
+      contractAddress: item.contractAddress,
+      tokenId: item.tokenId,
+      quantity: item.quantity,
+      startingBalance: item.startingBalance
+    }));
+    confirmedExchangeTrades.set(userWalletAddress, tradedTokens);
+    if (isCurrentExchangeWallet(userWalletAddress, walletRefreshGeneration)) {
+      // Confirmation invalidates even a newer same-address reconnect snapshot.
+      generation = ++walletRefreshGeneration;
+      resetExchangeUI();
+    }
 
     // Step 4: Show success in the modal.
     showModal('SUCCESS!', `[BURN COMPLETE. ✅]`);
@@ -1342,27 +1354,16 @@ async function handleExchange() {
     }
 
     // Wait for the actual NFT balances to update on-chain.
-    const tradedTokens = burnCart.map(item => ({
-      contractAddress: item.contractAddress,
-      tokenId: item.tokenId,
-      quantity: item.quantity,
-      startingBalance: item.startingBalance
-    }));
     if (!isCurrentExchangeWallet(userWalletAddress, generation)) {
       setTimeout(hideModal, 3000);
       return;
     }
-    confirmedTradeRefresh = tradedTokens;
-    // Reset to unavailable quantities until the confirmed burn is reflected.
-    resetExchangeUI();
     const refreshedNFTs = await pollForNFTUpdate(userWalletAddress, tradedTokens);
     if (!isCurrentExchangeWallet(userWalletAddress, generation)) {
       setTimeout(hideModal, 3000);
       return;
     }
-    assertTradedBalancesRefreshed(refreshedNFTs, tradedTokens);
     refreshConnectedState(refreshedNFTs);
-    confirmedTradeRefresh = null;
 
     // After balances reflect, swap spinner to checkbox & finalize.
     if (text6) {
