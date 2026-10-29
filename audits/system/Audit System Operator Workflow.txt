@@ -1,0 +1,282 @@
+# EA-XYZ Audit System — Operator Workflow
+
+## Purpose
+
+The audit system is designed so the operator only needs to invoke the major audit phases in sequence and manage the required Git branch transitions between them.
+
+The underlying contracts, schemas, reconciliation logic, provenance tracking, stopping boundaries, and handoff mechanics are handled by the audit system itself.
+
+The normal workflow begins from the EA-XYZ workspace in Codex.
+
+Unless otherwise noted, audit phases should be run from the branch/state specified below.
+
+---
+
+## Phase 1 — Level-1 Inventory
+
+### Branch State
+
+Be on:
+
+`staging`
+
+Invoke:
+
+> Run the Phase 1 Audit.
+
+Codex should:
+
+* locate the audit prompt system;
+* load the governing audit contracts;
+* load the Phase 1 prompt;
+* inspect the EA-XYZ workspace according to the Phase 1 methodology; and
+* produce the canonical Phase 1 inventory artifact.
+
+Canonical output:
+
+`P1-L1-INVENTORY-v1`
+
+This artifact establishes and freezes the Level-1 audit denominator.
+
+Remain on `staging` for Phase 2.
+
+---
+
+## Phase 2 — Level-1 Correctness
+
+### Branch State
+
+Remain on:
+
+`staging`
+
+Invoke:
+
+> Run the Phase 2 Audit.
+
+Codex should consume the Phase 1 inventory and inspect the entire frozen Level-1 denominator for correctness.
+
+Canonical output:
+
+`P2-L1-CORRECTNESS-v1`
+
+Phase 2 is the authoritative correctness audit for Level 1.
+
+The exact commit audited by Phase 2 becomes the base state for remediation.
+
+If Phase 2 produces actionable findings, continue to execution planning.
+
+---
+
+## Execution Checklist — Remediation Planning
+
+### Branch State
+
+No branch change is required yet.
+
+Remain on the exact Phase-2 audited state while generating the checklist.
+
+Invoke:
+
+> Create the execution checklist from the Phase 2 audit.
+
+The checklist is an official derived artifact based on the Phase 2 audit.
+
+It should:
+
+* convert the Phase 2 findings into implementation-oriented tickets;
+* preserve the audit findings without reopening or re-auditing the repository;
+* assign stable Ticket IDs for remediation tracking; and
+* serve as the implementation plan for the remediation cycle.
+
+The Phase 2 audit remains the authoritative correctness source. The execution checklist is derived implementation authority and must not introduce findings that do not originate from the audit.
+
+---
+
+## Remediation
+
+### Branch State
+
+Create a remediation integration branch from the exact commit audited by Phase 2.
+
+Recommended branch:
+
+`audit/phase-2-remediation`
+
+Perform remediation on this branch.
+
+If separate ticket branches are used, merge them back into `audit/phase-2-remediation` before Phase 3.
+
+Implement the execution checklist.
+
+Implementation commits should reference the applicable Ticket IDs so later provenance and reconciliation can connect the audit finding, implementation work, and closure evidence.
+
+The operator should not need to manually manage the audit system's internal reconciliation or trace artifacts during ordinary remediation.
+
+---
+
+## Separately authorized diagnostic change accounting
+
+The project-owner decision `Methodology/2026-10-29-project-owner-decision.md` approves Diagnostic Evidence Admission v1 (`Methodology/diagnostic-evidence-admission-v1.md`). Only its three exact repository/commit/DIAG/CAND tuples are eligible for later individual review. Methodology implementation admits none of them and authorizes no admission, reconciliation, synthesis or Phase-3 execution.
+
+A separate execution decision must appoint the evidence producer, independent admission reviewer and responsible consumers and declare the sealed sources, output locations and exact protocol/consumer editions by SHA-256. Validate original implementation authorization, immutable commit linkage, positive non-finding rationale and all evidence independently. Missing/invalid evidence remains explicitly rejected or unresolved; no automatic diagnostic exemption exists.
+
+Only formally declared, individually admitted and independently consumer-validated records may enter REMEDIATION_RECONCILIATION and PHASE_3_RERUN synthesis as separate non-finding repository change provenance under that protocol. Preserve original UNTRACED formal associations, prior classifications and every ticket/finding/trace identity and history. Do not create retrospective findings or tickets. Use `validation/diagnostic_accounting.py` for mechanical validation in addition to independent evidence review; it cannot establish authenticity, verification, completeness or closure.
+
+Before Prepare for Phase 3 or a Phase-3 rerun, retain the full unfiltered P2-base-to-current provenance interval for every in-scope repository, including methodology and other non-application commits. Do not exclude these commits or silently reuse the pre-amendment endpoint. Ordinary exact-summary ticket rules and already supported derived-work accounting remain intact; any additional unmatched entry needs supported accounting under its applicable contract or remains UNTRACED.
+
+Bind the protocol, owner/execution decisions, sealed supplement and consumer checks through the existing remediation-trace and handoff transfer references. All historical INCOMPLETE delivery statuses, external/manual limits, current-head revalidation obligations and Phase-3 closure gates remain unchanged. Admission affects change accounting only, never current correctness, acceptance, verification, response delivery or phase advancement.
+
+---
+
+## Phase 3 — Level-1 Closure
+
+### Branch State
+
+Be on:
+
+`audit/phase-2-remediation`
+
+All completed remediation work must be present on this branch before Phase 3 begins.
+
+Invoke:
+
+> Run the Phase 3 Audit.
+
+The audit system should perform any required reconciliation and remediation-trace preparation as part of the transition into closure.
+
+Phase 3 re-inspects the entire current Level-1 denominator. It is not limited to previously identified findings.
+
+Phase 3 has two normal outcomes:
+
+### PASS
+
+Level-1 correctness is closed.
+
+Merge or promote the validated remediation branch back into:
+
+`staging`
+
+Then run Phase 4 from the resulting `staging` state.
+
+### CONTINUATION REQUIRED
+
+Phase 3 identifies unresolved or newly exposed correctness work.
+
+That work is added to the existing remediation cycle as continuation work.
+
+Continue remediation on the same:
+
+`audit/phase-2-remediation`
+
+branch.
+
+The normal loop becomes:
+
+> Remediate continuation tickets → Run the Phase 3 Audit again.
+
+Do not restart Phase 1 or Phase 2 merely because Phase 3 found additional work unless the audit methodology specifically determines that the Level-1 denominator itself must be re-established.
+
+If `staging` changes materially while remediation is in progress, reconcile those changes into the remediation branch before final Phase-3 closure and rerun Phase 3 against the resulting combined state.
+
+---
+
+## Phase 4 — Level-1 Coherence
+
+### Branch State
+
+Be on:
+
+`staging`
+
+The successfully closed remediation state must already have been merged or promoted into `staging`.
+
+Invoke:
+
+> Run the Phase 4 Audit.
+
+Phase 4 evaluates cross-object and system-level coherence after Level-1 correctness closure.
+
+It tests whether individually closed Level-1 objects remain correct when considered together as a system.
+
+If Phase 4 exposes contradictory deeper evidence, the audit system must follow the defined invalidation and re-adjudication rules rather than silently modifying historical audit artifacts.
+
+---
+
+## Phase 4.5 — Durable Level-1 Handoff
+
+### Branch State
+
+Remain on:
+
+`staging`
+
+Invoke:
+
+> Run Phase 4.5.
+
+Phase 4.5 synthesizes the durable Level-1 handoff artifact.
+
+Canonical output:
+
+`L1-HANDOFF-v2`
+
+The handoff preserves the final Level-1 state, ancestry, provenance, unresolved evidence states, and authority relationships required by downstream audit levels.
+
+Phase 4.5 does not perform another correctness audit.
+
+---
+
+## Phase 5 — Level-2 Foundation
+
+### Branch State
+
+Remain on:
+
+`staging`
+
+Invoke:
+
+> Run the Phase 5 Audit.
+
+Phase 5 consumes the authoritative Level-1 handoff and expands the system exactly one resolution level deeper.
+
+It produces the Level-2 inventory/foundation and freezes the candidate Level-2 denominator for the next audit stage.
+
+Canonical output:
+
+`P5-L2-INVENTORY-v1`
+
+Phase 5 is an inventory/foundation phase, not a Level-2 correctness audit.
+
+The packaged audit methodology currently ends at this point.
+
+---
+
+## Normal Operator Sequence
+
+The complete high-level workflow is:
+
+1. On `staging`, run `Run the Phase 1 Audit.`
+2. Still on `staging`, run `Run the Phase 2 Audit.`
+3. Still on the exact Phase-2 audited state, run `Create the execution checklist from the Phase 2 audit.`
+4. Create `audit/phase-2-remediation` from the exact Phase-2 audited commit.
+5. Remediate the resulting tickets on that branch.
+6. On `audit/phase-2-remediation`, run `Run the Phase 3 Audit.`
+7. Repeat remediation → Phase 3 on the same branch as necessary until closure.
+8. After Phase 3 passes, merge or promote `audit/phase-2-remediation` back into `staging`.
+9. On `staging`, run `Run the Phase 4 Audit.`
+10. Still on `staging`, run `Run Phase 4.5.`
+11. Still on `staging`, run `Run the Phase 5 Audit.`
+
+The audit system should handle the lower-level bookkeeping required between these stages.
+
+The operator should primarily manage:
+
+* the current required Git branch;
+* which major phase is being run;
+* the resulting official artifacts;
+* remediation work against official Ticket IDs; and
+* progression through the phase gates.
+
+The operator should not ordinarily need to manually orchestrate the system's internal reconciliation, provenance, trace, stopping-boundary, ancestry, or handoff mechanics.
