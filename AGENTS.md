@@ -2,6 +2,7 @@
 
 These rules cover the outer repository and the separate nested `admin-ui` repository.
 The current task takes precedence; follow repo-local guidance for the files being changed.
+Use [the universal Codex workflow](docs/codex-workflow.md) for all tickets, including its required completion handoff.
 
 ## Scope and repository boundaries
 
@@ -9,7 +10,7 @@ The current task takes precedence; follow repo-local guidance for the files bein
 - Keep changes narrow, reversible, and inside the requested scope. Avoid unrelated cleanup, formatting, renames, and refactors; report separate issues without fixing them.
 - Before editing each affected repository, run `git rev-parse --show-toplevel`, `git branch --show-current`, and `git status --short`. Stop on unexpected tracked changes.
 - Run Git commands from the repository being changed. Follow `admin-ui/AGENTS.md` for Admin work and `contracts/AGENTS.md` for contract work. Leave an out-of-scope repository untouched.
-- Keep outer and Admin changes and review exports separate. Do not commit, push, merge, change branches, deploy, or perform transactions without task authorization.
+- Keep outer and Admin changes and review exports separate. Normal development bases are Outer `staging` and Admin `codex`. The owner manages ticket branches and decides when to commit, merge, and push. Do not create/switch branches, stage, commit, reset, merge, push, deploy, or perform transactions without explicit task authorization.
 
 ## Runtime and transaction safeguards
 
@@ -49,5 +50,5 @@ Update `README.md` only when its orientation, status, or links become inaccurate
 - Inspect the focused diff and run `git status --short`, `git diff --stat`, and `git diff --check` in each affected repository.
 - Unless the task specifies otherwise, validate outer implementation changes with `npm run build:pages:staging` and Admin changes with `npm run build:clean` from Admin. Run `npm run pages:sanity` or dev servers only when specifically justified.
 - Restore incidental tracked generated-file changes and remove only task-created outputs/caches/temporary files. Verify resolved cleanup paths stay inside the intended workspace; preserve pre-existing local assets and operational state.
-- Confirm the final diff contains only intended changes. Export each affected repository's diff/stat with `npm run ticket:diff` when review artifacts are required; include new files and restore any export-created index state without staging content.
-- Report changed files grouped by repository, checks actually run, limitations, and relevant preserved contracts. Do not claim unperformed verification or merge approval.
+- Confirm the final diff contains only intended changes. When review artifacts are required, run `npm run ticket:diff` in each affected repository to replace its ignored root-level `ticket.<identifier>.<repo>.diff` and `ticket.<identifier>.<repo>.stat.txt` (`<identifier>` is the full branch suffix after `ticket-`; `<repo>` is `outer` or `admin`), including new files without modifying the real index.
+- Use the required compact handoff: changes grouped by repository, actual verification commands/outcomes, outstanding issues/skipped checks, exact export filenames, and final Git state. Report relevant preserved contracts; do not claim unperformed verification or merge approval.

@@ -33,6 +33,9 @@ nul
 ZIP/
 ticket.*.diff
 ticket.*.stat.txt
+/ticket.diff
+/ticket.stat.txt
+/.ticket-diff.lock
 /.local/shadownet-admin-provider.mjs
 shared/drop-params/.drop-params.transaction.lock*
 shared/drop-params/.drop-params.operations/
