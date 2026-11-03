@@ -249,30 +249,19 @@ Before writing the completion message, export a diff artifact that includes new/
 
 From the repo you modified:
 
-1. Ensure new files appear in diff artifacts when necessary:
-
-```bash
-git add -N <new-file-paths>
-```
-
-2. Prefer the repo’s existing ticket artifact script when available:
+1. Run the existing non-mutating ticket artifact script:
 
 ```bash
 npm run ticket:diff
 ```
 
-3. If the ticket artifact script is unavailable, use:
-
-```bash
-git diff --stat > ticket.<branch>.stat.txt
-git diff > ticket.<branch>.diff
-```
-
-4. Confirm the artifacts exist.
+2. Confirm the command succeeded and the artifacts exist. If export fails or the script is unavailable, report the blocker; do not substitute a manual export.
 
 Notes:
 
 - Always run `git rev-parse --show-toplevel` first to confirm repo context.
+- Follow `docs/codex-workflow.md` for export filenames and behavior. The script includes new/untracked files using a private temporary index without modifying the real index or source files.
+- Git inspection is allowed; altering the real index, branches, or commits requires explicit task authorization.
 - Patch artifacts remain the source of truth for second-pass review.
 - On fix passes, re-run artifact export after the fix.
 
@@ -285,9 +274,7 @@ When required to complete the standard ticket workflow, the agent may proceed wi
 - inspecting git status/diff shape
 - running required hard-gate builds/checks that are documented for the affected repo area
 - exporting patch artifacts
-- using `git add -N` for new files so they appear in diff artifacts
 - restoring generated files touched only as unintended build side effects
-- refreshing git/index metadata when strictly necessary to produce clean, in-scope artifacts
 
 ## Still ask before
 
@@ -304,7 +291,7 @@ Ask before:
 - enabling mainnet or changing live address blocks
 - deleting or moving contract artifacts
 - starting modern SmartPy migration
-- destructive or unusual git operations not clearly required for implementation, verification, or artifact export
+- altering the real Git index, creating or switching branches, or staging, committing, resetting, merging, or pushing (requires explicit task authorization)
 - long-running watcher/dev-server commands not required for the ticket
 
 ## Allowed commands
