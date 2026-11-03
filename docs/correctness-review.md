@@ -56,6 +56,28 @@ A material finding affects the consequential properties above; prioritize by cre
 
 Keep a compact pass/result note with source revisions, examination completion, verification outcomes, remaining findings/uncertainties, and refresh outcome in coverage or working notes. Reuse evidence only where its source and assumptions remain applicable; a new pass must still examine all selected behavior. Do not require an arbitrary number of consecutive clean passes.
 
+Each completed audit pass must produce or update [audits/remediation-checklist.md](../audits/remediation-checklist.md) from its investigation report. Partial passes need not produce a final checklist. Use only the report's new findings, existing unresolved issues and explicitly justified follow-up work; do not invent findings, additional work or new investigative requirements. Deduplicate overlapping findings into practical implementation tickets without omitting any actionable unresolved finding. Group tickets by implementation theme. Order groups and items in the safest practical execution sequence: prerequisites first, lower-risk enabling work before dependent work, correctness blockers before optional hardening, and must-fix work before nice-to-have work. Keep titles short, specific, implementation-oriented and appropriately scoped.
+
+Use exactly this format, continuing group and item numbering as needed:
+
+```text
+Group 0 — <theme>
+
+0.1 <ticket title>
+
+0.2 <ticket title>
+
+Group 1 — <theme>
+
+1.1 <ticket title>
+
+1.2 <ticket title>
+```
+
+Include no heading, introduction, explanations, severity writeups, rationale, targets, acceptance criteria, smoke tests or checkboxes. A completed pass with no actionable follow-up must instead output exactly: `No follow-up ticket checklist produced.`
+
+The checklist is an execution aid, not an audit scope, authority, ticket registry or substitute for supporting findings. Actual remediation continues through the existing universal ticket workflow. This reporting output does not change enumeration, systematic/adversarial investigation, the iterative lifecycle or the clean-result standard.
+
 ## Clean-result standard
 
 A provisional clean pass requires completed examination of declared coverage, no unresolved material findings within it, relevant deterministic and supporting verification, and an explicit account of unverified external/live behavior and other limitations. Accepted risk or an unavailable check does not turn a material failure into a clean result. Resolve consequential uncertainty or qualify/narrow the claim transparently.
