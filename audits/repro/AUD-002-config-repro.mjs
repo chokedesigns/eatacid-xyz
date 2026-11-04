@@ -14,6 +14,7 @@ try {
   for (const dir of ['shared/drop-params', 'admin-ui/src']) await mkdir(path.join(fixture, dir), { recursive: true });
   await writeFile(path.join(fixture, 'package.json'), '{"type":"module"}\n');
   for (const name of ['shared/chain-registry.js', 'shared/drop-time.js',
+    'shared/network.js', 'shared/public-drop-compatibility.js',
     ...['drop-params-authoring.mjs', 'drop-params-projector.mjs', 'drop-params-transaction.mjs',
       'drop-params-archive.mjs', 'drop-params-recovery.mjs', 'drop-params.js', 'drop-params.json'].map(n => 'shared/drop-params/' + n)]) {
     await copyFile(path.join(repo, name), path.join(fixture, name));

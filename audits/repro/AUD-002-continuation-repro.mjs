@@ -7,7 +7,7 @@ import { createDropParamsAuthoringApi, createDropParamsAuthoringHttpServer } fro
 import { validateDropParams, serializeDropParamsSource, sha256SourceBytes } from '../../shared/drop-params/drop-params-authoring.mjs';
 import { serializeDropParamsJson } from '../../shared/drop-params/drop-params-projector.mjs';
 import { chainRegistry } from '../../shared/chain-registry.js';
-import dropsConfig from '../../drops/js/events-config.js';
+import dropsConfig, { createDropsConfig } from '../../drops/js/events-config.js';
 import { fetchTokenPairId } from '../../shared/public-trade-ops.js';
 import base from '../../shared/drop-params/drop-params.js';
 
@@ -85,12 +85,19 @@ const data = load('admin-ui/src/features/drops/drops.data.js', { log() {}, repor
   getIdMirrorForCollection: collection => chainRegistry.testnet.mirrors[collection] || {} });
 const builder = load('admin-ui/src/features/drops/drops.builder.js', { log() {} });
 const unsupported = { ...structuredClone(base), redeemToken: { ...base.redeemToken, collection: 'THE 419 SCRIPT', tokenId: '0' } };
-assert.equal(validateDropParams(unsupported).ok, true);
+const unsupportedValidation = validateDropParams(unsupported);
+assert.equal(unsupportedValidation.ok, false);
+assert.ok(unsupportedValidation.errors.some(error =>
+  error.path === '$.redeemToken.collection' && error.code === 'public_compatibility'));
+await assert.rejects(api.validate({ operation: 'EDIT', candidate: unsupported }), e => e.code === 'validation_failed');
+await assert.rejects(api.preview({ ...request, candidate: unsupported }), e => e.code === 'validation_failed');
+assert.equal(executed.length, 1, 'unsupported candidate never reaches the writer');
 const normalized = data.normalize(unsupported);
 const items = builder.buildItems(normalized, { startId: 0 });
 assert.ok(items.length > 0);
 assert.ok(items.every(item => item.redeem.collection === 'THE 419 SCRIPT'));
 assert.equal(dropsConfig.isConfigured, true);
+assert.equal(createDropsConfig(unsupported).isConfigured, false);
 assert.equal(dropsConfig.contracts.testnet.collections['THE 419 SCRIPT'], undefined);
 const publicSource = readFileSync(new URL('drops/js/events.js', root), 'utf8');
 const begin = publicSource.indexOf('async function fetchTokenPairId(');
@@ -111,7 +118,7 @@ try {
   }
 } finally { globalThis.fetch = savedFetch; console.error = savedError; }
 assert.equal(fetches, 1);
-console.log('AUD-002-005: accepted HEN -> 419 candidate builds Admin pairs but configured Public lookup rejects missing redeem address; CANAAN control resolves');
+console.log('AUD-002-005 regression: HEN -> 419 rejected by authoring and Public before publication/trade; counterfactual Admin pairs retain 419 identity; CANAAN control resolves');
 
 // Exact selected pair identity through the real table reader and cleanup serializer.
 for (const selected of ['29', '9007199254740993']) {

@@ -213,7 +213,7 @@ test("EA-XYZ-P3-T004: service rejects same-contract validate/preview/apply befor
   assert.equal(executeCalls, 0);
 });
 
-test("EA-XYZ-P3-T004: service preserves distinct-contract single/multi CREATE and EDIT plans", async () => {
+test("EA-XYZ-P3-T004 / CFG-003: service preserves supported CREATE/EDIT plans and rejects multiple enabled burns", async () => {
   for (const operation of ["CREATE", "EDIT"]) {
     for (const multi of [false, true]) {
       const base = snapshot(operation === "CREATE" ? INACTIVE_DROP_PARAMS : activeFixture());
@@ -231,6 +231,16 @@ test("EA-XYZ-P3-T004: service preserves distinct-contract single/multi CREATE an
       if (multi) candidate.burnTokens.push({
         collection: "INTRODUCTIONS", enabled: true, exclude: [], burnAmount: 2
       });
+      if (multi) {
+        const rejects = error => error.code === "validation_failed" && error.details.errors.some(item =>
+          item.path === "$.burnTokens" && item.code === "public_compatibility");
+        await assert.rejects(api.validate({ operation, candidate }), rejects);
+        await assert.rejects(api.preview({ operation, expectedSourceVersion: base.sourceVersion, candidate }), rejects);
+        assert.equal(executeRequest, null);
+        // Disabling the additional collection preserves its authored row and
+        // restores the supported single-burn plan, including preview and apply.
+        candidate.burnTokens[1].enabled = false;
+      }
       assert.deepEqual((await api.validate({ operation, candidate })).candidate, candidate);
       const request = { operation, expectedSourceVersion: base.sourceVersion, candidate };
       const preview = await api.preview(request);

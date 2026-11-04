@@ -1621,18 +1621,7 @@ function updateRedeemTokenTitle() {
   if (!titleEl) return;
 
   const key = cfg.collection.toUpperCase();
-  let match = window.cmsRowsByCollection?.[key]?.find(
-    r => r.getAttribute('data-token-id') === cfg.tokenId
-  );
-
-  if (!match && key === "CANAAN") {
-    const rows = document.querySelectorAll('.canaan-collection .collection-item-01.w-dyn-item');
-    rows.forEach(r => {
-      if (r.querySelector('.token-id-number')?.textContent.trim() === cfg.tokenId) {
-        match = r;
-      }
-    });
-  }
+  const match = findRedeemRow(cfg, key);
 
   if (match) {
     const t = match.querySelector('.collection-item-title-text')?.textContent.trim();
@@ -2073,7 +2062,12 @@ async function updateEventCartRedeemToken() {
  * @returns {Element|null} The matched CMS row or null.
  */
 function findRedeemRow(cfg, key) {
-  let row = window.cmsRowsByCollection?.[key]?.find(r => r.dataset.tokenId === cfg.tokenId) || null;
+  // Redeem IDs are exact network IDs. Only presentation uses the inverse mirror
+  // to find the canonical CMS row; never translate the trade's configured ID.
+  const mapping = tokenMapping[key] || {};
+  const canonicalId = Object.entries(mapping).find(([, id]) => String(id) === cfg.tokenId)?.[0]
+    ?? cfg.tokenId;
+  let row = window.cmsRowsByCollection?.[key]?.find(r => r.dataset.tokenId === canonicalId) || null;
   if (!row && key === "CANAAN") {
     document.querySelectorAll('.canaan-collection .collection-item-01.w-dyn-item')
       .forEach(r => {

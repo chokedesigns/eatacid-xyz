@@ -103,7 +103,12 @@ export function getRequiredChainConfig(network) {
   return config;
 }
 
-const dropCollectionKeys = ['HEN', 'INTRODUCTIONS', 'CANAAN'];
+// Public Drops has wallet panes for these burns and catalogs for these redeems.
+// These are surface capabilities; FA2 addresses and mirrors remain above.
+export const PUBLIC_DROPS_BURN_COLLECTION_KEYS = Object.freeze(['HEN', 'INTRODUCTIONS']);
+export const PUBLIC_DROPS_COLLECTION_KEYS = Object.freeze([
+  ...PUBLIC_DROPS_BURN_COLLECTION_KEYS, 'CANAAN'
+]);
 const exchangeRedeemTokenCollectionKey = 'ACID COIN';
 const exchangeCollectionKeys = ['THE 419 SCRIPT', 'CANAAN', exchangeRedeemTokenCollectionKey];
 const adminCollectionKeys = [
@@ -266,7 +271,7 @@ export function validatePublicDropsConfig(configOrNetwork) {
     strict: requiresDedicatedDropsEscrow(config)
   });
   addMissingText(missing, config, 'pairsMapPath');
-  addMissingCollections(missing, config, dropCollectionKeys);
+  addMissingCollections(missing, config, PUBLIC_DROPS_COLLECTION_KEYS);
 
   return validationResult(missing);
 }

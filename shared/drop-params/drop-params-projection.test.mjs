@@ -26,6 +26,7 @@ async function fixture(t) {
     await mkdir(path.join(root, dir), { recursive: true });
   await writeFile(path.join(root, "package.json"), '{"type":"module"}\n');
   for (const name of ["shared/chain-registry.js", "shared/drop-time.js",
+    "shared/network.js", "shared/public-drop-compatibility.js",
     ...moduleNames.map(n => `shared/drop-params/${n}`)])
     await copyFile(path.join(repo, name), path.join(root, name));
   const json = await readFile(path.join(root, "shared/drop-params/drop-params.json"));
@@ -82,6 +83,33 @@ async function edit(f, id, hooks = {}) {
   return f.writer.editDropParams({ operationId: id,
     expectedSourceVersion: await f.projector.getCurrentSourceVersion(), candidate: f.candidate }, { testHooks: hooks });
 }
+
+test("CFG-003: direct writers reject incompatible active candidates before journal or configuration publication", async t => {
+  const f = await fixture(t);
+  const before = await f.bytes();
+  const sourceVersion = await f.projector.getCurrentSourceVersion();
+  const variants = [
+    { ...f.candidate, redeemToken: { ...f.candidate.redeemToken, collection: "THE 419 SCRIPT", tokenId: "0" } },
+    { ...f.candidate, burnTokens: [{ ...f.candidate.burnTokens[0], collection: "CANAAN" }] },
+    { ...f.candidate, burnTokens: [...f.candidate.burnTokens,
+      { collection: "INTRODUCTIONS", enabled: true, exclude: [], burnAmount: 2 }] },
+    { ...f.candidate, burnTokens: [{ ...f.candidate.burnTokens[0], enabled: false }] },
+    { ...f.candidate, mirrorNetwork: "mainnet" }
+  ];
+  for (const [index, candidate] of variants.entries()) {
+    for (const run of [f.writer.createDropParams, f.writer.editDropParams]) {
+      await assert.rejects(run({ operationId: `cfg003-${index}-${run.name}`,
+        expectedSourceVersion: sourceVersion, candidate }),
+      error => error.errors?.some(item => item.code === "public_compatibility"));
+      assert.deepEqual(await f.bytes(), before);
+    }
+  }
+  const journals = await readdir(f.journal).catch(error => {
+    if (error.code === "ENOENT") return [];
+    throw error;
+  });
+  assert.deepEqual(journals, []);
+});
 
 test("clear and rolled-back recovery permit ordinary generation/mirroring; unresolved recovery blocks every entrypoint", async t => {
   const f = await fixture(t);

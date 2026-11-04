@@ -302,6 +302,9 @@ test("collection validation is scoped to the selected registry network", () => {
 
   const mainnet = activeFixture();
   mainnet.mirrorNetwork = "mainnet";
+  // Inactive authored content still validates its own registry slot. Active
+  // publication additionally requires the selected, configured Public network.
+  mainnet.dropScheduled = false;
   assert.equal(validateDropParams(mainnet).ok, true);
 
   const unavailableOnMainnet = clone(mainnet);
@@ -342,7 +345,7 @@ test("EA-XYZ-P3-T004: active single and multi-collection drops reject equal burn
         });
         const result = validateDropParams(candidate, { operation });
         assert.equal(result.ok, false);
-        assert.deepEqual(result.errors, [{
+        assert.deepEqual(result.errors.filter(error => error.code === "contract_mismatch"), [{
           path: `$.burnTokens[${multi ? 1 : 0}].collection`,
           message: "must resolve to a contract address distinct from redeemToken.collection",
           code: "contract_mismatch"
@@ -364,19 +367,19 @@ test("EA-XYZ-P3-T004: compare resolved addresses for every enabled burn in the s
     });
     const result = validateDropParams(candidate, { operation: "active" });
     assert.equal(result.ok, false);
-    assert.deepEqual(result.errors.map(error => [error.path, error.code]), [
+    assert.deepEqual(result.errors.filter(error => error.code === "contract_mismatch").map(error => [error.path, error.code]), [
       ["$.burnTokens[0].collection", "contract_mismatch"],
       ["$.burnTokens[1].collection", "contract_mismatch"]
     ]);
     candidate.burnTokens[0].collection = "CANAAN";
     candidate.mirrorNetwork = "mainnet";
-    assert.equal(validateDropParams(candidate, { operation: "active" }).ok, true);
+    assert.equal(validateDropParams(candidate, { operation: "active" }).errors.some(error => error.code === "contract_mismatch"), false);
   } finally {
     collections.INTRODUCTIONS = original;
   }
 });
 
-test("EA-XYZ-P3-T004: distinct contracts and disabled same-contract rows preserve the schema", async () => {
+test("EA-XYZ-P3-T004: distinct contracts preserve disabled rows; multiple active burns fail Public compatibility", async () => {
   for (const mirrorNetwork of ["testnet", "mainnet"]) {
     const candidate = activeFixture();
     candidate.mirrorNetwork = mirrorNetwork;
@@ -385,7 +388,12 @@ test("EA-XYZ-P3-T004: distinct contracts and disabled same-contract rows preserv
     }, {
       collection: "CANAAN", enabled: false, exclude: [""], burnAmount: 1
     });
-    assert.equal(validateDropParams(candidate, { operation: "active" }).ok, true);
+    const active = validateDropParams(candidate, { operation: "active" });
+    assert.equal(active.ok, false);
+    assert.equal(active.errors.some(error => error.code === "contract_mismatch"), false);
+    assert(active.errors.some(error => error.path === "$.burnTokens" && error.code === "public_compatibility"));
+    candidate.dropScheduled = false;
+    assert.equal(validateDropParams(candidate).ok, true);
     assert.deepEqual(await evaluateSerializedDropParams(candidate), candidate);
   }
 });

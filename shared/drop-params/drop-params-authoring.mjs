@@ -3,6 +3,8 @@ import { Buffer } from "node:buffer";
 
 import { chainRegistry, isPlaceholderAddress } from "../chain-registry.js";
 import { computeDropInstant } from "../drop-time.js";
+import { network } from "../network.js";
+import { validatePublicDropCompatibility } from "../public-drop-compatibility.js";
 
 export const DROP_PARAMS_OPERATIONS = Object.freeze({
   CANONICAL: "canonical",
@@ -326,6 +328,7 @@ export function validateDropParams(params, options = {}) {
     validateFullAuthored(params, errors, {
       requireScheduled: operation === DROP_PARAMS_OPERATIONS.ACTIVE
     });
+    errors.push(...validatePublicDropCompatibility(params, network).errors);
   }
 
   return { ok: errors.length === 0, operation, errors };
