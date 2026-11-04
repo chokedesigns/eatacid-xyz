@@ -85,7 +85,7 @@ npm run dropparams:json
 
 This command cache-busts and validates `drop-params.js`, serializes deterministic LF-terminated JSON, and atomically writes `shared/drop-params/drop-params.json` only when its bytes differ. It does **not** update the Admin mirror.
 
-`npm run start` runs `npm run dev:watch:params`. The watcher generates the outer JSON once at startup and after source changes, then copies those exact bytes into `admin-ui/src/drop-params.mirror.json` when the nested target exists and differs. Projection and mirroring share the repository-scoped Drop Params transaction lock with later writer operations, and rapid source events are coalesced without racing a writer.
+`npm run start` runs `npm run dev:watch:params`. The watcher generates the outer JSON once at startup and after source changes, then copies those exact bytes into `admin-ui/src/drop-params.mirror.json` when the nested target exists and differs. Projection and mirroring share the repository-scoped Drop Params transaction lock with writer operations, and rapid source events are coalesced without racing a writer. Under that lock, every projection entrypoint checks the recovery journals before writing. Pending or `reconciliation_required` operations block ordinary generation and mirroring until explicit reconciliation; invalid or unreadable recovery state also blocks projection. The generator and one-shot synchronization exit unsuccessfully, and the running watcher reports stale projections without changing protected outputs. Projection never reconciles recovery state itself.
 
 The local fallback writer uses the same lock, schema, serializer, projector, archive, and rollback implementation as later service integration:
 
@@ -99,7 +99,7 @@ npm run dropparams:transaction -- reconcile
 
 `create`, `edit`, and `deactivate` accept exactly one JSON request object on standard input. Every mutation request includes `operationId` and the exact current `expectedSourceVersion`; CREATE/EDIT also include a complete active `candidate`. The command accepts no caller-supplied paths. DEACTIVATE publishes and verifies a schema-version-1 artifact under `shared/drop-params/archive/` before resetting all three current representations to the exact inactive template. Archives are history, never current-config authority, and remain after a rolled-back deactivation.
 
-The ignored `shared/drop-params/.drop-params.operations/` directory holds narrowly scoped local recovery journals and staging files. A failed rollback marks the writer `reconciliation_required` and blocks later mutations. Inspect with `status`; after independently restoring or validating the recorded exact state, use `reconcile`. Do not delete an unresolved journal merely to bypass the block.
+The ignored `shared/drop-params/.drop-params.operations/` directory holds narrowly scoped local recovery journals and staging files. A failed rollback marks the writer `reconciliation_required` and blocks later mutations, generation, and mirroring. Inspect with `status`; after independently restoring or validating the recorded exact state, use `reconcile`. Do not delete an unresolved journal merely to bypass the block.
 
 For development-only Admin authoring, start from the nested Admin repository:
 

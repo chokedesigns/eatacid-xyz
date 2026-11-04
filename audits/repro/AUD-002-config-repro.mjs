@@ -15,7 +15,7 @@ try {
   await writeFile(path.join(fixture, 'package.json'), '{"type":"module"}\n');
   for (const name of ['shared/chain-registry.js', 'shared/drop-time.js',
     ...['drop-params-authoring.mjs', 'drop-params-projector.mjs', 'drop-params-transaction.mjs',
-      'drop-params-archive.mjs', 'drop-params.js', 'drop-params.json'].map(n => 'shared/drop-params/' + n)]) {
+      'drop-params-archive.mjs', 'drop-params-recovery.mjs', 'drop-params.js', 'drop-params.json'].map(n => 'shared/drop-params/' + n)]) {
     await copyFile(path.join(repo, name), path.join(fixture, name));
   }
   const baseJson = await readFile(path.join(fixture, 'shared/drop-params/drop-params.json'));
@@ -52,14 +52,20 @@ try {
   assert.equal(JSON.parse(await readFile(projector.DROP_PARAMS_PATHS.adminMirror)).dropName, candidate.dropName);
   await assert.rejects(writer.editDropParams({ operationId: 'aud002-blocked',
     expectedSourceVersion: await projector.getCurrentSourceVersion(), candidate }), e => e.code === 'reconciliation_required');
-  const result = await projector.projectDropParams({ syncAdmin: true });
-  assert.equal(result.adminMirror.changed, true);
-  assert.equal(JSON.parse(await readFile(projector.DROP_PARAMS_PATHS.adminMirror)).dropName, second.dropName);
+  const blockedFiles = await Promise.all(['canonicalSource', 'outerJson', 'adminMirror']
+    .map(key => readFile(projector.DROP_PARAMS_PATHS[key])));
+  await assert.rejects(projector.projectDropParams({ syncAdmin: true }),
+    e => e.code === 'reconciliation_required');
+  assert.deepEqual(await Promise.all(['canonicalSource', 'outerJson', 'adminMirror']
+    .map(key => readFile(projector.DROP_PARAMS_PATHS[key]))), blockedFiles);
+  assert.equal(JSON.parse(await readFile(projector.DROP_PARAMS_PATHS.adminMirror)).dropName, candidate.dropName);
   assert.equal((await writer.inspectDropParamsTransactionStatus()).blocked, true);
-  console.log('AUD-002-004: projectDropParams propagates failed candidate while journal blocks transactional writer; no reconciliation invoked');
+  console.log('AUD-002-004 regression: projection rejects without changing protected files while journal remains blocked; no reconciliation invoked');
 
   const reconciled = await writer.reconcileDropParamsTransactions();
   assert.equal(reconciled.blocked, false);
+  await projector.projectDropParams({ syncAdmin: true });
+  assert.equal((await projector.verifyDropParamsEquality()).ok, true);
   for (const index of [0, 1, 2]) {
     const prior = await projector.getCurrentSourceVersion();
     await assert.rejects(writer.editDropParams({ operationId: `aud002-matrix-${index}`,
@@ -79,7 +85,7 @@ try {
   assert.equal(deactivated.outcome, 'deactivated');
   assert.ok(deactivated.archivePath);
   const archive = JSON.parse(await readFile(path.join(fixture, deactivated.archivePath)));
-  assert.equal(archive.source.params.dropName, second.dropName);
+  assert.equal(archive.source.params.dropName, candidate.dropName);
   assert.equal(JSON.parse(await readFile(projector.DROP_PARAMS_PATHS.adminMirror)).dropScheduled, false);
   assert.equal((await projector.verifyDropParamsEquality()).ok, true);
   const replayed = await writer.deactivateDropParams(deactivateRequest);

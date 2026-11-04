@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, readdir, rename, unlink } from "node:fs/promises";
 import path from "node:path";
@@ -9,6 +10,10 @@ import {
   sha256SourceBytes,
   toCanonicalDropParams
 } from "./drop-params-authoring.mjs";
+
+import { assertDropParamsProjectionAllowed } from "./drop-params-recovery.mjs";
+
+const projectionLockScope = new AsyncLocalStorage();
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(moduleDirectory, "..", "..");
@@ -442,9 +447,11 @@ export async function acquireDropParamsLock(options = {}) {
 
 export async function withDropParamsLock(callback, options = {}) {
   const lock = await acquireDropParamsLock(options);
+  const scope = { active: true };
   try {
-    return await callback(lock.metadata);
+    return await projectionLockScope.run(scope, () => callback(lock.metadata));
   } finally {
+    scope.active = false;
     await lock.release();
   }
 }
@@ -467,6 +474,20 @@ export function serializeDropParamsJson(params) {
   return `${JSON.stringify(toCanonicalDropParams(params), null, 2)}\n`;
 }
 
+// Reuse only the lock owned by this async call chain. A same-process owner in
+// another task is not sufficient, and lock:false must never skip ownership.
+async function withProjectionRecoveryGuard(callback, options) {
+  const run = async () => {
+    await assertDropParamsProjectionAllowed();
+    return callback();
+  };
+  if (projectionLockScope.getStore()?.active) return run();
+  if (options.lock === false) {
+    throw new Error("Drop Params projection with lock:false requires withDropParamsLock ownership");
+  }
+  return withDropParamsLock(run, options.lockOptions);
+}
+
 export async function generateOuterDropParamsJson(options = {}) {
   const run = async () => {
     const imported = options.params
@@ -476,7 +497,7 @@ export async function generateOuterDropParamsJson(options = {}) {
     const changed = await writeDropParamsFileIfChanged(DROP_PARAMS_PATHS.outerJson, jsonText);
     return { ...imported, jsonText, changed, path: DROP_PARAMS_PATHS.outerJson };
   };
-  return options.lock === false ? run() : withDropParamsLock(run, options.lockOptions);
+  return withProjectionRecoveryGuard(run, options);
 }
 
 export async function synchronizeAdminDropParamsMirror(options = {}) {
@@ -487,7 +508,7 @@ export async function synchronizeAdminDropParamsMirror(options = {}) {
     const changed = await writeDropParamsFileIfChanged(DROP_PARAMS_PATHS.adminMirror, jsonBytes);
     return { changed, path: DROP_PARAMS_PATHS.adminMirror, jsonBytes };
   };
-  return options.lock === false ? run() : withDropParamsLock(run, options.lockOptions);
+  return withProjectionRecoveryGuard(run, options);
 }
 
 export async function projectDropParams(options = {}) {
@@ -510,7 +531,7 @@ export async function projectDropParams(options = {}) {
         : { changed: mirrorChanged, path: DROP_PARAMS_PATHS.adminMirror }
     };
   };
-  return options.lock === false ? run() : withDropParamsLock(run, options.lockOptions);
+  return withProjectionRecoveryGuard(run, options);
 }
 
 export async function verifyDropParamsEquality(options = {}) {

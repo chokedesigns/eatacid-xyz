@@ -3,7 +3,6 @@ import {
   mkdir,
   open,
   readFile,
-  readdir,
   rename,
   rm,
   unlink
@@ -39,22 +38,24 @@ import {
   verifyDeactivationArchive
 } from "./drop-params-archive.mjs";
 
-export const DROP_PARAMS_WRITER_OPERATIONS = Object.freeze({
-  CREATE: "CREATE",
-  EDIT: "EDIT",
-  DEACTIVATE: "DEACTIVATE"
-});
+import {
+  DROP_PARAMS_WRITER_OPERATIONS,
+  DROP_PARAMS_OPERATION_STATUSES,
+  JOURNAL_SCHEMA_VERSION,
+  journalDirectory,
+  DropParamsTransactionError,
+  normalizeOperation,
+  journalPath,
+  validateJournalRecord,
+  readJournalRecord,
+  listJournalRecords
+} from "./drop-params-recovery.mjs";
+export {
+  DROP_PARAMS_WRITER_OPERATIONS,
+  DROP_PARAMS_OPERATION_STATUSES,
+  DropParamsTransactionError
+} from "./drop-params-recovery.mjs";
 
-export const DROP_PARAMS_OPERATION_STATUSES = Object.freeze({
-  PENDING: "pending",
-  COMPLETED: "completed",
-  ROLLED_BACK: "rolled_back",
-  RECONCILIATION_REQUIRED: "reconciliation_required"
-});
-
-const JOURNAL_SCHEMA_VERSION = 1;
-const moduleDirectory = path.dirname(DROP_PARAMS_PATHS.canonicalSource);
-const journalDirectory = path.join(moduleDirectory, ".drop-params.operations");
 const SHA256_PATTERN = /^[a-f0-9]{64}$/;
 
 export const DROP_PARAMS_TRANSACTION_PATHS = Object.freeze({
@@ -80,29 +81,11 @@ const fileDefinitions = Object.freeze({
   })
 });
 
-export class DropParamsTransactionError extends Error {
-  constructor(code, message, options = {}) {
-    super(message, options);
-    this.name = "DropParamsTransactionError";
-    this.code = code;
-    if (options.operationId) this.operationId = options.operationId;
-    if (options.status) this.status = options.status;
-  }
-}
-
 function nowIso(options) {
   const value = typeof options.now === "function" ? options.now() : new Date();
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.valueOf())) throw new TypeError("transaction clock returned an invalid date");
   return date.toISOString();
-}
-
-function normalizeOperation(operation) {
-  const normalized = String(operation || "").toUpperCase();
-  if (!Object.values(DROP_PARAMS_WRITER_OPERATIONS).includes(normalized)) {
-    throw new TypeError(`Unsupported Drop Params writer operation: ${operation}`);
-  }
-  return normalized;
 }
 
 function assertSourceVersion(sourceVersion) {
@@ -114,11 +97,6 @@ function assertSourceVersion(sourceVersion) {
 
 function relativePath(filePath) {
   return path.relative(DROP_PARAMS_REPO_ROOT, filePath).split(path.sep).join("/");
-}
-
-function journalPath(operationId) {
-  assertValidOperationId(operationId);
-  return path.join(journalDirectory, `${operationId}.json`);
 }
 
 function stageDirectory(operationId) {
@@ -272,43 +250,6 @@ async function restoreSnapshot(snapshot, options = {}) {
   return { ok: failures.length === 0, errors: failures };
 }
 
-function validateJournalRecord(record) {
-  if (!record || record.schemaVersion !== JOURNAL_SCHEMA_VERSION) {
-    throw new DropParamsTransactionError("journal_invalid", "Drop Params operation journal has an invalid schema version");
-  }
-  assertValidOperationId(record.operationId);
-  normalizeOperation(record.operation);
-  if (!Object.values(DROP_PARAMS_OPERATION_STATUSES).includes(record.status)) {
-    throw new DropParamsTransactionError("journal_invalid", "Drop Params operation journal has an invalid status");
-  }
-  if (!SHA256_PATTERN.test(record.baseSourceVersion) || !SHA256_PATTERN.test(record.planHash)) {
-    throw new DropParamsTransactionError("journal_invalid", "Drop Params operation journal has invalid version hashes");
-  }
-  return record;
-}
-
-async function readJournalRecord(operationId) {
-  const bytes = await readIfExists(journalPath(operationId));
-  if (!bytes) return null;
-  try {
-    const record = validateJournalRecord(JSON.parse(bytes.toString("utf8")));
-    if (record.operationId !== operationId) {
-      throw new DropParamsTransactionError(
-        "journal_invalid",
-        `Drop Params journal filename does not match operationId ${record.operationId}`
-      );
-    }
-    return record;
-  } catch (error) {
-    if (error instanceof DropParamsTransactionError) throw error;
-    throw new DropParamsTransactionError(
-      "journal_invalid",
-      `Drop Params operation journal ${operationId} is invalid: ${error.message}`,
-      { cause: error }
-    );
-  }
-}
-
 async function writeJournalRecord(record) {
   validateJournalRecord(record);
   await mkdir(journalDirectory, { recursive: true });
@@ -330,23 +271,6 @@ async function writeJournalRecord(record) {
     await unlink(temporaryPath).catch(() => {});
   }
   return record;
-}
-
-async function listJournalRecords() {
-  let entries;
-  try {
-    entries = await readdir(journalDirectory, { withFileTypes: true });
-  } catch (error) {
-    if (error?.code === "ENOENT") return [];
-    throw error;
-  }
-  const records = [];
-  for (const entry of entries) {
-    if (!entry.isFile() || !entry.name.endsWith(".json") || entry.name.startsWith(".")) continue;
-    const operationId = entry.name.slice(0, -5);
-    records.push(await readJournalRecord(operationId));
-  }
-  return records;
 }
 
 function archiveAbsolutePath(archive) {
