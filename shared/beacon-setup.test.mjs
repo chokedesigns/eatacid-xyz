@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createContext, SourceTextModule, SyntheticModule } from 'node:vm';
+import test from 'node:test';
 
 const walletSource = await readFile(new URL('./beacon-setup.js', import.meta.url), 'utf8');
 
@@ -87,6 +88,8 @@ async function createWalletFixture(initialAccountPromise) {
   const fixture = {
     elements, mobileWrapper, events, errors, document, window,
     client: null,
+    accountReads: 0,
+    fetches: [],
     permissionCalls: 0,
     clearCalls: 0,
     permissionResult: async () => {},
@@ -99,7 +102,10 @@ async function createWalletFixture(initialAccountPromise) {
       this.subscriptions = [];
       fixture.client = this;
     }
-    getActiveAccount() { return initialAccountPromise; }
+    getActiveAccount() {
+      fixture.accountReads += 1;
+      return initialAccountPromise;
+    }
     subscribeToEvent(name, listener) {
       this.subscriptions.push({ name, listener });
       this.accountListener = listener;
@@ -118,7 +124,10 @@ async function createWalletFixture(initialAccountPromise) {
     window,
     document,
     console: { error(...args) { errors.push(args); } },
-    fetch: async () => ({ ok: true, json: async () => [] }),
+    fetch: async url => {
+      fixture.fetches.push(url);
+      return { ok: true, json: async () => [] };
+    },
     CustomEvent: class {
       constructor(type, options) { this.type = type; this.detail = options.detail; }
     },
@@ -149,7 +158,7 @@ async function createWalletFixture(initialAccountPromise) {
   ]);
   // Export the existing private functions only inside this test's VM module.
   const module = new SourceTextModule(
-    `${walletSource}\nexport { updateButtonState, publishPublicWalletState, bootWalletButtons };`,
+    `${walletSource}\nexport { updateButtonState, publishPublicWalletState, bootWalletButtons, disconnectWallet };`,
     { context }
   );
   await module.link(specifier => {
@@ -262,7 +271,20 @@ async function createWalletFixture(initialAccountPromise) {
   assert.deepEqual(mobileWrapper.style, {});
 }
 
-{
+function walletPublications(fixture) {
+  return fixture.events.filter(event => event.type === fixture.wallet.PUBLIC_WALLET_STATE_EVENT);
+}
+
+async function assertSingleBinding(fixture) {
+  await fixture.wallet.bootWalletButtons();
+  assert.equal(fixture.client.subscriptions.length, 1);
+  assert.equal(fixture.accountReads, 1);
+  for (const name of ['connect', 'connected', 'disconnect', 'mobileAction']) {
+    assert.equal(fixture.elements[name].listeners.get('click')?.length, 1, `${name}: one click binding`);
+  }
+}
+
+test('WALLET-001: an unsuperseded valid boot connects and shares its NFT promise', async () => {
   const initialAccount = deferred();
   const fixture = await createWalletFixture(initialAccount.promise);
   initialAccount.resolve(account(addressA));
@@ -270,16 +292,152 @@ async function createWalletFixture(initialAccountPromise) {
   assert.equal(fixture.wallet.getPublicWalletState().status, 'connected');
   assert.equal(fixture.elements.mobileAddress.textContent, short(addressA));
   assert.equal(fixture.elements.mobileAction.textContent, 'DISCONNECT');
+  assert.equal(fixture.window.appState.isConnected, true);
+  assert.deepEqual(await fixture.wallet.getPublicWalletState().nftsPromise, []);
+  assert.equal(fixture.fetches.length, 1);
+  assert.ok(fixture.fetches[0].includes(`?account=${addressA}&`));
+  assert.equal(walletPublications(fixture).length, 1);
+  assert.equal(fixture.clearCalls, 0);
+  assert.equal(fixture.events.filter(event => event.type === 'walletDisconnected').length, 0);
+  assert.deepEqual(fixture.errors, []);
+  await assertSingleBinding(fixture);
+});
+
+for (const type of ['mainnet', 'shadownet']) {
+  test(`WALLET-001: stale ${type} boot cannot clear, disconnect or overwrite B`, async () => {
+    const initialAccount = deferred();
+    const fixture = await createWalletFixture(initialAccount.promise);
+    await fixture.wallet.bootWalletButtons(); // Re-entry while the first boot is pending.
+    await fixture.client.accountListener(account(addressB));
+    const currentState = fixture.wallet.getPublicWalletState();
+    initialAccount.resolve(account(addressA, type));
+    await settle();
+    assert.equal(fixture.wallet.getPublicWalletState(), currentState);
+    assert.equal(currentState.account.address, addressB);
+    assert.equal(fixture.elements.mobileAddress.textContent, short(addressB));
+    assert.equal(fixture.elements.connected.textContent, short(addressB));
+    assert.equal(fixture.window.appState.isConnected, true);
+    assert.equal(fixture.clearCalls, 0);
+    assert.deepEqual(walletPublications(fixture).map(event => event.detail.account?.address), [addressB]);
+    assert.equal(fixture.events.filter(event => event.type === 'walletDisconnected').length, 0);
+    assert.equal(fixture.fetches.length, 1);
+    assert.ok(fixture.fetches[0].includes(`?account=${addressB}&`));
+    assert.deepEqual(fixture.errors, []);
+    await assertSingleBinding(fixture);
+  });
 }
 
-{
+test('WALLET-001: a current wrong-network boot still clears and disconnects', async () => {
+  const fixture = await createWalletFixture(Promise.resolve(account(addressA, 'mainnet')));
+  await settle();
+  assert.equal(fixture.clearCalls, 1);
+  assert.equal(fixture.wallet.getPublicWalletState().status, 'unconnected');
+  assert.equal(fixture.elements.mobileAddress.textContent, '');
+  assert.equal(fixture.elements.mobileAction.textContent, 'CONNECT');
+  assert.equal(fixture.window.appState.isConnected, false);
+  assert.deepEqual(walletPublications(fixture).map(event => event.detail.status), ['unconnected']);
+  assert.equal(fixture.events.filter(event => event.type === 'walletDisconnected').length, 1);
+  assert.equal(fixture.fetches.length, 0);
+  assert.deepEqual(fixture.errors, []);
+  await assertSingleBinding(fixture);
+});
+
+for (const type of ['mainnet', 'shadownet']) {
+  for (const source of ['null account event', 'explicit disconnect']) {
+    test(`WALLET-001: ${source} retires a pending ${type} boot`, async () => {
+      const initialAccount = deferred();
+      const fixture = await createWalletFixture(initialAccount.promise);
+      const explicitDisconnect = source === 'explicit disconnect';
+      if (explicitDisconnect) await fixture.wallet.disconnectWallet();
+      else await fixture.client.accountListener(null);
+      const disconnectedState = fixture.wallet.getPublicWalletState();
+      initialAccount.resolve(account(addressA, type));
+      await settle();
+      assert.equal(fixture.wallet.getPublicWalletState(), disconnectedState);
+      assert.equal(disconnectedState.status, 'unconnected');
+      assert.equal(fixture.elements.mobileAddress.textContent, '');
+      assert.equal(fixture.elements.mobileAction.textContent, 'CONNECT');
+      assert.equal(fixture.window.appState.isConnected, false);
+      assert.equal(fixture.clearCalls, explicitDisconnect ? 1 : 0);
+      assert.equal(walletPublications(fixture).length, 1);
+      assert.equal(fixture.events.filter(event => event.type === 'walletDisconnected').length, explicitDisconnect ? 1 : 0);
+      assert.equal(fixture.fetches.length, 0);
+      assert.deepEqual(fixture.errors, []);
+      await assertSingleBinding(fixture);
+    });
+  }
+}
+
+test('WALLET-001: a null event during current mismatch cleanup remains authoritative', async () => {
   const initialAccount = deferred();
   const fixture = await createWalletFixture(initialAccount.promise);
-  await fixture.client.accountListener(account(addressB));
-  initialAccount.resolve(account(addressA));
+  fixture.clearResult = () => fixture.client.accountListener(null);
+  initialAccount.resolve(account(addressA, 'mainnet'));
   await settle();
-  assert.equal(fixture.wallet.getPublicWalletState().account.address, addressB);
-  assert.equal(fixture.elements.mobileAddress.textContent, short(addressB));
+  assert.equal(fixture.clearCalls, 1);
+  assert.equal(fixture.wallet.getPublicWalletState().status, 'unconnected');
+  assert.deepEqual(walletPublications(fixture).map(event => event.detail.status), ['unconnected']);
+  assert.equal(fixture.events.filter(event => event.type === 'walletDisconnected').length, 0);
+  assert.equal(fixture.fetches.length, 0);
+  assert.deepEqual(fixture.errors, []);
+  await assertSingleBinding(fixture);
+});
+
+for (const outcome of ['resolve', 'reject']) {
+  test(`WALLET-001: boot mismatch cleanup cannot publish over B after clear ${outcome}s`, async () => {
+    const initialAccount = deferred();
+    const clearing = deferred();
+    const fixture = await createWalletFixture(initialAccount.promise);
+    fixture.clearResult = () => clearing.promise;
+    initialAccount.resolve(account(addressA, 'mainnet'));
+    await settle();
+    assert.equal(fixture.clearCalls, 1, 'current mismatched observation starts cleanup');
+    await fixture.client.accountListener(account(addressB));
+    const currentState = fixture.wallet.getPublicWalletState();
+    if (outcome === 'resolve') clearing.resolve();
+    else clearing.reject(new Error('inert clear failure'));
+    await settle();
+    assert.equal(fixture.wallet.getPublicWalletState(), currentState);
+    assert.equal(currentState.account.address, addressB);
+    assert.equal(fixture.elements.mobileAddress.textContent, short(addressB));
+    assert.equal(fixture.window.appState.isConnected, true);
+    assert.deepEqual(walletPublications(fixture).map(event => event.detail.account?.address), [addressB]);
+    assert.equal(fixture.events.filter(event => event.type === 'walletDisconnected').length, 0);
+    assert.equal(fixture.fetches.length, 1);
+    assert.equal(fixture.errors.length, outcome === 'reject' ? 1 : 0);
+    await assertSingleBinding(fixture);
+  });
+}
+
+for (const outcome of ['resolve', 'reject']) {
+  for (const replacement of ['valid B', 'null']) {
+    test(`WALLET-001: event mismatch cleanup cannot supersede ${replacement} after clear ${outcome}s`, async () => {
+      const fixture = await createWalletFixture(Promise.resolve(null));
+      await settle();
+      const clearing = deferred();
+      fixture.clearResult = () => clearing.promise;
+      const cleanup = fixture.client.accountListener(account(addressA, 'mainnet'));
+      assert.equal(fixture.clearCalls, 1, 'current wrong-network event starts cleanup');
+      await fixture.client.accountListener(replacement === 'valid B' ? account(addressB) : null);
+      const currentState = fixture.wallet.getPublicWalletState();
+      const currentEvents = fixture.events.slice();
+      if (outcome === 'resolve') clearing.resolve();
+      else clearing.reject(new Error('inert event clear failure'));
+      await cleanup;
+      await settle();
+      assert.equal(fixture.wallet.getPublicWalletState(), currentState);
+      assert.equal(currentState.status, replacement === 'valid B' ? 'connected' : 'unconnected');
+      assert.equal(currentState.account?.address || null, replacement === 'valid B' ? addressB : null);
+      assert.equal(fixture.elements.mobileAddress.textContent, replacement === 'valid B' ? short(addressB) : '');
+      assert.equal(fixture.window.appState.isConnected, replacement === 'valid B');
+      assert.deepEqual(fixture.events, currentEvents, 'retired cleanup publishes no wallet events');
+      assert.equal(fixture.events.filter(event => event.type === 'walletDisconnected').length, 0);
+      assert.equal(fixture.clearCalls, 1);
+      assert.equal(fixture.fetches.length, replacement === 'valid B' ? 1 : 0);
+      assert.equal(fixture.errors.length, outcome === 'reject' ? 1 : 0);
+      await assertSingleBinding(fixture);
+    });
+  }
 }
 
 for (const page of ['index.html', 'collection-utility/index.html', 'drops/index.html', 'exchange/index.html']) {

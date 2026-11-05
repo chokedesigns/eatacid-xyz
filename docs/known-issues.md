@@ -1,12 +1,19 @@
 # Known issues
 
-These seven unresolved defects were demonstrated on 2026-10-29 against Outer
+These seven defects were demonstrated on 2026-10-29 against Outer
 `e4f4f1eef1d377664b94f7506f953d4d89bdefdb` and Admin
-`10af957d3cc29a6defaaf955b0d697a0ae74a420`. They remain unfixed. Demonstrations
+`10af957d3cc29a6defaaf955b0d697a0ae74a420`. Six remain unresolved; CHR-20261029-001
+is remediated by WALLET-001. Demonstrations
 used inert SDK, network, DOM, or serializer boundaries; no live wallet or chain
 transaction was performed. IDs below preserve the original evidence references.
 
 - **CHR-20261029-001 — Stale Public boot read disconnects a newer wallet.**
+  **Remediated — WALLET-001.** Boot observations superseded by account events
+  are retired before network validation can clear an account. A boot cleanup
+  that loses authority while clearing cannot publish disconnection afterward.
+  Inert production-function regressions cover wrong- and same-network stale
+  reads, null events, current valid/mismatched boots, and delayed clear completion.
+  Original demonstration:
   Outer `shared/beacon-setup.js`; consumers `drops/js/events.js` and
   `exchange/js/exchange.js`. Defer boot `getActiveAccount`, publish valid
   Shadownet account B, then resolve the old read with Mainnet account A.

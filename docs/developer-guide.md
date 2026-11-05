@@ -137,7 +137,8 @@ The shared lifecycle:
 - presents a pending state while it reads the active Beacon account;
 - requests permissions through the shared client and deduplicates concurrent connect requests;
 - verifies that an active or newly emitted account matches the configured Beacon network;
-- clears a stale/wrong-network active account and publishes disconnected state;
+- retires boot observations superseded by account events before network validation, and suppresses disconnected publication if boot cleanup loses authority while clearing;
+- clears a current wrong-network active account and publishes disconnected state;
 - clears the active account on disconnect and dispatches the legacy `walletDisconnected` event;
 - publishes `{status, account, nftsPromise}` through `publicWalletStateChanged` and exposes the current state to late consumers;
 - reads FA2 balances from the active slot's TzKT endpoint without blocking the connected-address UI.

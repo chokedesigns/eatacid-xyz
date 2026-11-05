@@ -426,8 +426,8 @@ document.dispatchEvent(
 );
 }
 
-async function clearMismatchedActiveAccount(account) {
-if (clearingMismatchedActiveAccount) {
+async function clearMismatchedActiveAccount(account, isCurrent) {
+if (!isCurrent() || clearingMismatchedActiveAccount) {
 return;
 }
 
@@ -447,11 +447,15 @@ console.error('Error clearing mismatched Beacon account:', error);
 clearingMismatchedActiveAccount = false;
 }
 
+// A boot observation can lose authority while Beacon is clearing the account.
+if (isCurrent()) {
 syncDisconnectedWalletState();
 }
+}
 
-export async function verifyPublicActiveAccount(account) {
-if (!account) {
+async function verifyPublicAccountObservation(account, isCurrent = () => true) {
+// Retire obsolete boot reads before verification can clear a newer account.
+if (!isCurrent() || !account) {
 return null;
 }
 
@@ -459,18 +463,26 @@ if (isActiveAccountForClientNetwork(account)) {
 return account;
 }
 
-await clearMismatchedActiveAccount(account);
+await clearMismatchedActiveAccount(account, isCurrent);
 return null;
 }
 
-export async function getVerifiedPublicActiveAccount() {
+export async function verifyPublicActiveAccount(account) {
+return verifyPublicAccountObservation(account);
+}
+
+async function readVerifiedPublicActiveAccount(isCurrent) {
 try {
 const activeAccount = await dAppClient.getActiveAccount();
-return verifyPublicActiveAccount(activeAccount);
+return verifyPublicAccountObservation(activeAccount, isCurrent);
 } catch (error) {
 console.error('Error reading Beacon active account:', error);
 return null;
 }
+}
+
+export async function getVerifiedPublicActiveAccount() {
+return readVerifiedPublicActiveAccount();
 }
 
 // ----------------------------------------------------------------------------
@@ -537,7 +549,10 @@ logger.log(
 account.address
 );
 
-  const verifiedAccount = await verifyPublicActiveAccount(account);
+  const verifiedAccount = await verifyPublicAccountObservation(
+    account,
+    () => generation === walletLifecycleGeneration
+  );
   if (!verifiedAccount) {
     return;
   }
@@ -604,7 +619,9 @@ disconnectButton
 updateButtonState('pending');
 
 const generation = walletLifecycleGeneration;
-const activeAccount = await getVerifiedPublicActiveAccount();
+const activeAccount = await readVerifiedPublicActiveAccount(
+() => generation === walletLifecycleGeneration
+);
 
 if (generation !== walletLifecycleGeneration) {
 logger.log('Shared wallet boot result superseded by an account event.');
