@@ -120,6 +120,7 @@ const AppState = {
   exchangeButtonInterval: window.exchangeButtonInterval || null, // hover/debounce timer
   exchangeDisabled: false,                               // drives Exchange button disabled state
   hoveringExchange: false,                               // tracks whether the mouse is over the exchange button
+  redeemSupply: null,                                    // null until a complete supply read succeeds
   selectedTokenId: null,                                 // ID of the token the user has selected
   walletConnected: false                                 // tracks whether a wallet is connected (default: false)
 };
@@ -676,9 +677,7 @@ function commitInitialRedeemSupply(container, supply) {
   // Publish the resolved supply, then reconcile against phase state retained during loading.
   redeemInitialSupplyPublishing = true;
   try {
-    if (supply.available) {
-      updateAppState({ redeemSupply: supply.value });
-    }
+    updateAppState({ redeemSupply: supply.available ? supply.value : null });
   } finally {
     redeemInitialSupplyPublishing = false;
     initialDropStateReveal.markReady('initial-supply');
@@ -905,6 +904,9 @@ async function updateRedeemSupplyDisplay() {
       return true;
     } catch (err) {
       console.error('Error polling redeem supply:', err);
+      const el = document.querySelector('.supply-text-number');
+      if (el) el.textContent = '[UNAVAILABLE]';
+      updateAppState({ redeemSupply: null });
       return false;
     } finally {
       redeemSupplyUpdatePromise = null;
@@ -942,10 +944,9 @@ async function resolveInitialRedeemSupply() {
  */
 function startRedeemSupplyPolling(intervalMs = 10000, runImmediately = true) {
   if (!redeemInitialSupplyCommitted || redeemSupplyIntervalId != null) return null;
-  const initialUpdate = runImmediately ? updateRedeemSupplyDisplay() : null;
-  // then every X seconds
+  // Own the interval before an immediate update can notify state subscribers.
   redeemSupplyIntervalId = setInterval(updateRedeemSupplyDisplay, intervalMs);
-  return initialUpdate;
+  return runImmediately ? updateRedeemSupplyDisplay() : null;
 }
 
 /**
@@ -965,7 +966,8 @@ function reconcileRedeemSupplyPolling({ runImmediately = true } = {}) {
   const shouldPoll =
     !document.hidden &&
     AppState.countdownPhase === 'live' &&
-    AppState.redeemSupply > 0;
+    // Unknown inventory needs recovery; verified sold-out inventory stays closed.
+    AppState.redeemSupply !== 0;
 
   if (shouldPoll) {
     startRedeemSupplyPolling(10000, runImmediately);
@@ -989,6 +991,12 @@ subscribeToAppState(() => {
  */
 let eventExchangeInFlight = false;
 
+function assertRedeemSupplyAvailable() {
+  if (!Number.isFinite(AppState.redeemSupply) || AppState.redeemSupply <= 0) {
+    throw new Error('Redeem supply is unavailable or sold out.');
+  }
+}
+
 async function handleEventExchange() {
   if (!networkConfigAvailable) {
     console.error(networkUnavailableMessage);
@@ -1009,6 +1017,7 @@ async function handleEventExchange() {
     ? 'https://tzkt.io'
     : 'https://shadownet.tzkt.io';
   try {
+    assertRedeemSupplyAvailable();
     logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
 
     // Step 1: Show waiting for wallet confirmation modal
@@ -1155,6 +1164,7 @@ async function handleEventExchange() {
     }
 
     // Step 2: Prompt wallet to sign and send
+    assertRedeemSupplyAvailable();
     const opResponse = await window.dAppClient.requestOperation({
       operationDetails: batchedOps
     });
@@ -2458,6 +2468,7 @@ function computeExchangeButtonState({
         pulse      = true;
         break;
       case 'live':
+        if (!Number.isFinite(redeemSupply) || redeemSupply <= 0) break;
         defaultColor = contractPaused ? '#363636' : '#d4d4d4';
         hoverLabel   = 'EXCHANGE';
         hoverColor   = '#f5c414';

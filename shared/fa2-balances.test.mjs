@@ -87,8 +87,8 @@ for (const surface of ['shared', 'exchange']) {
       assert.equal(initial.value.available, false);
       assert.equal(initial.value.value, null);
       assert.equal((await run(h.update)).value, false);
-      assert.deepEqual(h.patches, []);
-      assert.equal(h.supplyText, 'unknown');
+      assert.deepEqual(h.patches.map(patch => patch.redeemSupply), [null]);
+      assert.equal(h.supplyText, '[UNAVAILABLE]');
       const refresh = await run(() => pollForNFTUpdate({ fetchNFTs: h.fetch, address: 'wallet-A',
         tradedTokens: [{ contractAddress: 'KT1Redeem', tokenId: target.token.tokenId, startingBalance: 8, quantity: 1 }] }));
       assert.ok(refresh.error, 'An omitted traded token in an incomplete read must not count as refreshed');

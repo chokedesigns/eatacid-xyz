@@ -148,7 +148,7 @@ for (const failFirst of [true, false]) {
   const state = { countdownPhase: 'live', walletConnected: true, selectedTokenId: '0', contractPaused: false };
   const intervals = [], pill = {};
   let reads = 0;
-  const supply = vm.createContext({ AppState: state, document: { hidden: false },
+  const supply = vm.createContext({ AppState: state, document: { hidden: false, querySelector: () => pill },
     redeemInitialSupplyCommitted: false, redeemInitialSupplyPublishing: false,
     networkConfigAvailable: true, BURN_REDEEM_CONTRACT_ADDRESS: 'KT1Escrow',
     collections: { CANAAN: 'KT1Redeem' }, redeemToken: { collection: 'CANAAN', tokenId: '29' },
@@ -163,12 +163,19 @@ for (const failFirst of [true, false]) {
   supply.commitInitialRedeemSupply({ querySelector: () => pill }, result);
   for (let i = 0; i < 3; i++) supply.reconcileRedeemSupplyPolling();
   assert.equal(reads, 1);
-  assert.equal(intervals.length, failFirst ? 0 : 1);
-  assert.equal(state.redeemSupply, failFirst ? undefined : 7);
-  assert.equal(typeof supply.computeExchangeButtonState(state).clickAction, 'function');
+  assert.equal(intervals.length, 1);
+  assert.equal(state.redeemSupply, failFirst ? null : 7);
+  assert.equal(supply.computeExchangeButtonState(state).clickAction,
+    failFirst ? null : supply.handleEventExchange);
   assert.equal(pill.textContent, failFirst ? '[UNAVAILABLE]' : 'x07');
+  await intervals[0]();
+  assert.equal(reads, 2);
+  assert.equal(state.redeemSupply, 7);
+  assert.equal(pill.textContent, 'x07');
+  assert.equal(supply.computeExchangeButtonState(state).clickAction, supply.handleEventExchange);
+  assert.equal(intervals.length, 1);
 }
-console.log('AUD-002-007: initial inventory failure installs no recovery poll yet enables Exchange; healthy control installs one poll');
+console.log('AUD-002-007 regression: initial inventory failure disables Exchange and installs one recovery poll; verified seven-unit recovery and healthy control enable Exchange');
 
 // Confirmation producer: preserve real poll semantics with inert fetch and delay.
 const poll = (await import('../../admin-ui/src/utils/poll.js')).poll;

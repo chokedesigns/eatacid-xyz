@@ -21,6 +21,7 @@ function fixture({ amount = 2, balance = 5, redeemAmount = 3, enabled = true, fa
     burnTokens: config, collections: { HEN: 'burn-contract' },
     redeemToken: { collection: 'CANAAN', tokenId: '7', redeemAmount }, REDEEM_CONTRACT_ADDRESS: 'redeem-contract',
     BURN_REDEEM_CONTRACT_ADDRESS: 'escrow', network: 'testnet', networkConfigAvailable: true,
+    AppState: { redeemSupply: 7 },
     normalizeString: value => String(value ?? '').trim().toLowerCase(),
     logger: { log() {} }, console: { error: (...args) => errors.push(args), warn() {} },
     getVerifiedPublicActiveAccount: async () => ({ address: 'inert-wallet' }),

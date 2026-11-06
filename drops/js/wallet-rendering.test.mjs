@@ -223,6 +223,7 @@ test('BAL-001: superseded multi-page Drops reads cannot publish after disconnect
 
 function tradeFixture(h, { confirmation = Promise.resolve(), holdings = [nft('0', 'HEN', 5)] } = {}) {
   const modals = [];
+  h.state.redeemSupply = 7;
   Object.assign(h.context, {
     getVerifiedPublicActiveAccount: async () => h.state.activeAccount,
     getSelectedEventTokenWithBalance: () => ({ contractAddress: 'contract-HEN', tokenId: '0', oldBalance: 5 }),
@@ -468,6 +469,7 @@ test('Confirmed trade NFT response cannot restore holdings after wallet replacem
   for (const reconnect of [false, true]) {
     const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0')])); await flush();
     const result = deferred(); let polling = false;
+    h.state.redeemSupply = 7;
     Object.assign(h.context, {
       getVerifiedPublicActiveAccount: async () => h.state.activeAccount,
       getSelectedEventTokenWithBalance: () => ({ contractAddress: 'contract-HEN', tokenId: '0', oldBalance: 4 }),
