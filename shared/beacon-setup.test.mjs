@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createContext, SourceTextModule, SyntheticModule } from 'node:vm';
 import test from 'node:test';
+import { fetchFa2BalancePages } from './tzkt-fa2-balances.js';
 
 const walletSource = await readFile(new URL('./beacon-setup.js', import.meta.url), 'utf8');
 
@@ -145,6 +146,9 @@ async function createWalletFixture(initialAccountPromise) {
       },
       { context }
     )],
+    ['./tzkt-fa2-balances.js', new SyntheticModule(['fetchFa2BalancePages'], function () {
+      this.setExport('fetchFa2BalancePages', fetchFa2BalancePages);
+    }, { context })],
     ['./network.js', new SyntheticModule(['default'], function () {
       this.setExport('default', {
         network: 'testnet',

@@ -6,6 +6,7 @@ import test from 'node:test';
 import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
 import { isCurrentWalletProjection, setRegionPending } from './reveal-coordinator.js';
 import { pollForNFTUpdate as pollForSharedNFTUpdate } from '../../shared/public-trade-ops.js';
+import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
 
 // Run the page's current functions against inert CMS, wallet and indexer boundaries.
 const root = process.env.EA_T005_SOURCE_ROOT
@@ -169,6 +170,56 @@ function assertPending(h) {
   for (const pane of Object.values(h.panes)) assert.equal(pane.style.display, 'none');
   assert.equal(h.wallet['aria-busy'], 'true'); assert.equal(h.spinner.style.display, 'flex');
 }
+
+function pagedWallet(h, read) {
+  Object.assign(h.context, { fetchFa2BalancePages, network: 'testnet',
+    tzkt: { testnet: 'https://inert.invalid' }, fetch: read });
+  const wallet = readFileSync(new URL('../../shared/beacon-setup.js', import.meta.url), 'utf8');
+  vm.runInContext(wallet.slice(wallet.indexOf('async function fetchNFTs('),
+    wallet.indexOf('window.fetchNFTs = fetchNFTs;')), h.context);
+}
+
+test('BAL-001: Drops holdings after page one render; later failures stay unavailable', async () => {
+  const h = fixture();
+  const first = Array.from({ length: 100 }, (_, id) => ({ id,
+    token: { tokenId: String(id), contract: { address: 'contract-other' } }, balance: '1' }));
+  let failed = false;
+  pagedWallet(h, async url => {
+    if (!new URL(url).searchParams.has('id.gt')) return { ok: true, json: async () => first };
+    if (failed) throw new Error('inert page two failure');
+    return { ok: true, json: async () => [{ id: 100,
+      token: { tokenId: '0', contract: { address: 'contract-HEN' } }, balance: '5' }] };
+  });
+  h.connect('wallet-A'); await flush();
+  assert.deepEqual(h.ids('HEN'), ['0']);
+  assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '5');
+  h.disconnect(); failed = true;
+  h.connect('wallet-A'); await flush();
+  assert.deepEqual(h.ids('HEN'), []);
+  assert.equal(h.call('dropsBalanceRefreshFailed'), true);
+  assert.match(h.heading.textContent, /UNAVAILABLE/);
+  assertCanonical(h);
+});
+
+test('BAL-001: superseded multi-page Drops reads cannot publish after disconnect or reconnect', async () => {
+  for (const reconnect of [false, true]) for (const fail of [false, true]) {
+    const h = fixture(), later = deferred();
+    const first = Array.from({ length: 100 }, (_, id) => ({ id,
+      token: { tokenId: String(id), contract: { address: 'contract-other' } }, balance: '1' }));
+    pagedWallet(h, async url => new URL(url).searchParams.has('id.gt')
+      ? later.promise : { ok: true, json: async () => first });
+    h.connect('wallet-A'); await flush(); h.disconnect();
+    h.connect(reconnect ? 'wallet-A' : 'wallet-B', Promise.resolve([nft('0', 'HEN', 3)]));
+    await flush();
+    if (fail) later.reject(new Error('inert stale failure'));
+    else later.resolve({ ok: true, json: async () => [{ id: 100,
+      token: { tokenId: '0', contract: { address: 'contract-HEN' } }, balance: '5' }] });
+    await flush();
+    assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');
+    assert.equal(h.call('dropsBalanceRefreshFailed'), false);
+    assertCanonical(h);
+  }
+});
 
 function tradeFixture(h, { confirmation = Promise.resolve(), holdings = [nft('0', 'HEN', 5)] } = {}) {
   const modals = [];

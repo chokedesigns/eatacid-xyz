@@ -3,7 +3,8 @@ import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import vm from 'node:vm';
 import { isCurrentWalletProjection } from '../../drops/js/reveal-coordinator.js';
-import { pollForNFTUpdate } from '../../shared/public-trade-ops.js';
+import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
+import { __areTradedTokensRefreshedForFixture, pollForNFTUpdate } from '../../shared/public-trade-ops.js';
 import * as treasuryFixture from '../../admin-ui/tests/runtime/treasury.fixture.mjs';
 import { validateDropParams } from '../../shared/drop-params/drop-params-authoring.mjs';
 import committedDropParams from '../../shared/drop-params/drop-params.js';
@@ -19,10 +20,13 @@ function fixtureFrom(relativePath, endAnchor, resultName = 'fixture', globals = 
     .replace(/import[\s\S]*?from\s+['"][^'"]+['"];\s*/g, '')
     .replaceAll('import.meta.url', JSON.stringify(url.href));
   const context = vm.createContext({ assert, readFileSync, vm, URL, structuredClone, Event, CustomEvent, EventTarget, AbortController,
-    isCurrentWalletProjection, pollForNFTUpdate, setImmediate, console, process: { env: {} }, ...globals });
+    isCurrentWalletProjection, pollForNFTUpdate, fetchFa2BalancePages, setImmediate, console, process: { env: {} }, ...globals });
   return vm.runInContext(code + `\n${resultName};`, context);
 }
 
+// Restrict remediation verification to the two balance findings when requested.
+const balancesOnly = process.argv.includes('--balances-only');
+if (!balancesOnly) {
 const dropsFixture = fixtureFrom('../../drops/js/trade-lifecycle.test.mjs', "for (const stage of ['initial-account'");
 {
   const h = dropsFixture({ failure: 'confirmation' });
@@ -88,34 +92,39 @@ const exchangeFixture = fixtureFrom('../../exchange/js/exchange-wallet.test.mjs'
   console.log('AUD-002-003: valid large safe-integer holdings attempt >10,000 options synchronously; 5-balance control has 6');
 }
 
+}
+
 // Test the real Public shared holdings seam and its real supply/refresh consumers.
 const walletSource = readFileSync(new URL('../../shared/beacon-setup.js', import.meta.url), 'utf8');
 const holdingsCode = walletSource.slice(walletSource.indexOf('async function fetchNFTs('), walletSource.indexOf('window.fetchNFTs = fetchNFTs;'));
 const eventsSource = readFileSync(new URL('../../drops/js/events.js', import.meta.url), 'utf8');
 const supplyCode = eventsSource.slice(eventsSource.indexOf('async function fetchRedeemSupply('), eventsSource.indexOf('async function updateRedeemSupplyDisplay('));
 const contract = 'KT1Redeem', wanted = '29';
-const rows = Array.from({ length: 100 }, (_, i) => ({ token: { tokenId: String(i), contract: { address: 'KT1Other' } }, balance: '1' }));
-const missing = { token: { tokenId: wanted, contract: { address: contract } }, balance: '7' };
+const rows = Array.from({ length: 100 }, (_, i) => ({ id: i, token: { tokenId: String(i), contract: { address: 'KT1Other' } }, balance: '1' }));
+const missing = { id: 100, token: { tokenId: wanted, contract: { address: contract } }, balance: '7' };
 let page = [...rows, missing];
 const urls = [];
-const c = vm.createContext({ network: 'testnet', tzkt: { testnet: 'https://inert.invalid' },
+const c = vm.createContext({ fetchFa2BalancePages, network: 'testnet', tzkt: { testnet: 'https://inert.invalid' },
   networkConfigAvailable: true, BURN_REDEEM_CONTRACT_ADDRESS: 'KT1Escrow',
   collections: { CANAAN: contract }, redeemToken: { collection: 'CANAAN', tokenId: wanted },
   logger: { log() {} }, console, fetch: async url => {
-    urls.push(url); return { ok: true, json: async () => page.slice(0, 100) };
+    urls.push(url);
+    const cursor = new URL(url).searchParams.get('id.gt');
+    return { ok: true, json: async () => page.filter(row => cursor === null || BigInt(row.id) > BigInt(cursor)).slice(0, 100) };
   } });
 vm.runInContext(holdingsCode + '\n' + supplyCode, c);
-assert.equal(await c.fetchRedeemSupply(), 0);
-assert.equal(urls.length, 1);
-assert.ok(!urls[0].includes('limit=') && !urls[0].includes('offset='));
-const holdings = await c.fetchNFTs('wallet-A');
-const polled = await pollForNFTUpdate({ fetchNFTs: async () => holdings, address: 'wallet-A',
-  tradedTokens: [{ contractAddress: contract, tokenId: wanted, startingBalance: 9, quantity: 1 }], interval: 0 });
-assert.equal(polled.length, 100); // Missing traded token is accepted as refreshed.
-page = [missing, ...rows];
 assert.equal(await c.fetchRedeemSupply(), 7);
-console.log('AUD-002-001: 101st holding omitted, supply 0 and refresh accepted; first-row control supply 7');
+assert.equal(urls.length, 2);
+assert.ok(urls[0].includes('limit=100') && urls[1].includes('id.gt=99'));
+const holdings = await c.fetchNFTs('wallet-A');
+assert.equal(holdings.length, 101);
+assert.equal(__areTradedTokensRefreshedForFixture(holdings,
+  [{ contractAddress: contract, tokenId: wanted, startingBalance: 7, quantity: 1 }]), false);
+page = [missing];
+assert.equal(await c.fetchRedeemSupply(), 7);
+console.log('BAL-001 / AUD-002-001: 101st funded holding retained, supply 7, unchanged traded balance stays pending; single-page control preserved');
 
+if (!balancesOnly) {
 // Known CHR-006: execute the whole current economics module, replacing only config import.
 const econ = readFileSync(new URL('../../admin-ui/src/utils/token-econ.js', import.meta.url), 'utf8')
   .replace(/import[^;]+;/, '').replaceAll('export ', '');
@@ -133,9 +142,9 @@ let walletFixtureSource = readFileSync(walletTestUrl, 'utf8').replace(/\r\n?/g, 
 walletFixtureSource = walletFixtureSource.slice(0, walletFixtureSource.indexOf('\n{\n  const initialAccount'))
   .replace(/import[\s\S]*?from\s+['"][^'"]+['"];\s*/g, '')
   .replaceAll('import.meta.url', JSON.stringify(walletTestUrl.href));
-const loadWallet = new Function('assert', 'readFile', 'createContext', 'SourceTextModule', 'SyntheticModule',
+const loadWallet = new Function('assert', 'readFile', 'createContext', 'SourceTextModule', 'SyntheticModule', 'fetchFa2BalancePages',
   `return (async () => { ${walletFixtureSource}; return { createWalletFixture, deferred, settle }; })();`);
-const wf = await loadWallet(assert, readFile, vm.createContext, vm.SourceTextModule, vm.SyntheticModule);
+const wf = await loadWallet(assert, readFile, vm.createContext, vm.SourceTextModule, vm.SyntheticModule, fetchFa2BalancePages);
 for (const network of ['mainnet', 'shadownet']) {
   const boot = wf.deferred();
   const h = await wf.createWalletFixture(boot.promise);
@@ -224,23 +233,31 @@ for (const surface of ['drops', 'exchange']) for (const action of ['transfer', '
 }
 console.log('CHR-003 reconfirmed: all eight SDK account-event treasury cases submit; all four document-disconnect controls block');
 
-// CHR-004 at the actual API seam; source consumer treats absence as supply 0.
+}
+
+// BAL-001 / CHR-004 at the actual API seam: all 501 rows must be retained.
 const apiCode = readFileSync(new URL('../../admin-ui/src/tzkt-api.js', import.meta.url), 'utf8')
   .replace(/^import[^;]+;/gm, '').replace('export default {', 'const ignoredDefault = {').replaceAll('export ', '');
 const apiUrls = [];
-const apiRows = Array.from({ length: 501 }, (_, i) => ({ token: { tokenId: String(i), contract: { address: contract } }, balance: '1' }));
-const ac = vm.createContext({ URL, console,
+const apiRows = Array.from({ length: 501 }, (_, i) => ({ id: i, token: { tokenId: String(i), contract: { address: contract } }, balance: '1' }));
+const ac = vm.createContext({ URL, console, fetchFa2BalancePages,
   getLiveCfg: () => ({ network: 'testnet', tzktBase: 'https://inert.invalid' }),
-  shortAddress: v => v, fetch: async url => { apiUrls.push(url); return { ok: true, json: async () => apiRows.slice(0, 500) }; } });
+  shortAddress: v => v, fetch: async url => {
+    apiUrls.push(url);
+    const cursor = new URL(url).searchParams.get('id.gt');
+    return { ok: true, json: async () => apiRows.filter(row => cursor === null || BigInt(row.id) > BigInt(cursor)).slice(0, 500) };
+  } });
 vm.runInContext(apiCode, ac);
 const ar = await ac.getFa2Balances('KT1Escrow');
-assert.equal(ar.length, 500);
-assert.equal(apiUrls.length, 1);
+assert.equal(ar.length, 501);
+assert.equal(apiUrls.length, 2);
 assert.ok(apiUrls[0].includes('limit=500'));
-assert.ok(!ar.some(row => row.token.tokenId === '500'));
+assert.ok(ar.some(row => row.token.tokenId === '500'));
+assert.ok(apiUrls[1].includes('id.gt=499'));
 assert.equal(ar.find(row => row.token.tokenId === '0').balance, '1');
-console.log('CHR-004 reconfirmed API truncation: 501 fixture holdings -> 500 without completeness metadata; checklist zero consumer source-reviewed');
+console.log('BAL-001 / CHR-004: all 501 fixture holdings retained; funded row 501 remains present');
 
+if (!balancesOnly) {
 const makeSend = fixtureFrom('../../admin-ui/tests/runtime/drops-send-invalidation.test.mjs', "for (const change of ['provider'");
 for (const id of ['29', '9007199254740993']) {
   const authored = structuredClone(committedDropParams);
@@ -273,4 +290,6 @@ for (const id of ['29', '9007199254740993']) {
 }
 console.log('CHR-007 reconfirmed send conversion: exact large ID rounded in all 3 batches; ID 29 control preserved');
 
-console.log('All AUD-002 inert reproduction assertions passed. No network, wallet, or filesystem effects from tested production paths.');
+}
+
+console.log(balancesOnly ? 'BAL-001 balance reproduction regressions passed.' : 'All AUD-002 inert reproduction assertions passed. No network, wallet, or filesystem effects from tested production paths.');

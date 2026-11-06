@@ -14,6 +14,7 @@ import { createDropParamsAuthoringApi } from '../../shared/drop-params/drop-para
 import { createDropsConfig } from './events-config.js';
 import { fetchTokenPairId } from '../../shared/public-trade-ops.js';
 import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
+import { exactTokenId, compareTokenIds } from '../../admin-ui/src/features/drops/utils/token-id.js';
 
 const root = new URL('../../', import.meta.url);
 const publicSource = readFileSync(new URL('./events.js', import.meta.url), 'utf8').replace(/\r\n?/g, '\n');
@@ -30,6 +31,7 @@ function adminModule(relative, globals) {
   return context;
 }
 const data = adminModule('admin-ui/src/features/drops/drops.data.js', {
+  exactTokenId, compareTokenIds,
   log() {}, reportError() {}, getLiveCfg: () => ({ network }),
   getIdMirrorForCollection: collection => chainRegistry[network].mirrors[collection] || {}
 });

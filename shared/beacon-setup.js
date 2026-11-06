@@ -4,6 +4,7 @@
 
 import { DAppClient, NetworkType, BeaconEvent } from '@airgap/beacon-sdk';
 import cfg from './network.js';
+import { fetchFa2BalancePages } from './tzkt-fa2-balances.js';
 import { createPublicLogger } from './public-logger.js';
 
 const { network, tzkt, getCurrentPublicNetworkConfig } = cfg;
@@ -277,28 +278,8 @@ console.error(error.message);
 throw error;
 }
 
-const apiUrl =
-baseUrl + '/v1/tokens/balances' +
-'?account=' + address +
-'&token.standard=fa2';
-
 try {
-const response = await fetch(apiUrl);
-
-if (!response.ok) {
-  const body = await response.text().catch(() => '');
-
-  throw new Error(
-    'TzKT request failed ' + response.status + ': ' + apiUrl +
-    (body ? '\n' + body : '')
-  );
-}
-
-const nfts = await response.json();
-
-if (!Array.isArray(nfts)) {
-  throw new TypeError('TzKT NFT response was not an array: ' + apiUrl);
-}
+const nfts = await fetchFa2BalancePages({ baseUrl, account: address, fetchImpl: fetch });
 
 logger.log('NFTs fetched from ' + network + ':', nfts);
 

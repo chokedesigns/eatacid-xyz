@@ -873,8 +873,7 @@ let redeemSupplyUpdatePromise = null;
  */
 async function fetchRedeemSupply() {
   if (!networkConfigAvailable) {
-    console.error(networkUnavailableMessage);
-    return 0;
+    throw new Error(networkUnavailableMessage);
   }
 
   const holdings = await fetchNFTs(BURN_REDEEM_CONTRACT_ADDRESS);
@@ -1643,16 +1642,12 @@ function updateRedeemTokenTitle() {
  */
 async function fetchNFTs(address) {
   if (!networkConfigAvailable) {
-    console.error(networkUnavailableMessage);
-    return [];
+    throw new Error(networkUnavailableMessage);
   }
-
-  if (typeof window.fetchNFTs === 'function') {
-    return await window.fetchNFTs(address);
-  } else {
-    console.error('fetchNFTs is not available on window');
-    return [];
+  if (typeof window.fetchNFTs !== 'function') {
+    throw new Error('fetchNFTs is not available on window');
   }
+  return await window.fetchNFTs(address);
 }
 
 /**

@@ -102,6 +102,7 @@ For implementation history and evidence, see [early Home first paint](performanc
 | `shared/network.js` | Supported-slot selection, the default `testnet` slot, optional `process.env.NETWORK` selection, and active RPC/TzKT projections | First paint, Beacon, Drops, Exchange, Collection Utility | Addresses, per-surface validation, or cutover procedure |
 | `shared/chain-registry.js` | Per-slot labels, Beacon/RPC/TzKT values, collection addresses, escrow configuration, pair-map paths, mirror maps, resolution helpers, and validators | `network.js`, Drops/Exchange configs, Admin-facing shared validation | Runtime network switching or proof that a configured slot is cutover-ready |
 | `shared/beacon-setup.js` | One shared `DAppClient`, permission/connect/disconnect lifecycle, active-account network validation, public wallet state, wallet controls, and TzKT NFT balance reads | Home, Drops, Exchange, Collection Utility | Page-specific filtering, cart state, or transaction construction |
+| `shared/tzkt-fa2-balances.js` | Complete FA2 balance pagination with bounded reads and exact row identity validation | Shared Public wallet reads, independent Exchange reads, Admin `getFa2Balances` | Wallet lifecycle publication, eligibility, or financial calculations |
 | `shared/public-first-paint.js` | Shared network class/banner state, bounded font/hero readiness, reveal/fallback behavior, and duplicate-start protection | Early entry, with full-entry fallbacks | Drops-specific authoritative-region readiness or application boot |
 | `shared/public-trade-ops.js` | TzKT pair lookup, operator-approval construction, expected-operation confirmation polling, and post-trade NFT refresh polling | Drops and Exchange transaction flows | Page-specific cart/payload composition, modal state, or wallet send request |
 | `shared/drop-params/drop-params.js` | Authored Drops schedule, display/mechanics, burn eligibility/exclusions, redeem identity, and mirror-network metadata | Drops runtime; JSON generator; Admin projection | Chain endpoints, addresses, live pause state, or live redeem supply |
@@ -144,6 +145,8 @@ The shared lifecycle:
 - reads FA2 balances from the active slot's TzKT endpoint without blocking the connected-address UI.
 
 A wallet lifecycle generation prevents an older startup result from overwriting a newer account event. Drops and Exchange maintain their own address/generation guards so late NFT results cannot commit after wallet authority changes. Page modules consume shared wallet state, then own their own row filtering, balances, selections, carts, and failure presentation.
+
+Public FA2 reads use ascending balance-row IDs in 100-row pages through `shared/tzkt-fa2-balances.js`. A short valid page establishes completeness; request/body timeouts (15 seconds per page), malformed data, repeated/nonadvancing rows, and the 200-page safety cap reject the whole read. Token IDs and quantities remain unchanged. Only complete retrieval can establish absence for supply, holdings, or post-trade reconciliation; callers retain their existing unknown/retry handling and lifecycle guards across all pages.
 
 ## Drops architecture
 

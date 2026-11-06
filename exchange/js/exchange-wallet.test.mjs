@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
+import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
 import { pollForNFTUpdate } from '../../shared/public-trade-ops.js';
 
 // Execute the complete page module with inert DOM, wallet and indexer boundaries.
@@ -79,7 +80,7 @@ function fixture() {
     fetchRows: async () => [nft(0)], verify: async () => h.account,
     approve: async () => [{ kind: 'approval' }], pair: async () => '7', confirm: async () => {},
     poll: async opts => opts.fetchNFTs(opts.address), connectCalls: 0 };
-  const context = vm.createContext({ document, window: {},
+  const context = vm.createContext({ document, window: {}, fetchFa2BalancePages,
     cfg: { network: 'testnet', rpc: {}, tzkt: { testnet: 'https://inert.test' }, contracts: { testnet: {
       collections: { pane0: 'KT1419', pane1: 'KT1Canaan' }, escrow: 'KT1Escrow', redeemTokenContract: 'KT1Redeem' } } },
     createPublicLogger: () => ({ log() {}, debug() {} }),
@@ -89,7 +90,7 @@ function fixture() {
     fetchSharedTokenPairId: async opts => { pairs.push(opts); return h.pair(opts); },
     pollForSharedConfirmation: opts => h.confirm(opts),
     pollForSharedNFTUpdate: opts => { polls.push(opts); return h.poll(opts); },
-    fetch: async url => ({ ok: true, json: async () => (await h.fetchRows(url)).map(n => ({ balance: n.balance,
+    fetch: async url => ({ ok: true, json: async () => (await h.fetchRows(url)).map((n, i) => ({ id: n.id ?? i, balance: n.balance,
       token: { tokenId: n.tokenId, contract: { address: n.contractAddress } } })) }),
     Option: function(text, value) { const el = new Element('', String(text)); el.value = String(value); return el; },
     MutationObserver: class { observe() {} },
@@ -117,6 +118,52 @@ function unavailable(h) {
   }
   assert.equal(h.cartRows.children.length, 0); assert.equal(h.controls.live.style.display, 'none');
 }
+
+test('BAL-001: independent Exchange fetch renders eligible holdings after page one', async () => {
+  const h = fixture();
+  const first = Array.from({ length: 100 }, (_, id) => ({ ...nft(1, 'KT1Other', String(id)), id }));
+  h.fetchRows = async url => new URL(url).searchParams.has('id.gt')
+    ? [{ ...nft(2), id: 100 }] : first;
+  h.account = { address: 'wallet-A' };
+  h.state({ status: 'connected', account: h.account });
+  await flush();
+  assert.equal(h.dropdowns[0].options.length, 3);
+  assert.equal(h.dropdowns[0].disabled, false);
+});
+
+test('BAL-001: incomplete post-trade pages retain the confirmed burn and balance retry state', async () => {
+  const h = fixture(); await h.connect(); h.select();
+  const first = Array.from({ length: 100 }, (_, id) => ({ ...nft(1, 'KT1Other', String(id)), id }));
+  h.fetchRows = async url => {
+    if (new URL(url).searchParams.has('id.gt')) throw new Error('inert later-page outage');
+    return first;
+  };
+  await h.trade();
+  unavailable(h);
+  assert.equal(h.controls.connect.textContent, 'RETRY BALANCES');
+  h.fetchRows = async () => [nft(1)];
+  await h.controls.connect.click(); unavailable(h); // confirmed delta remains required
+  h.fetchRows = async () => [];
+  await h.controls.connect.click();
+  assert.equal(h.controls.connect.style.display, 'none');
+});
+
+test('BAL-001: a superseded page two cannot replace a different or reconnected wallet', async () => {
+  for (const reconnect of [false, true]) for (const fail of [false, true]) {
+    const h = fixture(), later = deferred();
+    const first = Array.from({ length: 100 }, (_, id) => ({ ...nft(1, 'KT1Other', String(id)), id }));
+    h.fetchRows = async url => new URL(url).searchParams.has('id.gt') ? later.promise : first;
+    h.account = { address: 'wallet-A' };
+    h.state({ status: 'connected', account: h.account });
+    await flush();
+    h.disconnect(); await h.connect(reconnect ? 'wallet-A' : 'wallet-B', [nft(2)]);
+    if (fail) later.reject(new Error('inert stale page failure'));
+    else later.resolve([{ ...nft(5), id: 100 }]);
+    await flush();
+    assert.equal(h.dropdowns[0].options.length, 3);
+    assert.equal(h.dropdowns[0].disabled, false);
+  }
+});
 
 test('FIND-P2-016: confirmed burn then refresh failure never restores edition-sized quantities; retry recovers', async () => {
   const h = fixture(); await h.connect(); h.select();

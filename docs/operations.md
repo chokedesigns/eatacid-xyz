@@ -148,6 +148,7 @@ Run the tests that match the changed contract. These commands do not intentional
 
 | Command | Run when changing | What it proves |
 | --- | --- | --- |
+| `npm run test:fa2-balances` | Public/Admin FA2 completeness and its Public consumers | Inert production fetch/consumer seams retain tokens after page one, reject incomplete reads, preserve genuine absence, and guard wallet/post-trade publication. Also run Admin `npm run test:runtime` and `node --experimental-vm-modules audits/repro/AUD-002-repro.mjs --balances-only` for the cross-repository BAL-001 regression. |
 | `npm run test:loader-architecture` | Root routers, environment loaders, first-paint startup, or loader failure handling | Host selection, sibling artifact startup, and failure isolation match the encoded Home/Drops/Exchange/Collection Utility architecture. |
 | `npm run test:pages-loader-artifacts` | Pages workflow assembly, loader provenance, or artifact verification | The verifier accepts the supported assembled graph, rejects ownership/marker/map violations, and the workflow keeps verification after map removal with no later artifact mutation. |
 | `npm run test:public-trade-ops` | Shared approvals, operation confirmation, pair matching, or NFT refresh behavior | Deterministic trade-helper fixtures preserve approval fallback, confirmation matching/retry, and refresh completion rules. |

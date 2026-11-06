@@ -3,6 +3,7 @@
 // =============================================================================
 
 import cfg from './exchange-config.js';
+import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
 import {
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
@@ -713,22 +714,10 @@ async function fetchNFTs(walletAddress) {
 
   logger.log("Fetching NFTs for wallet address:", walletAddress);
 
-  // Use dynamic base URL
-  const apiUrl = `${TZKT_BASE}/v1/tokens/balances?account=${walletAddress}&token.standard=fa2`;
-
   try {
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      throw new Error(
-        `TzKT request failed ${response.status}: ${apiUrl}${body ? `\n${body}` : ''}`
-      );
-    }
-
-    const nfts = await response.json();
-    if (!Array.isArray(nfts)) {
-      throw new TypeError(`TzKT NFT response was not an array: ${apiUrl}`);
-    }
+    const nfts = await fetchFa2BalancePages({
+      baseUrl: TZKT_BASE, account: walletAddress, fetchImpl: fetch
+    });
 
     logger.log(`NFTs fetched from ${network}:`, nfts);
 
@@ -736,9 +725,6 @@ async function fetchNFTs(walletAddress) {
     return nfts.map((nft) => {
       const tokenId = nft?.token?.tokenId;
       const contractAddress = nft?.token?.contract?.address;
-      if (tokenId == null || !contractAddress || nft?.balance == null) {
-        throw new TypeError(`Malformed TzKT NFT balance payload: ${apiUrl}`);
-      }
 
       return {
         tokenId,
