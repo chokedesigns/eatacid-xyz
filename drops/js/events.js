@@ -2206,16 +2206,11 @@ function waitForUnpauseRetry(interval, signal) {
 
 /**
  * Polls the escrow contract’s storage until its `paused` flag flips to false,
- * then re-fetches & re-renders the user's NFTs.
+ * then re-fetches & re-renders the user's NFTs. Only a verified unpause returns true.
  */
 async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
   signal, isCurrent = () => true
 } = {}) {
-  if (!networkConfigAvailable) {
-    console.error(networkUnavailableMessage);
-    return;
-  }
-
   if (signal?.aborted || !isCurrent()) return;
   // entering standby-polling: mark on-chain paused
   updateAppState({ contractPaused: true });
@@ -2226,16 +2221,19 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
     attempt++;
     logger.log(`[pollForUnpause] attempt #${attempt}`);
     try {
+      if (!networkConfigAvailable) throw new Error(networkUnavailableMessage);
       const res = await fetch(
         `${TZKT_BASE}/v1/contracts/${contractAddress}/storage`,
         { signal }
       );
       if (signal?.aborted || !isCurrent()) return;
+      if (res.ok !== true) throw new Error(`Escrow storage HTTP ${res.status}`);
       const storage = await res.json();
       if (signal?.aborted || !isCurrent()) return;
-      logger.log(`[pollForUnpause] paused =`, storage.paused);
+      const paused = storage?.paused;
+      if (typeof paused !== 'boolean') throw new Error('Escrow storage paused status is unavailable');
+      logger.log(`[pollForUnpause] paused =`, paused);
 
-      const paused = typeof storage.paused === 'boolean' ? storage.paused : null;
       onPauseStatus?.(paused);
 
       if (paused === false) {
@@ -2248,9 +2246,11 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
             const generation = walletRefreshGeneration;
             let request = walletHoldingsRequest;
             const nfts = await fetchNFTs(account.address);
-            if (signal?.aborted || !isCurrent() || generation !== walletRefreshGeneration ||
+            if (signal?.aborted || !isCurrent()) return;
+            // Retiring wallet-only work does not revoke the verified escrow unpause.
+            if (generation !== walletRefreshGeneration ||
                 request !== walletHoldingsRequest ||
-                AppState.activeAccount?.address !== account.address) return;
+                AppState.activeAccount?.address !== account.address) return true;
             try {
               request = ++walletHoldingsRequest;
               await updateTokensWithWalletData(nfts);
@@ -2264,7 +2264,7 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
             }
           }
         }
-        return;
+        return true;
       }
     } catch (err) {
       if (signal?.aborted || !isCurrent()) return;
@@ -2379,8 +2379,8 @@ function startCountdown() {
         } else if (paused == null && !receivedPauseStatus) {
           setCountdownText('STATUS UNAVAILABLE');
         }
-      }, { signal: owner.abort.signal, isCurrent }).then(() => {
-        if (!isCurrent()) return;
+      }, { signal: owner.abort.signal, isCurrent }).then(verifiedUnpause => {
+        if (verifiedUnpause !== true || !isCurrent()) return;
         setCountdownText('LIVE NOW!');
         updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
       }).catch(err => {

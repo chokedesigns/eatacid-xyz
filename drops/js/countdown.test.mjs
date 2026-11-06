@@ -43,7 +43,7 @@ test('public countdown uses synchronized time on both pills and retains manual-u
   assert.equal(state.countdownPhase, 'standby'); assert.equal(polls, 1);
   assert.equal(pills[0].textContent, 'STANDBY…');
   assert.equal(f.timers.size, 0);
-  unpause(); await flush();
+  unpause(true); await flush();
   assert.equal(state.countdownPhase, 'live');
   assert.equal(pills[0].textContent, 'LIVE NOW!');
 });

@@ -157,7 +157,7 @@ for (const network of ['mainnet', 'shadownet']) {
 }
 console.log('CHR-001 reconfirmed: stale wrong-network boot clears newer B; same-network boot control preserves B');
 
-// Known CHR-005: execute current countdown owner and standby continuation.
+// BAL-003 / CHR-005: execute current countdown owner and corrected standby continuation.
 const clockTestUrl = new URL('../../drops/js/countdown-lifecycle.test.mjs', import.meta.url);
 let countdownFixture = readFileSync(clockTestUrl, 'utf8').replace(/\r\n?/g, '\n');
 countdownFixture = countdownFixture.slice(0, countdownFixture.indexOf("test('public replacement"))
@@ -174,12 +174,25 @@ for (const status of [200, 503]) {
   assert.equal(h.state.countdownPhase, 'standby');
   h.storage[0].resolve({ ok: status === 200, status, json: async () => ({ paused: false }) });
   await clockFixtureLib.flush();
+  if (status === 503) {
+    assert.equal(h.state.countdownPhase, 'standby');
+    assert.equal(h.state.contractPaused, true);
+    assert.equal(h.pills[0].textContent, 'STATUS UNAVAILABLE');
+    assert.equal(h.errors.length, 1);
+    assert.equal(h.waits.size, 1);
+    await h.retry();
+    assert.equal(h.storage.length, 2);
+    h.storage[1].resolve({ ok: true, status: 200, json: async () => ({ paused: false }) });
+    await clockFixtureLib.flush();
+  }
   assert.equal(h.state.countdownPhase, 'live');
   assert.equal(h.pills[0].textContent, 'LIVE NOW!');
-  assert.equal(h.errors.length, 0);
+  assert.equal(h.errors.length, status === 503 ? 1 : 0);
+  assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
+  assert.equal(h.waits.size, 0);
   h.call('stopPublicCountdown()');
 }
-console.log('CHR-005 reconfirmed: HTTP 503 publishes LIVE identically to HTTP 200 control');
+console.log('BAL-003 / CHR-005: HTTP 503 stays unavailable and retries; verified HTTP 200 publishes LIVE once');
 
 const makePause = fixtureFrom('../../admin-ui/tests/runtime/pause-pending.test.mjs', 'async function duplicate(');
 for (const surface of ['drops', 'exchange']) {

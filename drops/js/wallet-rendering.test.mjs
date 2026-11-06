@@ -344,7 +344,7 @@ for (const older of ['standby', 'trade']) {
     const h = fixture(); h.connect('wallet-A', Promise.resolve([nft('0', 'HEN', 5)])); await flush();
     const trade = tradeFixture(h, { holdings: [nft('0', 'HEN', 3)] }); const old = deferred();
     Object.assign(h.context, { TZKT_BASE: 'https://inert.invalid',
-      fetch: async () => ({ json: async () => ({ paused: false }) }) });
+      fetch: async () => ({ ok: true, status: 200, json: async () => ({ paused: false }) }) });
     vm.runInContext(section('async function pollForUnpause(', 'function startCountdown('), h.context);
     h.context.fetchNFTs = () => old.promise;
     const first = older === 'standby' ? h.context.pollForUnpause('escrow') : trade.send();
