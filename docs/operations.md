@@ -161,6 +161,12 @@ Run the tests that match the changed contract. These commands do not intentional
 
 `npm run test:home-first-paint` is a compatibility alias for `test:loader-architecture`, not a separate validation layer.
 
+### Thumbnail input coordination and recovery
+
+`npm run thumbs:input` serializes imports across collections and Node processes using the exclusive directory `admin-ui/src/.thumbs.manifest.js.input.lock`. The lock covers pending-input inspection, key selection, conversion, manifest snapshot/regeneration, source archival, and rollback. A contender waits up to five seconds, then reports failure without changing transaction files. Ordinary completion and successful rollback release the lock; failed rollback, uncertain file cleanup, or interruption leave it blocking further imports. `owner.json` identifies the owner with a random token, PID, and start time. Age or an absent PID never establishes that recovery is safe.
+
+For a retained lock, stop thumbnail import processes and any generator children before recovery. Preserve the lock and asset evidence, inspect pending inputs, masters, processed sources, and manifest together, and independently reconcile the interrupted transaction. Do not run manual manifest generation concurrently with imports. After reconciliation, use Admin's read-only `npm run check:thumbs` to verify the manifest against masters; also verify the intended pending/archived source state. Remove only the exact reviewed thumbnail lock directory after confirming no owner or generator remains and recovery is complete. Do not delete a lock merely to retry an uncertain import. This procedure does not apply to Drop Params recovery state.
+
 ## 6. Production and staging builds
 
 Use the branch-local Pages builds:

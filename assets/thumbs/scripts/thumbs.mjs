@@ -1,7 +1,9 @@
 import { spawn } from 'node:child_process';
 import { constants as fsConstants } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import sharp from 'sharp';
@@ -109,25 +111,104 @@ async function ensureDirectory(directory) {
   await fs.mkdir(directory, { recursive: true });
 }
 
+// All collections share one manifest. Never reclaim a lock based on age or PID:
+// an interrupted owner (or its generator child) may have left uncommitted files.
+async function acquireInputLock(manifestPath, timeoutMs) {
+  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0 || timeoutMs > 60_000) {
+    throw new Error('lockTimeoutMs must be an integer between 0 and 60000.');
+  }
+  const directory = await fs.realpath(path.dirname(manifestPath));
+  const lockPath = path.join(directory, `.${path.basename(manifestPath)}.input.lock`);
+  const started = performance.now();
+  while (true) {
+    try {
+      await fs.mkdir(lockPath);
+      break;
+    } catch (error) {
+      if (error?.code !== 'EEXIST') throw error;
+      if (performance.now() - started >= timeoutMs) {
+        throw new Error(
+          `Thumbnail input lock is busy: ${lockPath}. Retry after the owner completes; ` +
+            'an interrupted transaction requires manual review (docs/operations.md).'
+        );
+      }
+      await delay(Math.min(50, timeoutMs - (performance.now() - started)));
+    }
+  }
+
+  const ownerPath = path.join(lockPath, 'owner.json');
+  const owner = JSON.stringify({ token: randomUUID(), pid: process.pid, startedAt: new Date().toISOString() });
+  // If initialization fails, leave the directory in place: ownership is uncertain.
+  try {
+    await fs.writeFile(ownerPath, owner, { flag: 'wx' });
+  } catch (error) {
+    throw new Error(`Thumbnail input lock initialization failed; retained for manual review: ${lockPath}. ${error.message}`);
+  }
+  const identity = await fs.lstat(lockPath);
+  async function assertOwned() {
+    const current = await fs.lstat(lockPath);
+    if (!current.isDirectory() || current.dev !== identity.dev || current.ino !== identity.ino ||
+        await fs.readFile(ownerPath, 'utf8') !== owner) {
+      throw new Error(`Thumbnail input lock ownership is uncertain: ${lockPath}. Manual review required.`);
+    }
+  }
+  return {
+    lockPath,
+    assertOwned,
+    async release() {
+      await assertOwned();
+      await fs.unlink(ownerPath);
+      await fs.rmdir(lockPath);
+    },
+  };
+}
+
+function uncertainCleanup(error, cleanupError) {
+  const failure = new Error(`${error.message}; file cleanup failed: ${cleanupError.message}`);
+  failure.rollbackUncertain = true;
+  return failure;
+}
+
 async function writeNewFile(filePath, data) {
   let handle;
   try {
     handle = await fs.open(filePath, 'wx');
     await handle.writeFile(data);
   } catch (error) {
-    if (handle) await fs.rm(filePath, { force: true });
+    if (handle) {
+      try {
+        await fs.rm(filePath, { force: true });
+      } catch (cleanupError) {
+        throw uncertainCleanup(error, cleanupError);
+      }
+    }
     throw error;
   } finally {
-    await handle?.close();
+    try {
+      await handle?.close();
+    } catch (error) {
+      error.rollbackUncertain = true;
+      throw error;
+    }
   }
 }
 
 async function moveFileExclusive(sourcePath, destinationPath) {
-  await fs.copyFile(sourcePath, destinationPath, fsConstants.COPYFILE_EXCL);
+  try {
+    await fs.copyFile(sourcePath, destinationPath, fsConstants.COPYFILE_EXCL);
+  } catch (error) {
+    // A failed copy may have left a partial archive. EEXIST is definitely unowned.
+    if (error?.code !== 'EEXIST') error.rollbackUncertain = true;
+    throw error;
+  }
   try {
     await fs.unlink(sourcePath);
   } catch (error) {
-    await fs.rm(destinationPath, { force: true });
+    try {
+      await fs.rm(destinationPath, { force: true });
+    } catch (cleanupError) {
+      throw uncertainCleanup(error, cleanupError);
+    }
     throw error;
   }
 }
@@ -220,14 +301,17 @@ async function restoreTransaction(outputPath, manifestPath, manifestBytes) {
 export async function processInputCollection(
   collection,
   paths,
-  { manifestRunner = generateManifest, beforeWrite = async () => {} } = {}
+  { manifestRunner = generateManifest, beforeWrite = async () => {}, lockTimeoutMs = 5_000 } = {}
 ) {
   const result = { collection, status: 'skipped', warnings: [], errors: [] };
   const inputDirectory = path.join(paths.inputRoot, collection);
   const processedDirectory = path.join(paths.processedRoot, collection);
   const masterDirectory = path.join(paths.mastersRoot, collection);
+  let lock;
+  let recoveryRequired = false;
 
   try {
+    lock = await acquireInputLock(paths.manifestPath, lockTimeoutMs);
     await Promise.all([ensureDirectory(inputDirectory), ensureDirectory(processedDirectory)]);
     const pending = await supportedFiles(inputDirectory);
     if (!pending.length) {
@@ -269,12 +353,22 @@ export async function processInputCollection(
 
     const manifestBytes = await fs.readFile(paths.manifestPath);
     await beforeWrite({ collection, sourcePath, outputPath, key });
+    await lock.assertOwned();
     await writeNewFile(outputPath, converted.data);
     try {
+      await lock.assertOwned();
       await manifestRunner(paths.adminRoot);
+      await lock.assertOwned();
       await moveFileExclusive(sourcePath, archivePath);
     } catch (error) {
-      await restoreTransaction(outputPath, paths.manifestPath, manifestBytes);
+      recoveryRequired ||= error?.rollbackUncertain === true;
+      try {
+        await lock.assertOwned();
+        await restoreTransaction(outputPath, paths.manifestPath, manifestBytes);
+      } catch (rollbackError) {
+        recoveryRequired = true;
+        throw new Error(`Post-write transaction failed: ${error.message}; rollback failed: ${rollbackError.message}`);
+      }
       throw new Error(
         'Post-write transaction failed; the new thumbnail was removed and the manifest restored. ' +
           error.message
@@ -291,9 +385,24 @@ export async function processInputCollection(
       message: 'Thumbnail created, manifest regenerated, and source archived.',
     });
   } catch (error) {
+    recoveryRequired ||= error?.rollbackUncertain === true;
     result.status = 'failed';
     result.errors.push(error?.message ?? String(error));
     result.message = 'Processing failed.';
+  } finally {
+    if (lock) {
+      if (recoveryRequired) {
+        result.errors.push(`Thumbnail input lock retained for manual review: ${lock.lockPath}`);
+      } else {
+        try {
+          await lock.release();
+        } catch (error) {
+          result.status = 'failed';
+          result.message = 'Processing failed.';
+          result.errors.push(`Thumbnail input lock release failed; manual review required: ${error.message}`);
+        }
+      }
+    }
   }
   return result;
 }

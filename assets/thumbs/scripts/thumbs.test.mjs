@@ -13,10 +13,15 @@ import {
   convertThumbnail,
   isCompliant,
   nextNumericKey,
+  processInputCollection,
   retainedMetadataFields,
   runBackfill,
   runInput,
 } from './thumbs.mjs';
+import {
+  assertCommitted, check, concurrentRollback, inputWorker, lockPath,
+  manifestFixture, pendingImage, regenerate,
+} from './thumbs-transaction-fixtures.mjs';
 
 async function makeFixture() {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'eatacid-thumbs-'));
@@ -326,4 +331,236 @@ test('Windows runners resolve from their own location and preserve visible statu
     assert.match(text, /pause >nul/);
     assert.match(text, /exit \/b %THUMBS_EXIT_CODE%/);
   }
+});
+
+async function transactionFixture(t) {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'eatacid-thumbs-transaction-'));
+  t.after(async () => {
+    assert.ok(path.resolve(root).startsWith(path.resolve(os.tmpdir()) + path.sep));
+    await fs.rm(root, { recursive: true, force: true });
+  });
+  return manifestFixture(root);
+}
+
+for (const successFirst of [false, true]) {
+  test(`same-process overlap preserves the successful import (success first: ${successFirst})`, { timeout: 30_000 }, async (t) => {
+    await concurrentRollback(await transactionFixture(t), successFirst);
+  });
+
+  test(`independent-process overlap preserves committed work (success first: ${successFirst})`, { timeout: 30_000 }, async (t) => {
+    const paths = await transactionFixture(t);
+    await pendingImage(paths, 'canaan');
+    const bytes = await pendingImage(paths, 'the_419_script');
+    const owner = inputWorker(paths, successFirst ? 'the_419_script' : 'canaan', { hold: true, failure: !successFirst });
+    t.after(() => owner.stop());
+    await owner.ready;
+    const contender = inputWorker(paths, successFirst ? 'canaan' : 'the_419_script', { failure: successFirst });
+    t.after(() => contender.stop());
+    await contender.started;
+    // A distinct Node process must time out without touching the held transaction.
+    const blocked = inputWorker(paths, 'canaan', { lockTimeoutMs: 100 });
+    t.after(() => blocked.stop());
+    const contention = await blocked.done;
+    assert.equal(contention.status, 'failed');
+    assert.match(contention.errors.join(' '), /lock is busy/);
+    owner.release();
+    const results = await Promise.all([owner.done, contender.done]);
+    const [success, failure] = successFirst ? results : results.reverse();
+    assert.equal(failure.status, 'failed');
+    assert.match(failure.errors.join(' '), /manifest restored/);
+    await assertCommitted(paths, 'the_419_script', success, bytes);
+    assert.deepEqual(await fs.readdir(path.join(paths.mastersRoot, 'canaan')), ['0.jpg']);
+    await assert.rejects(fs.access(lockPath(paths)), { code: 'ENOENT' });
+  });
+}
+
+test('same-collection processes serialize key selection and sequential imports still work', { timeout: 30_000 }, async (t) => {
+  const paths = await transactionFixture(t);
+  const bytes = await pendingImage(paths, 'canaan');
+  const original = await fs.readFile(path.join(paths.mastersRoot, 'canaan', '0.jpg'));
+  const contenderPaths = {
+    ...paths, inputRoot: path.join(paths.repoRoot, 'second-input'),
+    processedRoot: path.join(paths.repoRoot, 'second-processed'),
+  };
+  const secondBytes = await pendingImage(contenderPaths, 'canaan');
+  const owner = inputWorker(paths, 'canaan', { hold: true });
+  t.after(() => owner.stop());
+  await owner.ready;
+  const contender = inputWorker(contenderPaths, 'canaan');
+  t.after(() => contender.stop());
+  await contender.started;
+  const blocked = inputWorker(paths, 'canaan', { lockTimeoutMs: 100 });
+  t.after(() => blocked.stop());
+  assert.equal((await blocked.done).status, 'failed');
+  owner.release();
+  const [first, second] = await Promise.all([owner.done, contender.done]);
+  assert.equal(first.key, 1);
+  assert.equal(second.key, 2);
+  await assertCommitted(paths, 'canaan', first, bytes);
+  await assertCommitted(contenderPaths, 'canaan', second, secondBytes);
+  const committed = await fs.readFile(first.thumbnailPath);
+  await pendingImage(paths, 'canaan');
+  // Default runner invokes npm in the disposable fixture, using the actual generator.
+  const sequential = await processInputCollection('canaan', paths);
+  assert.equal(sequential.key, 3);
+  await assertCommitted(paths, 'canaan', sequential, bytes);
+  assert.match(sequential.sourceArchivePath, /new-2\.png$/);
+  assert.deepEqual(await fs.readFile(first.thumbnailPath), committed);
+  assert.deepEqual(await fs.readFile(path.join(paths.mastersRoot, 'canaan', '0.jpg')), original);
+  assert.deepEqual(await fs.readdir(path.join(paths.mastersRoot, 'canaan')), ['0.jpg', '1.jpg', '2.jpg', '3.jpg']);
+});
+
+test('manifest and archive failures preserve committed bytes and release the lock', { timeout: 30_000 }, async (t) => {
+  const paths = await transactionFixture(t);
+  const bytes = await pendingImage(paths, 'the_419_script');
+  const committed = await processInputCollection('the_419_script', paths, { manifestRunner: () => regenerate(paths) });
+  await assertCommitted(paths, 'the_419_script', committed, bytes);
+  const manifest = await fs.readFile(paths.manifestPath);
+  const master = await fs.readFile(committed.thumbnailPath);
+  await pendingImage(paths, 'canaan');
+  for (const failure of ['manifest', 'archive']) {
+    const result = await processInputCollection('canaan', paths, {
+      manifestRunner: async () => {
+        await regenerate(paths);
+        if (failure === 'manifest') throw new Error('inert manifest failure after writing');
+        // The chosen archive destination becomes occupied after allocation.
+        await fs.writeFile(path.join(paths.processedRoot, 'canaan', 'new.png'), 'unowned archive collision');
+      },
+    });
+    assert.equal(result.status, 'failed');
+    assert.match(result.errors.join(' '), /manifest restored/);
+    assert.deepEqual(await fs.readFile(paths.manifestPath), manifest);
+    assert.deepEqual(await fs.readFile(committed.thumbnailPath), master);
+    assert.deepEqual(await fs.readFile(committed.sourceArchivePath), bytes);
+    assert.deepEqual(await fs.readdir(path.join(paths.mastersRoot, 'canaan')), ['0.jpg']);
+    await fs.access(path.join(paths.inputRoot, 'canaan', 'new.png'));
+    await check(paths);
+    await assert.rejects(fs.access(lockPath(paths)), { code: 'ENOENT' });
+  }
+  assert.equal(await fs.readFile(path.join(paths.processedRoot, 'canaan', 'new.png'), 'utf8'), 'unowned archive collision');
+});
+
+test('foreign or malformed lock ownership is never removed, and ownership loss blocks writes', { timeout: 30_000 }, async (t) => {
+  const paths = await transactionFixture(t);
+  await pendingImage(paths, 'canaan');
+  const manifest = await fs.readFile(paths.manifestPath);
+  await fs.mkdir(lockPath(paths));
+  const ownerPath = path.join(lockPath(paths), 'owner.json');
+  for (const owner of ['not JSON', JSON.stringify({ pid: 99999999, startedAt: '1970-01-01', token: 'foreign' })]) {
+    await fs.writeFile(ownerPath, owner);
+    const result = await processInputCollection('canaan', paths, { lockTimeoutMs: 50 });
+    assert.equal(result.status, 'failed');
+    assert.match(result.errors.join(' '), /lock is busy/);
+    assert.equal(await fs.readFile(ownerPath, 'utf8'), owner);
+    assert.deepEqual(await fs.readFile(paths.manifestPath), manifest);
+  }
+  // Remove only this test's fabricated lock, then replace the acquired token.
+  await fs.unlink(ownerPath);
+  await fs.rmdir(lockPath(paths));
+  const result = await processInputCollection('canaan', paths, {
+    beforeWrite: () => fs.writeFile(ownerPath, 'replacement owner'),
+  });
+  assert.equal(result.status, 'failed');
+  assert.match(result.errors.join(' '), /ownership is uncertain/);
+  assert.equal(await fs.readFile(ownerPath, 'utf8'), 'replacement owner');
+  assert.deepEqual(await fs.readFile(paths.manifestPath), manifest);
+  assert.deepEqual(await fs.readdir(path.join(paths.mastersRoot, 'canaan')), ['0.jpg']);
+  await check(paths);
+});
+
+test('archive unlink failure cleans only its owned copy; uncertain cleanup retains the lock', { timeout: 30_000 }, async (t) => {
+  const paths = await transactionFixture(t);
+  const committedBytes = await pendingImage(paths, 'the_419_script');
+  const committed = await processInputCollection('the_419_script', paths, { manifestRunner: () => regenerate(paths) });
+  await assertCommitted(paths, 'the_419_script', committed, committedBytes);
+  const manifest = await fs.readFile(paths.manifestPath);
+  await pendingImage(paths, 'canaan');
+  const sourcePath = path.join(paths.inputRoot, 'canaan', 'new.png');
+  const archivePath = path.join(paths.processedRoot, 'canaan', 'new.png');
+  const unlink = fs.unlink;
+  const rm = fs.rm;
+  t.mock.method(fs, 'unlink', async (filePath) => {
+    if (filePath === sourcePath) throw new Error('inert source unlink failure');
+    return unlink(filePath);
+  });
+  const recovered = await processInputCollection('canaan', paths, { manifestRunner: () => regenerate(paths) });
+  assert.equal(recovered.status, 'failed');
+  assert.match(recovered.errors.join(' '), /manifest restored/);
+  await assert.rejects(fs.access(archivePath), { code: 'ENOENT' });
+  await assert.rejects(fs.access(lockPath(paths)), { code: 'ENOENT' });
+  await check(paths);
+  t.mock.method(fs, 'rm', async (filePath, options) => {
+    if (filePath === archivePath) throw new Error('inert archive cleanup failure');
+    return rm(filePath, options);
+  });
+  const uncertain = await processInputCollection('canaan', paths, { manifestRunner: () => regenerate(paths) });
+  t.mock.restoreAll();
+  assert.equal(uncertain.status, 'failed');
+  assert.match(uncertain.errors.join(' '), /lock retained for manual review/);
+  await fs.access(sourcePath);
+  await fs.access(archivePath);
+  assert.deepEqual(await fs.readFile(paths.manifestPath), manifest);
+  assert.deepEqual(await fs.readFile(committed.sourceArchivePath), committedBytes);
+  await check(paths);
+  const blocked = await processInputCollection('canaan', paths, { lockTimeoutMs: 50 });
+  assert.match(blocked.errors.join(' '), /lock is busy/);
+});
+
+test('lost ownership after generation cannot roll back or release a replacement lock', { timeout: 30_000 }, async (t) => {
+  const paths = await transactionFixture(t);
+  await pendingImage(paths, 'canaan');
+  let manifest;
+  const result = await processInputCollection('canaan', paths, {
+    manifestRunner: async () => {
+      await regenerate(paths);
+      manifest = await fs.readFile(paths.manifestPath);
+      await fs.writeFile(path.join(lockPath(paths), 'owner.json'), 'replacement owner');
+      throw new Error('inert failure after ownership loss');
+    },
+  });
+  assert.equal(result.status, 'failed');
+  assert.match(result.errors.join(' '), /rollback failed.*ownership is uncertain/);
+  assert.match(result.errors.join(' '), /lock retained for manual review/);
+  assert.deepEqual(await fs.readFile(paths.manifestPath), manifest);
+  await fs.access(path.join(paths.mastersRoot, 'canaan', '1.jpg'));
+  await fs.access(path.join(paths.inputRoot, 'canaan', 'new.png'));
+  assert.equal(await fs.readFile(path.join(lockPath(paths), 'owner.json'), 'utf8'), 'replacement owner');
+});
+
+test('interrupted post-generation owner leaves a blocking lock and uncommitted state untouched', { timeout: 30_000 }, async (t) => {
+  const paths = await transactionFixture(t);
+  await pendingImage(paths, 'canaan');
+  const owner = inputWorker(paths, 'canaan', { holdAfterGenerate: true });
+  t.after(() => owner.stop());
+  await owner.ready;
+  const ownerBytes = await fs.readFile(path.join(lockPath(paths), 'owner.json'));
+  const manifest = await fs.readFile(paths.manifestPath);
+  const master = await fs.readFile(path.join(paths.mastersRoot, 'canaan', '1.jpg'));
+  await owner.stop();
+  const result = await processInputCollection('canaan', paths, { lockTimeoutMs: 100 });
+  assert.equal(result.status, 'failed');
+  assert.match(result.errors.join(' '), /interrupted transaction requires manual review/);
+  assert.deepEqual(await fs.readFile(path.join(lockPath(paths), 'owner.json')), ownerBytes);
+  assert.deepEqual(await fs.readFile(paths.manifestPath), manifest);
+  assert.deepEqual(await fs.readFile(path.join(paths.mastersRoot, 'canaan', '1.jpg')), master);
+  await fs.access(path.join(paths.inputRoot, 'canaan', 'new.png'));
+  assert.deepEqual(await fs.readdir(path.join(paths.processedRoot, 'canaan')), []);
+});
+
+test('incomplete rollback retains the lock and blocks subsequent imports', { timeout: 30_000 }, async (t) => {
+  const paths = await transactionFixture(t);
+  await pendingImage(paths, 'canaan');
+  const result = await processInputCollection('canaan', paths, {
+    manifestRunner: async () => {
+      await fs.unlink(paths.manifestPath);
+      await fs.mkdir(paths.manifestPath);
+      throw new Error('inert unusable manifest destination');
+    },
+  });
+  assert.equal(result.status, 'failed');
+  assert.match(result.errors.join(' '), /rollback failed/);
+  assert.match(result.errors.join(' '), /lock retained for manual review/);
+  const blocked = await processInputCollection('canaan', paths, { lockTimeoutMs: 50 });
+  assert.equal(blocked.status, 'failed');
+  assert.match(blocked.errors.join(' '), /lock is busy/);
 });
