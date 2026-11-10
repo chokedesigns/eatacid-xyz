@@ -81,6 +81,13 @@ const INIT_DELAY_MS = 500;
  */
 const DEFAULT_EDITION_COUNT = 10;
 
+// Client resource policy, not a blockchain/protocol maximum. The current UI
+// creates numeric options and one nested Michelson entry per burned unit.
+// Keep each select small and the entire synchronous payload expansion at 50.
+const MAX_EXCHANGE_TOKEN_QUANTITY = 20;
+const MAX_EXCHANGE_SUBMISSION_UNITS = 50;
+const EXCHANGE_QUANTITY_LIMIT_MESSAGE = `Select at most ${MAX_EXCHANGE_TOKEN_QUANTITY} units per token and ${MAX_EXCHANGE_SUBMISSION_UNITS} units total per Exchange submission (${MAX_EXCHANGE_SUBMISSION_UNITS} trade entries maximum).`;
+
 /**
  * Exchange-specific state.
  * Tracks whether the burn cart has items.
@@ -368,6 +375,7 @@ function setDropdownState(dropdown, { maxQty = 0, enabled = false } = {}) {
   dropdown.value = '';
   dropdown.disabled = !enabled;
   dropdown.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+  dropdown.setAttribute('title', EXCHANGE_QUANTITY_LIMIT_MESSAGE);
 }
 
 function isDropdownActionable(dropdown) {
@@ -385,7 +393,41 @@ function getSelectedOwnedQuantity(dropdown) {
   if (!isDropdownActionable(dropdown) || !/^[1-9]\d*$/.test(dropdown.value)) return 0;
   const quantity = Number(dropdown.value);
   const owned = verifiedWalletQuantities.get(dropdown) || 0;
-  return Number.isSafeInteger(quantity) && quantity <= owned ? quantity : 0;
+  return Number.isSafeInteger(quantity) && quantity <= owned && quantity <= MAX_EXCHANGE_TOKEN_QUANTITY ? quantity : 0;
+}
+
+// Validate all selected units before totals or any per-unit payload allocation.
+// Duplicate CMS rows for one identity share the same per-token allowance.
+function assertExchangeQuantityLimits(cart) {
+  if (!Array.isArray(cart) || cart.length > MAX_EXCHANGE_SUBMISSION_UNITS) {
+    throw new Error(EXCHANGE_QUANTITY_LIMIT_MESSAGE);
+  }
+  let units = 0;
+  let rewardTotal = 0;
+  const tokenUnits = new Map();
+  for (const item of cart) {
+    const { quantity, startingBalance, redeemAmount } = item;
+    if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > MAX_EXCHANGE_TOKEN_QUANTITY ||
+        !Number.isSafeInteger(startingBalance) || quantity > startingBalance) {
+      throw new Error(`Invalid burn quantity. Select a verified owned quantity. ${EXCHANGE_QUANTITY_LIMIT_MESSAGE}`);
+    }
+    const key = JSON.stringify([item.contractAddress, item.tokenId]);
+    const selected = tokenUnits.get(key) || 0;
+    if (quantity > MAX_EXCHANGE_TOKEN_QUANTITY - selected || quantity > startingBalance - selected ||
+        quantity > MAX_EXCHANGE_SUBMISSION_UNITS - units) {
+      throw new Error(EXCHANGE_QUANTITY_LIMIT_MESSAGE);
+    }
+    // Preserve per-unit reward terms and reject invalid/unsafe displayed totals.
+    const reward = quantity * redeemAmount;
+    if (!Number.isSafeInteger(redeemAmount) || redeemAmount < 1 ||
+        !Number.isSafeInteger(reward) || reward > Number.MAX_SAFE_INTEGER - rewardTotal) {
+      throw new Error('Invalid Exchange reward total. Refresh and select quantities again.');
+    }
+    tokenUnits.set(key, selected + quantity);
+    units += quantity;
+    rewardTotal += reward;
+  }
+  return rewardTotal;
 }
 
 function isCurrentExchangeWallet(address, generation) {
@@ -722,7 +764,7 @@ function getBurnCart() {
     if (!isDropdownActionable(dropdown)) return;
 
     const quantity = getSelectedOwnedQuantity(dropdown);
-    if (dropdown.value && !quantity) throw new Error('Invalid burn quantity. Select a verified owned quantity.');
+    if (dropdown.value && !quantity) throw new Error(`Invalid burn quantity. Select a verified owned quantity. ${EXCHANGE_QUANTITY_LIMIT_MESSAGE}`);
     if (quantity > 0) {
       const row = dropdown.closest('.collection-item-01-div');
       const tokenId = row.getAttribute('data-token-id');
@@ -736,6 +778,7 @@ function getBurnCart() {
     }
   });
 
+  assertExchangeQuantityLimits(burnCart);
   logger.log('Tokens in burn cart:', burnCart);
   return burnCart;
 }
@@ -874,7 +917,9 @@ function resetDropdown(dropdown) {
  * @param {number} maxQty - The maximum number of options to add.
  */
 function populateDropdown(dropdown, maxQty) {
-  for (let i = 1; i <= maxQty; i++) {
+  const selectable = Number.isSafeInteger(maxQty) && maxQty > 0
+    ? Math.min(maxQty, MAX_EXCHANGE_TOKEN_QUANTITY) : 0;
+  for (let i = 1; i <= selectable; i++) {
     dropdown.appendChild(new Option(i, i));
   }
 }
@@ -890,6 +935,9 @@ function populateDropdown(dropdown, maxQty) {
  */
 function updateBurnCart() {
   logger.log('Updating Burn Cart...');
+
+  try { getBurnCart(); }
+  catch (error) { renderInvalidBurnCart(error); return; }
 
   const burnCartContainer = document.querySelector('.burn-cart-display');
   if (!burnCartContainer) {
@@ -1039,21 +1087,9 @@ function updateCartButtons() {
 function updateTotal() {
   logger.log('Running updateTotal: Checking dropdowns for quantities.');
 
-  let total = 0; // Initialize total redeem value
-  const dropdowns = document.querySelectorAll('.token-qty.w-select');
-
-  // Calculate total redeem value from each visible dropdown.
-  dropdowns.forEach((dropdown) => {
-    if (!isDropdownActionable(dropdown)) return;
-
-    const row = dropdown.closest('.collection-item-01-div');
-    if (row && row.style.display === 'none') return; // Skip hidden rows
-
-    const quantity = getSelectedOwnedQuantity(dropdown);
-    const redeemValue = Math.ceil(100 / window.getEditionCount(dropdown)); // Redeem value per item
-
-    total += quantity * redeemValue;
-  });
+  let total;
+  try { total = assertExchangeQuantityLimits(getBurnCart()); }
+  catch (error) { renderInvalidBurnCart(error); return; }
 
   logger.log(`Final total calculated: ${total}`);
 
@@ -1065,6 +1101,15 @@ function updateTotal() {
 
   // Refresh the burn cart to reflect any changes.
   updateBurnCart();
+}
+
+function renderInvalidBurnCart(error) {
+  resetBurnCartDisplay();
+  updateCartButtons();
+  showModal('ERROR', error.message);
+  const spinner = document.querySelector('.loading-spinner-01');
+  if (spinner) spinner.style.display = 'none';
+  setTimeout(hideModal, 3000);
 }
 
 // =============================================================================
@@ -1265,6 +1310,11 @@ async function handleExchange() {
       }
     }
     logger.log('✅ Updated burnCart with token_pair_id:', burnCart);
+
+    // Recheck live selections after async lookups, and bound the captured cart
+    // immediately before the only per-unit expansion (one entry per unit).
+    assertExchangeCartCurrent(userWalletAddress, generation, burnCart);
+    assertExchangeQuantityLimits(burnCart);
 
     // Group by contract and build trade payloads.
     const tradesByContract = burnCart.reduce((acc, item) => {

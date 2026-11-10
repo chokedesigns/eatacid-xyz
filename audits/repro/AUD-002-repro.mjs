@@ -96,13 +96,20 @@ if (process.argv.includes('--trades-only')) process.exit(0);
   let appended = 0;
   const append = h.dropdowns[0].appendChild.bind(h.dropdowns[0]);
   h.dropdowns[0].appendChild = option => {
-    if (++appended > 10000) throw new Error('AUD-002 inert allocation stop');
+    assert.ok(++appended <= 21, 'TX-003: at most QTY plus 20 selectable options');
     return append(option);
   };
   h.context.largeRows = [{ contractAddress: 'KT1419', tokenId: '0', balance: '1000000000000' }];
-  assert.throws(() => h.call('renderConnectedWalletTokenState(largeRows)'), /inert allocation stop/);
-  assert.equal(appended, 10001);
-  console.log('AUD-002-003: valid large safe-integer holdings attempt >10,000 options synchronously; 5-balance control has 6');
+  h.call('renderConnectedWalletTokenState(largeRows)');
+  assert.equal(appended, 21);
+  assert.equal(h.call('walletBalancesVerified'), true);
+  h.select('20');
+  assert.equal(h.call('getBurnCart()[0].startingBalance'), 1000000000000);
+  h.select('21');
+  assert.throws(() => h.context.getBurnCart(), /20 units per token/);
+  await h.trade();
+  assert.equal(h.sent.length, 0);
+  console.log('AUD-002-003 TX-003: trillion-unit verified balance retains ownership with 21 options; 20 selectable, 21 rejected; 5-balance control has 6');
 }
 
 }

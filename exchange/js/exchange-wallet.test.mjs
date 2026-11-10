@@ -46,7 +46,7 @@ class Element {
   async click() { for (const listener of this.listeners.click || []) await listener({ preventDefault() {} }); }
 }
 const nft = (balance, contractAddress = 'KT1419', tokenId = '0') => ({ balance, contractAddress, tokenId });
-function fixture({ storage = new Map(), originType = 'extension' } = {}) {
+function fixture({ storage = new Map(), originType = 'extension', tokenIds = ['0'] } = {}) {
   const document = new Element(); document.readyState = 'loading'; document.body = document;
   document.createElement = () => new Element();
   const rows = [], dropdowns = [], panes = [];
@@ -55,12 +55,15 @@ function fixture({ storage = new Map(), originType = 'extension' } = {}) {
     const wrapper = pane.appendChild(new Element('exchange-ui-div'));
     wrapper.appendChild(new Element('loading-spinner-01-exchange-ui'));
     wrapper.appendChild(new Element(`no-tokens-in-walet-div---${tab.toLowerCase()}`));
-    const row = wrapper.appendChild(new Element('w-dyn-list')).appendChild(new Element('collection-item-01-div'));
-    row.appendChild(new Element('token-id-number', '0'));
-    row.appendChild(new Element('collection-item-editions-text-number', '31'));
-    row.appendChild(new Element('collection-item-title-text', contract));
-    row.appendChild(new Element('collection-item-01-image')).src = 'inert.png';
-    dropdowns.push(row.appendChild(new Element('token-qty w-select'))); rows.push(row);
+    const list = wrapper.appendChild(new Element('w-dyn-list'));
+    for (const tokenId of tokenIds) {
+      const row = list.appendChild(new Element('collection-item-01-div'));
+      row.appendChild(new Element('token-id-number', tokenId));
+      row.appendChild(new Element('collection-item-editions-text-number', '31'));
+      row.appendChild(new Element('collection-item-title-text', contract));
+      row.appendChild(new Element('collection-item-01-image')).src = 'inert.png';
+      dropdowns.push(row.appendChild(new Element('token-qty w-select'))); rows.push(row);
+    }
   }
   const header = document.appendChild(new Element('available-burn-tokens-exchange-text'));
   const total = document.appendChild(new Element('total-display'));
@@ -121,6 +124,118 @@ function unavailable(h) {
   }
   assert.equal(h.cartRows.children.length, 0); assert.equal(h.controls.live.style.display, 'none');
 }
+
+test('TX-003: huge verified holdings have bounded options and retain full refresh balances; small controls are unchanged', async () => {
+  for (const balance of [1, 5, 20, 1000000000000, Number.MAX_SAFE_INTEGER]) {
+    const h = fixture();
+    const append = h.dropdowns[0].appendChild.bind(h.dropdowns[0]);
+    h.dropdowns[0].appendChild = option => {
+      assert.ok(h.dropdowns[0].options.length < 21, 'Rendering must stop at QTY plus 20 options');
+      return append(option);
+    };
+    await h.connect('wallet-A', [nft(String(balance))]);
+    assert.equal(h.call('walletBalancesVerified'), true);
+    assert.equal(h.dropdowns[0].disabled, false);
+    assert.deepEqual(h.dropdowns[0].options.map(o => o.value),
+      ['', ...Array.from({ length: Math.min(balance, 20) }, (_, i) => String(i + 1))]);
+    assert.match(h.dropdowns[0].getAttribute('title'), /20 units per token.*50 units total/);
+    h.context.window.updateDropdownOptions(h.dropdowns[0]);
+    h.select(String(Math.min(balance, 20)));
+    assert.equal(h.call('getBurnCart()[0].startingBalance'), balance);
+    h.fetchRows = async () => [nft(String(balance - Math.min(balance, 20)))];
+    await h.trade();
+    assert.equal(h.sent.length, 1);
+    assert.equal(h.sent[0].operationDetails[1].parameters.value.length, Math.min(balance, 20));
+    assert.equal(h.polls[0].tradedTokens[0].startingBalance, balance);
+    assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null, 'Exact full balance delta reconciles');
+  }
+});
+
+test('TX-003: 50 aggregate units across rows expand exactly, preserving identities, rewards and approval order', async () => {
+  const largeId = '9007199254740993', h = fixture({ tokenIds: ['0', largeId] });
+  const holdings = [nft(100, 'KT1419'), nft(100, 'KT1419', largeId), nft(100, 'KT1Canaan')];
+  h.rows[1].querySelector('.collection-item-editions-text-number').textContent = '5';
+  await h.connect('wallet-A', holdings);
+  h.pair = async opts => opts.burnTokenId === largeId ? largeId : '7';
+  h.select('20'); h.select('20', 1); h.select('10', 2);
+  assert.equal(h.total.textContent, 520);
+  h.fetchRows = async () => [nft(80), nft(80, 'KT1419', largeId), nft(90, 'KT1Canaan')];
+  await h.trade();
+  assert.equal(h.sent.length, 1); assert.equal(h.errors.length, 0);
+  const ops = h.sent[0].operationDetails;
+  assert.equal(ops[0].kind, 'approval');
+  const entries = ops.slice(1).flatMap(op => {
+    assert.equal(op.destination, 'KT1Escrow'); assert.equal(op.parameters.entrypoint, 'initiate_trade');
+    return Array.from(op.parameters.value);
+  });
+  assert.equal(entries.length, 50);
+  const observed = Array.from(entries, entry => {
+    const [burn, redeem] = entry.args;
+    return [burn.args[0].args[0].int, burn.args[0].args[1].string,
+      burn.args[1].args[0].int, burn.args[1].args[1].int,
+      redeem.args[0].args[0].string, redeem.args[0].args[1].int,
+      redeem.args[1].args[0].int, redeem.args[1].args[1].string];
+  });
+  assert.deepEqual(observed, [
+    ...Array(20).fill(['1', 'KT1419', '0', '4', 'KT1Redeem', '0', '7', 'wallet-A']),
+    ...Array(20).fill(['1', 'KT1419', largeId, '20', 'KT1Redeem', '0', largeId, 'wallet-A']),
+    ...Array(10).fill(['1', 'KT1Canaan', '0', '4', 'KT1Redeem', '0', '7', 'wallet-A'])
+  ]);
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+});
+
+test('TX-003: forged, malformed and overflowing selections reject before approvals, allocation or wallet request', async () => {
+  for (const value of ['21', '1000000000000', '9007199254740991', '9007199254740992', '1e309',
+    'Infinity', 'NaN', '1.5', '-1', '0', '01', ' 1', '1x']) {
+    const h = fixture(); await h.connect('wallet-A', [nft('1000000000000')]);
+    h.dropdowns[0].appendChild(Object.assign(new Element(), { value }));
+    h.select(value);
+    assert.equal(h.dropdowns[0].value, value, 'Do not clamp or clear an invalid selection');
+    assert.equal(String(h.total.textContent), '0'); assert.equal(h.cartRows.children.length, 0);
+    assert.equal(h.controls.live.style.display, 'none');
+    assert.match(h.modal.querySelector('.loading-modal-text-2').innerHTML, /20 units per token.*50 units total/);
+    await h.trade();
+    assert.equal(h.approvals.length, 0); assert.equal(h.pairs.length, 0); assert.equal(h.sent.length, 0);
+    assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+  }
+});
+
+test('TX-003: aggregate 51 and duplicated token allowances reject; direct submission cannot bypass UI validation', async () => {
+  for (const duplicate of [false, true]) for (const direct of [false, true]) {
+    const h = fixture({ tokenIds: duplicate ? ['0', '0'] : ['0', '1'] });
+    await h.connect('wallet-A', [nft(100), nft(100, 'KT1419', '1'), nft(100, 'KT1Canaan')]);
+    const values = duplicate ? ['11', '10'] : ['20', '20', '11'];
+    values.forEach((value, i) => { h.dropdowns[i].value = value; });
+    if (!direct) {
+      h.context.updateTotal(); assert.equal(String(h.total.textContent), '0');
+      assert.equal(h.cartRows.children.length, 0); assert.equal(h.controls.live.style.display, 'none');
+    }
+    assert.throws(() => h.context.getBurnCart(), /20 units per token.*50 units total/);
+    await h.trade();
+    assert.equal(h.approvals.length, 0); assert.equal(h.pairs.length, 0); assert.equal(h.sent.length, 0);
+    assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+  }
+});
+
+test('TX-003: oversized quantities introduced during async boundaries cannot reach expansion or sending', async () => {
+  for (const stage of ['approve', 'pair', 'finalVerify']) {
+    const h = fixture(), gate = deferred(); await h.connect('wallet-A', [nft('1000000000000')]); h.select();
+    if (stage === 'approve') h.approve = () => gate.promise;
+    if (stage === 'pair') h.pair = () => gate.promise;
+    if (stage === 'finalVerify') { let calls = 0; h.verify = () => ++calls === 1 ? h.account : gate.promise; }
+    // Guard the actual allocation sink, without replacing the production handler.
+    h.call(`globalThis.expanded = 0; const originalPush = Array.prototype.push;
+      Array.prototype.push = function(...items) {
+        if (items.some(item => item?.prim === 'Pair')) globalThis.expanded += items.length;
+        if (globalThis.expanded > 50) throw new Error('inert expansion stop');
+        return originalPush.apply(this, items);
+      };`);
+    const trade = h.trade(); await flush(); h.dropdowns[0].value = '1000000000000';
+    gate.resolve(stage === 'approve' ? [] : stage === 'pair' ? '7' : h.account); await trade;
+    assert.equal(h.call('expanded'), stage === 'finalVerify' ? 1 : 0);
+    assert.equal(h.sent.length, 0); assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+  }
+});
 
 test('TX-002: unknown Exchange receipt survives Retry Balances, reset and reload; applied evidence preserves balance gate', async () => {
   const storage = new Map(), originalFetch = globalThis.fetch;
@@ -391,7 +506,7 @@ test('Invalid selections fail closed even when option DOM is forged; no approval
   for (const value of ['2', '1.5', '-1', 'Infinity', '1x', '9007199254740993']) {
     const h = fixture(); await h.connect();
     const option = new Element(); option.value = value; h.dropdowns[0].appendChild(option); h.select(value);
-    assert.equal(h.total.textContent, 0); assert.equal(h.controls.live.style.display, 'none');
+    assert.equal(String(h.total.textContent), '0'); assert.equal(h.controls.live.style.display, 'none');
     await h.trade(); assert.equal(h.approvals.length, 0, value); assert.equal(h.sent.length, 0, value);
   }
 });
