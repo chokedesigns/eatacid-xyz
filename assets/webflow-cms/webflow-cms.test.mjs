@@ -8,10 +8,12 @@ import sharp from 'sharp';
 
 import {
   WebflowCmsClient,
+  WebflowCmsError,
   compareCmsItemContent,
   compareCmsItemSets,
   compareImageContent,
   deterministicAssetFilename,
+  publicError,
   reconcileAmbiguousMutation,
   redact,
   uploadAssetBinary,
@@ -26,6 +28,12 @@ function jsonResponse(body, { status = 200, headers = {} } = {}) {
     status,
     headers: { 'content-type': 'application/json', ...headers },
   });
+}
+
+function unreadableResponse(status, error) {
+  return new Response(new ReadableStream({
+    start(controller) { controller.error(error); },
+  }), { status });
 }
 
 test('client bounds GET retries and reports retry attempts', async () => {
@@ -86,6 +94,141 @@ test('ambiguous mutation HTTP responses are not blindly retried', async () => {
   assert.equal(calls, 1);
 });
 
+test('mutation body-read failures preserve HTTP evidence and never retry', async () => {
+  const mutations = [
+    (client) => client.createAsset('image.jpg', 'hash'),
+    (client) => client.patchImage('collection', 'item', 'locale', { fileId: 'asset' }),
+    (client) => client.publishItems('collection', ['item']),
+  ];
+  for (const mutate of mutations) {
+    for (const status of [200, 201, 202, 302, 400, 401, 403, 404, 422, 408, 429, 500, 503]) {
+      let calls = 0;
+      const rejected = [400, 401, 403, 404, 422].includes(status);
+      const client = new WebflowCmsClient({
+        token: 'inert', siteId: 'site',
+        fetchImpl: async () => {
+          calls += 1;
+          return unreadableResponse(status, new Error('body stream lost'));
+        },
+        sleep: async () => assert.fail('mutations must not retry'),
+        onRetry: () => assert.fail('mutations must not retry'),
+      });
+      await assert.rejects(mutate(client), (error) => {
+        assert.ok(error instanceof WebflowCmsError);
+        assert.equal(error.status, status);
+        assert.equal(error.code, rejected ? 'HTTP_ERROR' : 'AMBIGUOUS_MUTATION_OUTCOME');
+        assert.equal(error.writeOutcome, rejected ? 'not-applied' : 'unknown');
+        return true;
+      });
+      assert.equal(calls, 1);
+    }
+  }
+});
+
+test('readable mutation HTTP failures keep status-based outcomes without retrying', async () => {
+  for (const status of [302, 400, 403, 422, 408, 429, 500, 503]) {
+    let calls = 0;
+    const rejected = [400, 403, 422].includes(status);
+    const client = new WebflowCmsClient({
+      token: 'inert', siteId: 'site',
+      fetchImpl: async () => {
+        calls += 1;
+        return jsonResponse({ message: 'HTTP evidence' }, { status });
+      },
+    });
+    await assert.rejects(client.publishItems('collection', ['item']), (error) => {
+      assert.ok(error instanceof WebflowCmsError);
+      assert.equal(error.status, status);
+      assert.equal(error.code, rejected ? 'HTTP_ERROR' : 'AMBIGUOUS_MUTATION_OUTCOME');
+      assert.equal(error.writeOutcome, rejected ? 'not-applied' : 'unknown');
+      assert.deepEqual(error.details, { message: 'HTTP evidence' });
+      return true;
+    });
+    assert.equal(calls, 1);
+  }
+});
+
+test('GET transport and rate-limit retries remain bounded; other read failures stay intact', async () => {
+  for (const failure of ['transport', 429, 503]) {
+    let calls = 0;
+    let retries = 0;
+    const transportError = new Error('read connection lost');
+    const client = new WebflowCmsClient({
+      token: 'inert', siteId: 'site', maxGetAttempts: 2,
+      fetchImpl: async () => {
+        calls += 1;
+        if (failure === 'transport') throw transportError;
+        return jsonResponse({ message: 'read failed' }, { status: failure });
+      },
+      sleep: async () => {},
+      onRetry: () => { retries += 1; },
+    });
+    await assert.rejects(client.getCollection('collection'), (error) => {
+      if (failure === 'transport') assert.equal(error, transportError);
+      else {
+        assert.equal(error.status, failure);
+        assert.equal(error.code, 'HTTP_ERROR');
+        assert.equal(error.writeOutcome, 'not-attempted');
+        assert.deepEqual(error.details, { message: 'read failed' });
+      }
+      return true;
+    });
+    assert.equal(calls, failure === 503 ? 1 : 2);
+    assert.equal(retries, failure === 503 ? 0 : 1);
+  }
+
+  for (const status of [200, 400, 503]) {
+    const bodyError = new Error('unreadable GET body');
+    let calls = 0;
+    const client = new WebflowCmsClient({
+      token: 'inert', siteId: 'site',
+      fetchImpl: async () => { calls += 1; return unreadableResponse(status, bodyError); },
+    });
+    await assert.rejects(client.getCollection('collection'), (error) => error === bodyError);
+    assert.equal(calls, 1);
+  }
+});
+
+test('normal JSON, text and empty successful responses retain parsing behavior', async () => {
+  for (const method of ['GET', 'POST', 'PATCH']) {
+    for (const [body, expected] of [['{"id":"asset"}', { id: 'asset' }], ['accepted', 'accepted'], ['', null]]) {
+      const client = new WebflowCmsClient({
+        token: 'inert', siteId: 'site',
+        fetchImpl: async () => new Response(body, { status: 200 }),
+      });
+      assert.deepEqual(await client.request(method, '/inert'), expected);
+    }
+  }
+});
+
+test('proven request preparation and validation failures are not attempted', async () => {
+  let calls = 0;
+  const fetchImpl = async () => { calls += 1; assert.fail('preparation must finish before fetch'); };
+  const client = new WebflowCmsClient({ token: 'inert', siteId: 'site', fetchImpl });
+  const circular = {};
+  circular.self = circular;
+  for (const operation of [
+    () => client.request('POST', '/inert', { body: circular }),
+    () => client.publishItems('collection', []),
+    () => uploadAssetBinary({ metadata: {}, bytes: Buffer.from('inert'), fetchImpl }),
+    () => uploadAssetBinary({
+      metadata: {
+        uploadUrl: 'https://inert.invalid', originalFileName: 'image.jpg',
+        uploadDetails: { policy: { toString() { throw new Error('secret policy'); } } },
+      },
+      bytes: Buffer.from('inert'), fetchImpl,
+    }),
+  ]) {
+    await assert.rejects(async () => operation(), (error) => {
+      assert.ok(error instanceof WebflowCmsError);
+      assert.equal(error.writeOutcome, 'not-attempted');
+      assert.doesNotMatch(JSON.stringify(publicError(error)), /secret policy/);
+      return true;
+    });
+  }
+  assert.equal(calls, 0);
+});
+
 test('client patches only supplied fields and publishes the exact ID set', async () => {
   const requests = [];
   const client = new WebflowCmsClient({
@@ -97,8 +240,9 @@ test('client patches only supplied fields and publishes the exact ID set', async
     },
   });
 
-  await client.patchImage('collection', 'item', 'locale', { fileId: 'asset', url: 'https://image' });
-  await client.publishItems('collection', ['item-2', 'item-1']);
+  assert.deepEqual(await client.patchImage('collection', 'item', 'locale', { fileId: 'asset', url: 'https://image' }), { ok: true });
+  assert.deepEqual(await client.publishItems('collection', ['item-2', 'item-1']), { ok: true });
+  assert.deepEqual(await client.createAsset('image.jpg', 'hash'), { ok: true });
 
   assert.deepEqual(JSON.parse(requests[0].options.body), {
     items: [
@@ -110,6 +254,12 @@ test('client patches only supplied fields and publishes the exact ID set', async
     ],
   });
   assert.deepEqual(JSON.parse(requests[1].options.body), { itemIds: ['item-2', 'item-1'] });
+  assert.deepEqual(JSON.parse(requests[2].options.body), { fileName: 'image.jpg', fileHash: 'hash' });
+  assert.deepEqual(requests.map(({ url }) => url), [
+    'https://api.webflow.com/v2/collections/collection/items?skipInvalidFiles=false',
+    'https://api.webflow.com/v2/collections/collection/items/publish',
+    'https://api.webflow.com/v2/sites/site/assets',
+  ]);
 });
 
 test('uploaded and CMS-normalized image identities are verified by content', async () => {
@@ -230,6 +380,23 @@ test('ambiguous mutation reconciliation is read-only and evidence driven', async
   });
   assert.equal(reads, 1);
   assert.equal(result.outcome, 'applied');
+  for (const [verification, outcome] of [
+    [{ ok: true, definitive: true }, 'applied'],
+    [{ ok: false, definitive: true }, 'not-applied'],
+    [{ ok: false }, 'unresolved'],
+    [null, 'unresolved'],
+  ]) {
+    const state = { image: 'observed' };
+    const reconciled = await reconcileAmbiguousMutation({
+      readState: async () => { reads += 1; return state; },
+      verifyApplied: async (observed) => {
+        assert.equal(observed, state);
+        return verification;
+      },
+    });
+    assert.deepEqual(reconciled, { outcome, state, verification });
+  }
+  assert.equal(reads, 5);
 });
 
 test('deterministic names include normalized identity, width, and content hash', () => {
@@ -253,7 +420,7 @@ test('presigned upload sends every field and flags unknown write outcomes', asyn
     contentType: 'image/jpeg',
   };
   let request;
-  await uploadAssetBinary({
+  const result = await uploadAssetBinary({
     metadata,
     bytes: Buffer.from('image'),
     fetchImpl: async (url, options) => {
@@ -261,6 +428,7 @@ test('presigned upload sends every field and flags unknown write outcomes', asyn
       return new Response('', { status: 201 });
     },
   });
+  assert.deepEqual(result, { status: 201 });
   assert.equal(request.url, metadata.uploadUrl);
   assert.equal(request.options.method, 'POST');
   assert.equal(request.options.body.get('key'), 'value');
@@ -277,6 +445,73 @@ test('presigned upload sends every field and flags unknown write outcomes', asyn
     (error) =>
       error.code === 'AMBIGUOUS_MUTATION_OUTCOME' && error.writeOutcome === 'unknown'
   );
+});
+
+test('presigned upload HTTP failures distinguish rejection from missing completion evidence', async () => {
+  const metadata = {
+    uploadUrl: 'https://inert.invalid/upload', uploadDetails: { key: 'inert' },
+    originalFileName: 'image.jpg',
+  };
+  for (const status of [200, 202, 204, 302, 400, 403, 422, 408, 429, 500, 503]) {
+    let calls = 0;
+    const rejected = [400, 403, 422].includes(status);
+    await assert.rejects(uploadAssetBinary({
+      metadata, bytes: Buffer.from('inert'),
+      fetchImpl: async () => { calls += 1; return new Response(null, { status }); },
+    }), (error) => {
+      assert.ok(error instanceof WebflowCmsError);
+      assert.equal(error.status, status);
+      assert.equal(error.code, rejected ? 'BLOCKED' : 'AMBIGUOUS_MUTATION_OUTCOME');
+      assert.equal(error.writeOutcome, rejected ? 'not-applied' : 'unknown');
+      return true;
+    });
+    assert.equal(calls, 1);
+  }
+});
+
+test('public and persisted mutation errors omit secret transport and body-read details', async (t) => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'webflow-cms-errors-'));
+  t.after(() => fs.rm(directory, { recursive: true, force: true }));
+  const uploadUrl = 'https://inert.invalid/private-upload?X-Amz-Signature=signature-secret';
+  const privateMessage = `raw-token policy-secret credential-secret Bearer bearer-secret ${uploadUrl}`;
+  const metadata = {
+    uploadUrl, uploadDetails: { policy: 'policy-secret', credential: 'credential-secret' },
+    originalFileName: 'image.jpg',
+  };
+  const failures = [
+    () => uploadAssetBinary({
+      metadata, bytes: Buffer.from('inert'),
+      fetchImpl: async () => { throw new Error(privateMessage); },
+    }),
+    ...['transport', 200, 403, 503].map((failure) => () => new WebflowCmsClient({
+      token: 'raw-token', siteId: 'site',
+      fetchImpl: async () => {
+        if (failure === 'transport') throw new Error(privateMessage);
+        return unreadableResponse(failure, new Error(privateMessage));
+      },
+    }).publishItems('collection', ['item'])),
+    () => new WebflowCmsClient({
+      token: 'raw-token', siteId: 'site',
+      fetchImpl: async () => jsonResponse({
+        token: 'raw-token', authorization: 'Bearer bearer-secret', uploadUrl,
+        uploadDetails: { policy: 'policy-secret', credential: 'credential-secret' },
+      }, { status: 400 }),
+    }).createAsset('image.jpg', 'hash'),
+  ];
+  for (const [index, operation] of failures.entries()) {
+    let captured;
+    await assert.rejects(operation(), (error) => {
+      captured = error;
+      assert.ok(error instanceof WebflowCmsError);
+      const exposed = JSON.stringify(publicError(error));
+      assert.doesNotMatch(error.message, /raw-token|policy-secret|credential-secret|bearer-secret|signature-secret|private-upload/);
+      assert.doesNotMatch(exposed, /raw-token|policy-secret|credential-secret|bearer-secret|signature-secret|private-upload/);
+      return true;
+    });
+    const filePath = path.join(directory, `${index}.json`);
+    await writeRedactedJsonAtomic(filePath, publicError(captured));
+    assert.doesNotMatch(await fs.readFile(filePath, 'utf8'), /raw-token|policy-secret|credential-secret|bearer-secret|signature-secret|private-upload/);
+  }
 });
 
 test('asset verification checks deterministic name and exact uploaded bytes', async () => {

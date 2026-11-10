@@ -96,6 +96,10 @@ async function responseBody(response) {
   }
 }
 
+function isDefinitiveWriteRejection(status) {
+  return status >= 400 && status < 500 && status !== 408 && status !== 429;
+}
+
 export class WebflowCmsClient {
   constructor({
     token,
@@ -123,6 +127,12 @@ export class WebflowCmsClient {
 
   async request(method, endpoint, { body } = {}) {
     const normalizedMethod = method.toUpperCase();
+    let serializedBody;
+    try {
+      serializedBody = body === undefined ? undefined : JSON.stringify(body);
+    } catch {
+      throw new WebflowCmsError(`Webflow ${normalizedMethod} request body could not be serialized.`);
+    }
     const attempts = normalizedMethod === 'GET' ? this.maxGetAttempts : 1;
     for (let attempt = 0; attempt < attempts; attempt += 1) {
       let response;
@@ -134,7 +144,7 @@ export class WebflowCmsClient {
             Accept: 'application/json',
             ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
           },
-          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+          ...(body === undefined ? {} : { body: serializedBody }),
         });
       } catch (error) {
         if (normalizedMethod === 'GET' && attempt + 1 < attempts) {
@@ -145,10 +155,9 @@ export class WebflowCmsClient {
         }
         if (normalizedMethod !== 'GET') {
           throw new WebflowCmsError(
-            `Webflow ${normalizedMethod} ${endpoint} outcome is unknown: ${error.message}`,
+            `Webflow ${normalizedMethod} ${endpoint} outcome is unknown: no HTTP response received.`,
             {
               code: 'AMBIGUOUS_MUTATION_OUTCOME',
-              details: publicError(error),
               writeOutcome: 'unknown',
             }
           );
@@ -163,11 +172,23 @@ export class WebflowCmsClient {
         continue;
       }
 
-      const parsed = await responseBody(response);
+      const mutationOutcomeUnknown =
+        normalizedMethod !== 'GET' && !isDefinitiveWriteRejection(response.status);
+      let parsed;
+      try {
+        parsed = await responseBody(response);
+      } catch (error) {
+        if (normalizedMethod === 'GET') throw error;
+        throw new WebflowCmsError(
+          `Webflow ${normalizedMethod} ${endpoint} response body could not be read (HTTP ${response.status}).`,
+          {
+            code: mutationOutcomeUnknown ? 'AMBIGUOUS_MUTATION_OUTCOME' : 'HTTP_ERROR',
+            status: response.status,
+            writeOutcome: mutationOutcomeUnknown ? 'unknown' : 'not-applied',
+          }
+        );
+      }
       if (!response.ok) {
-        const mutationOutcomeUnknown =
-          normalizedMethod !== 'GET' &&
-          (response.status === 408 || response.status === 429 || response.status >= 500);
         throw new WebflowCmsError(
           `Webflow ${normalizedMethod} ${endpoint} failed with HTTP ${response.status}.`,
           {
@@ -458,26 +479,33 @@ export async function uploadAssetBinary({ metadata, bytes, fetchImpl = fetch }) 
   if (!metadata?.uploadUrl || !metadata?.uploadDetails || !metadata?.originalFileName) {
     throw new WebflowCmsError('Asset metadata lacks presigned upload details.');
   }
-  const form = new FormData();
-  for (const [key, value] of Object.entries(metadata.uploadDetails)) form.append(key, String(value));
-  form.append(
-    'file',
-    new Blob([bytes], { type: metadata.contentType ?? 'image/jpeg' }),
-    metadata.originalFileName
-  );
+  let form;
+  try {
+    form = new FormData();
+    for (const [key, value] of Object.entries(metadata.uploadDetails)) form.append(key, String(value));
+    form.append(
+      'file',
+      new Blob([bytes], { type: metadata.contentType ?? 'image/jpeg' }),
+      metadata.originalFileName
+    );
+  } catch {
+    throw new WebflowCmsError('Asset byte upload request could not be prepared.');
+  }
   let response;
   try {
     response = await fetchImpl(metadata.uploadUrl, { method: 'POST', body: form });
-  } catch (error) {
-    throw new WebflowCmsError(`Asset byte upload outcome is unknown: ${error.message}`, {
+  } catch {
+    throw new WebflowCmsError('Asset byte upload outcome is unknown: no HTTP response received.', {
       code: 'AMBIGUOUS_MUTATION_OUTCOME',
       writeOutcome: 'unknown',
     });
   }
   if (response.status !== 201) {
+    const mutationOutcomeUnknown = !isDefinitiveWriteRejection(response.status);
     throw new WebflowCmsError(`Asset byte upload failed with HTTP ${response.status}.`, {
+      ...(mutationOutcomeUnknown ? { code: 'AMBIGUOUS_MUTATION_OUTCOME' } : {}),
       status: response.status,
-      writeOutcome: 'not-applied',
+      writeOutcome: mutationOutcomeUnknown ? 'unknown' : 'not-applied',
     });
   }
   return { status: response.status };
