@@ -27,20 +27,27 @@ function fixtureFrom(relativePath, endAnchor, resultName = 'fixture', globals = 
 // Restrict remediation verification to the two balance findings when requested.
 const balancesOnly = process.argv.includes('--balances-only');
 if (!balancesOnly) {
-const dropsFixture = fixtureFrom('../../drops/js/trade-lifecycle.test.mjs', "for (const stage of ['initial-account'");
+// TX-002 updates only AUD-002-002's current reproduction; historical finding
+// reporting and the unrelated checks below remain preserved.
+const { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForConfirmation: reconcileConfirmation } =
+  await import('../../shared/public-trade-ops.js');
+const tradeGlobals = { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, reconcileConfirmation };
+const dropsFixture = fixtureFrom('../../drops/js/trade-lifecycle.test.mjs', "test('BAL-002: initial failure", 'fixture', tradeGlobals);
 {
   const h = dropsFixture({ failure: 'confirmation' });
   await h.send();
   assert.equal(h.requests.length, 1);
   assert.equal(h.confirmations.length, 1);
   assert.equal(h.pending(), false);
-  assert.equal(h.checkbox.checked, true);
-  assert.equal(h.modals.at(-1)[0], 'ERROR');
+  assert.equal(h.modals.at(-1)[0], 'CONFIRMATION UNKNOWN');
+  await h.send();
+  assert.equal(h.requests.length, 1, 'Unresolved hash prevents a repeated wallet request');
   h.clearFailure();
-  await h.send(); // No reselect, reconnect, balance refresh, or operation resolution.
-  assert.equal(h.requests.length, 2);
-  assert.deepEqual(h.requests[0], h.requests[1]);
-  console.log('AUD-002-002: returned hash + confirmation outage permits identical Drops request twice');
+  await h.context.retryTradeConfirmation();
+  assert.equal(h.requests.length, 1, 'Status retry never resubmits');
+  assert.equal(h.confirmations.length, 2, 'Original hash is reconciled');
+  assert.equal(vm.runInContext('confirmedDropsTrades.has("wallet-A")', h.context), true);
+  console.log('AUD-002-002 TX-002: Drops retains unknown hash and reconciles without resubmission');
 }
 {
   const h = dropsFixture();
@@ -57,7 +64,7 @@ const dropsFixture = fixtureFrom('../../drops/js/trade-lifecycle.test.mjs', "for
   console.log('AUD-002-002 controls: confirmed trade blocks repeat; pre-submit failure permits fresh send');
 }
 
-const exchangeFixture = fixtureFrom('../../exchange/js/exchange-wallet.test.mjs', 'function unavailable(');
+const exchangeFixture = fixtureFrom('../../exchange/js/exchange-wallet.test.mjs', 'function unavailable(', 'fixture', tradeGlobals);
 {
   const h = exchangeFixture();
   const holdings = [{ contractAddress: 'KT1419', tokenId: '0', balance: '5' }];
@@ -67,15 +74,21 @@ const exchangeFixture = fixtureFrom('../../exchange/js/exchange-wallet.test.mjs'
   await h.trade();
   assert.equal(h.sent.length, 1);
   assert.equal(h.controls.connect.textContent, 'RETRY BALANCES');
-  h.fetchRows = async () => holdings; // Indexer is still behind the accepted request.
+  h.fetchRows = async () => holdings;
   await h.context.retryExchangeBalances();
-  h.select('1');
+  h.select('1'); await h.trade();
+  assert.equal(h.sent.length, 1, 'Unchanged holdings never authorize a repeat');
   h.confirm = async () => {};
-  await h.trade();
-  assert.equal(h.sent.length, 2);
-  assert.equal(JSON.stringify(h.sent[0]), JSON.stringify(h.sent[1]));
-  console.log('AUD-002-002 Exchange: confirmation timeout + Retry Balances on stale indexer permits identical second request');
+  await h.context.retryTradeConfirmation();
+  assert.equal(h.sent.length, 1, 'Original hash reconciles without a new wallet request');
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope()).status'), 'applied');
+  h.fetchRows = async () => [{ ...holdings[0], balance: '4' }];
+  await h.context.retryExchangeBalances();
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+  console.log('AUD-002-002 TX-002: Exchange retains unknown hash across stale balance retry; verified application and burn delta recover');
 }
+if (process.argv.includes('--trades-only')) process.exit(0);
+
 {
   const h = exchangeFixture();
   await h.connect('wallet-A', [{ contractAddress: 'KT1419', tokenId: '0', balance: '5' }]);

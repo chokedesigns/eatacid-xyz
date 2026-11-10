@@ -12,7 +12,7 @@ import { serializeDropParamsJson } from '../../shared/drop-params/drop-params-pr
 import { getDropParamsRequestPlanHash } from '../../shared/drop-params/drop-params-transaction.mjs';
 import { createDropParamsAuthoringApi } from '../../shared/drop-params/drop-params-authoring-service.mjs';
 import { createDropsConfig } from './events-config.js';
-import { fetchTokenPairId } from '../../shared/public-trade-ops.js';
+import { createSubmittedTradeStore, fetchTokenPairId } from '../../shared/public-trade-ops.js';
 import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
 import { exactTokenId, compareTokenIds } from '../../admin-ui/src/features/drops/utils/token-id.js';
 
@@ -162,7 +162,7 @@ test('CFG-003: Public rejects incompatible bundled params before wallet/provider
     assert.equal(config.isConfigured, false);
     assert.match(config.unavailableMessage, /configuration is not supported/);
     const messages = [];
-    const context = vm.createContext({ networkConfigAvailable: config.isConfigured,
+    const context = vm.createContext({ createSubmittedTradeStore, networkConfigAvailable: config.isConfigured,
       networkUnavailableMessage: config.unavailableMessage, console: { error() {} },
       showModal: (...args) => messages.push(args), hideModal() {}, setTimeout() {} });
     vm.runInContext(section('let eventExchangeInFlight', '// UI STATE TOGGLING:'), context);

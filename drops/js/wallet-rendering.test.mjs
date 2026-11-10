@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import test from 'node:test';
 import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
 import { isCurrentWalletProjection, setRegionPending } from './reveal-coordinator.js';
-import { pollForNFTUpdate as pollForSharedNFTUpdate } from '../../shared/public-trade-ops.js';
+import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForNFTUpdate as pollForSharedNFTUpdate } from '../../shared/public-trade-ops.js';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
 
 // Run the page's current functions against inert CMS, wallet and indexer boundaries.
@@ -114,8 +114,10 @@ function fixture({ enabled = ['HEN', 'INTRODUCTIONS'] } = {}) {
   const empty = wallet.appendChild(new Element('no-tokens-in-walet-div---events'));
   const state = { activeAccount: null, walletConnected: false, selectedTokenId: null };
   const window = { getComputedStyle: el => el.style };
-  const errors = [], requests = [];
+  const errors = [], requests = [], storage = new Map();
   const context = vm.createContext({
+    createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus, TZKT_BASE: 'https://inert.test', network: 'testnet', BURN_REDEEM_CONTRACT_ADDRESS: 'escrow',
     window, document, AppState: state, updateAppState: patch => Object.assign(state, patch),
     collections: { HEN: 'contract-HEN', INTRODUCTIONS: 'contract-INTRODUCTIONS', CANAAN: 'contract-CANAAN' },
     burnTokens: ['HEN', 'INTRODUCTIONS'].map(collection => ({ collection, enabled: enabled.includes(collection),
@@ -130,6 +132,7 @@ function fixture({ enabled = ['HEN', 'INTRODUCTIONS'] } = {}) {
   const captureStart = source.includes('let canonicalCMSRowsByCollection')
     ? 'let canonicalCMSRowsByCollection' : 'function setEventContractAndTokenAttributes(';
   vm.runInContext([
+    section('let eventExchangeInFlight', 'function assertRedeemSupplyAvailable('),
     section('function getCollectionSlug(', '// ── Network'),
     section('function getBurnAmountForContract(', '/**\n * Returns the one selected'),
     section('function findCMSRows(', '// HELPERS: BLOCKCHAIN'),
@@ -239,7 +242,7 @@ function tradeFixture(h, { confirmation = Promise.resolve(), holdings = [nft('0'
   h.document.appendChild(new Element('loading-modal-div'));
   vm.runInContext([
     section('async function pollForNFTUpdate(', '// HELPERS: UI RESET'),
-    section('let eventExchangeInFlight', '// UI STATE TOGGLING:'),
+    section('function assertRedeemSupplyAvailable(', '// UI STATE TOGGLING:'),
     section('function computeExchangeButtonState(', '/**\n * Renders the exchange button'),
   ].join('\n'), h.context);
   return { modals, send: () => h.context.handleEventExchange(), setHoldings: value => { holdings = value; } };
@@ -483,7 +486,7 @@ test('Confirmed trade NFT response cannot restore holdings after wallet replacem
     });
     h.window.dAppClient = { requestOperation: async () => ({ transactionHash: 'inert-hash' }) };
     h.document.appendChild(new Element('loading-modal-div'));
-    vm.runInContext(section('let eventExchangeInFlight', '// UI STATE TOGGLING:'), h.context);
+    vm.runInContext(section('function assertRedeemSupplyAvailable(', '// UI STATE TOGGLING:'), h.context);
     const trade = h.context.handleEventExchange(); await flush(); assert.equal(polling, true);
     if (reconnect) h.disconnect();
     h.connect(reconnect ? 'wallet-A' : 'wallet-B', Promise.resolve([nft('2'), nft('8', 'INTRODUCTIONS')])); await flush();

@@ -5,6 +5,9 @@
 import cfg from './exchange-config.js';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
 import {
+  classifyPublicTradeRequestRejection,
+  createSubmittedTradeStore,
+  showSubmittedTradeStatus,
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
   pollForConfirmation as pollForSharedConfirmation,
@@ -86,6 +89,63 @@ const exchangeState = {
   hasCartItems: false,
 };
 let exchangeInFlight = false;
+const submittedTrades = createSubmittedTradeStore();
+function submittedTradeScope(account = synchronizedWalletAddress) {
+  return { network, tzktBase: TZKT_BASE, escrowAddress: BURN_REDEEM_CONTRACT, account };
+}
+function showPendingTrade(record) {
+  showSubmittedTradeStatus({ record, document, showModal, retry: retryTradeConfirmation });
+}
+function restoreSubmittedTrade(account) {
+  const record = submittedTrades.get(submittedTradeScope(account));
+  if (!record) return;
+  if (record.status !== 'applied') {
+    showPendingTrade(record);
+    throw new Error('Trade confirmation is unknown. Retry confirmation before trading again.');
+  }
+  confirmedExchangeTrades.set(account, record.tradedTokens);
+}
+async function retryTradeConfirmation() {
+  if (exchangeInFlight) return;
+  exchangeInFlight = true;
+  const address = synchronizedWalletAddress;
+  const generation = walletRefreshGeneration;
+  let record;
+  let statusVisible = false;
+  try {
+    const account = await getVerifiedPublicActiveAccount();
+    if (!account || account.address !== address || generation !== walletRefreshGeneration || address !== synchronizedWalletAddress) return;
+    record = submittedTrades.get(submittedTradeScope(address));
+    if (!record) return;
+    showModal('PROCESSING...', '[CHECKING SUBMITTED TRANSACTION. NO NEW TRANSACTION WILL BE SENT.]');
+    statusVisible = true;
+    record = await submittedTrades.reconcile(record, pollForConfirmation);
+    confirmedExchangeTrades.set(address, record.tradedTokens);
+    if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
+    showModal('SUCCESS!', '[BURN COMPLETE. REFRESHING BALANCES...]');
+    await refreshExchangeWallet(account, generation);
+    if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
+    const balancesPending = submittedTrades.get(submittedTradeScope(address));
+    showModal(balancesPending ? 'BURN COMPLETE.' : 'SUCCESS!', balancesPending
+      ? '[BALANCES STILL UPDATING. USE RETRY BALANCES.]' : '[BURN COMPLETE. BALANCES REFRESHED.]');
+    const spinner = document.querySelector('.loading-spinner-01');
+    if (spinner) spinner.style.display = 'none';
+    setTimeout(hideModal, 3000);
+  } catch (error) {
+    console.error('Error reconciling submitted trade:', error);
+    if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
+    if (error.code === 'PUBLIC_TRADE_FAILED') {
+      showModal('ERROR', error.message);
+      await refreshExchangeWallet({ address }, generation);
+      if (address === synchronizedWalletAddress && generation === walletRefreshGeneration) setTimeout(hideModal, 3000);
+    } else if (record) showPendingTrade(record);
+    else showModal('ERROR', error.message);
+  } finally {
+    if (statusVisible && (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration)) hideModal();
+    exchangeInFlight = false;
+  }
+}
+
 const EXCHANGE_WALLET_PENDING_CLASS = 'exchange-wallet-tokens-pending';
 const EXCHANGE_PANES = [
   {
@@ -507,6 +567,7 @@ function renderConnectedWalletTokenState(nfts) {
     !/^\d+$/.test(String(nft.balance)) || !Number.isSafeInteger(Number(nft.balance)))) {
     throw new TypeError('Invalid wallet balances. Retry balances.');
   }
+  restoreSubmittedTrade(synchronizedWalletAddress);
   const trade = confirmedExchangeTrades.get(synchronizedWalletAddress);
   if (trade) assertTradedBalancesRefreshed(nfts, trade);
   exchangeWalletTokensPending = false;
@@ -527,11 +588,15 @@ function renderConnectedWalletTokenState(nfts) {
   });
 
   updateBurnCart();
+  submittedTrades.clearApplied(submittedTradeScope());
   confirmedExchangeTrades.delete(synchronizedWalletAddress);
 }
 
 async function refreshExchangeWallet(account, generation, nftsPromise) {
+  // A retained receipt may supersede this shared wallet snapshot. Consume rejection.
+  if (nftsPromise) void Promise.resolve(nftsPromise).catch(error => logger.log('Superseded wallet snapshot:', error));
   try {
+    restoreSubmittedTrade(account.address);
     const trade = confirmedExchangeTrades.get(account.address);
     const nfts = trade
       ? await pollForNFTUpdate(account.address, trade)
@@ -1119,7 +1184,7 @@ function assertTradedBalancesRefreshed(nfts, tradedTokens) {
  * @param {number} [interval=5000] - Polling interval in ms.
  * @returns {Promise<Object>} - The operation data once confirmed.
  */
-async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
+async function pollForConfirmation(opHash, submittedTrade, timeout = 120000, interval = 5000) {
   return pollForSharedConfirmation({
     tzktBase: TZKT_BASE,
     opHash,
@@ -1127,6 +1192,7 @@ async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
     interval,
     logPrefix: DEBUG ? '[exchange] ' : undefined,
     expectedDestination: BURN_REDEEM_CONTRACT,
+    submittedTrade,
     expectedEntrypoint: 'initiate_trade'
   });
 }
@@ -1148,9 +1214,11 @@ async function handleExchange() {
   let generation = walletRefreshGeneration;
   const address = synchronizedWalletAddress;
   let tradeConfirmed = false;
+  let submittedTrade;
   let countdownInterval;
 
   try {
+    restoreSubmittedTrade(synchronizedWalletAddress);
     logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
 
     // Step 1: Show waiting for wallet confirmation modal.
@@ -1272,14 +1340,35 @@ async function handleExchange() {
     logger.log('🚀 Sending batched approval and trade operations:', JSON.stringify(batchedOps, null, 2));
 
     // Step 2: Prompt wallet to sign and send.
-    const sendingAccount = await getVerifiedPublicActiveAccount();
-    synchronizeVerifiedExchangeAccount(sendingAccount, generation);
-    if (!sendingAccount || sendingAccount.address !== userWalletAddress) {
-      throw new Error('Wallet changed. Refresh balances and select quantities again.');
-    }
-    assertExchangeCartCurrent(userWalletAddress, generation, burnCart);
-    const opResponse = await window.dAppClient.requestOperation({
-      operationDetails: batchedOps
+    const opResponse = await submittedTrades.withSubmissionLock(async () => {
+      const sendingAccount = await getVerifiedPublicActiveAccount();
+      synchronizeVerifiedExchangeAccount(sendingAccount, generation);
+      if (!sendingAccount || sendingAccount.address !== userWalletAddress) {
+        throw new Error('Wallet changed. Refresh balances and select quantities again.');
+      }
+      assertExchangeCartCurrent(userWalletAddress, generation, burnCart);
+      submittedTrade = submittedTrades.reserve(submittedTradeScope(userWalletAddress), tradeOperations, burnCart);
+      // Capture primitive transport provenance before the wallet await.
+      const rejectionContext = { senderId: sendingAccount.senderId, originType: sendingAccount.origin?.type };
+      let opResponse;
+      try {
+        opResponse = await window.dAppClient.requestOperation({ operationDetails: batchedOps });
+      } catch (error) {
+        const outcome = classifyPublicTradeRequestRejection(error, rejectionContext);
+        if (outcome.hash) {
+          submittedTrade = submittedTrades.submitted(submittedTrade, outcome.hash);
+        } else if (outcome.notSubmitted && !submittedTrade.hash) {
+          submittedTrades.cancel(submittedTrade);
+          submittedTrade = null;
+          throw new Error('Wallet request cancelled before submission. You can retry.', { cause: error });
+        }
+        // Ambiguous rejection keeps the reservation, including missing-hash
+        // uncertainty. Ending the wallet promise is not evidence of failure.
+        throw error;
+      }
+      // Capture before any UI callback or confirmation await can fail.
+      submittedTrade = submittedTrades.submitted(submittedTrade, opResponse?.transactionHash || opResponse?.opHash || null);
+      return opResponse;
     });
     logger.log('✅ Operation submitted!', opResponse);
     if (isCurrentExchangeWallet(userWalletAddress, generation)) {
@@ -1295,7 +1384,7 @@ async function handleExchange() {
     if (!opHash) throw new Error('OPERATION HASH NOT RETURNED.');
 
     // Step 3: Poll for on-chain confirmation.
-    await pollForConfirmation(opHash);
+    await submittedTrades.reconcile(submittedTrade, pollForConfirmation);
     tradeConfirmed = true;
     const tradedTokens = burnCart.map(item => ({
       contractAddress: item.contractAddress,
@@ -1364,6 +1453,19 @@ async function handleExchange() {
     // Close modal after 3s.
     setTimeout(hideModal, 3000);
   } catch (error) {
+    if (!tradeConfirmed && error.code !== 'PUBLIC_TRADE_FAILED') {
+      let retained = submittedTrade;
+      try { retained = submittedTrades.get(submittedTradeScope(retained?.account)) || retained; }
+      catch (storageError) { console.error('Cannot read submitted trade journal:', storageError); }
+      if (retained) {
+        console.error('Trade outcome remains unresolved:', error);
+        if (retained.account === synchronizedWalletAddress) {
+          renderConnectedWalletTokenFailureState();
+          showPendingTrade(retained);
+        }
+        return;
+      }
+    }
     console.error('❌ Error during exchange process:', error);
     if (tradeConfirmed && !isCurrentExchangeWallet(address, generation)) {
       setTimeout(hideModal, 3000);

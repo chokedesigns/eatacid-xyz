@@ -7,7 +7,7 @@ import test from 'node:test';
 const sourceRoot = process.env.EA_T004_SOURCE_ROOT
   ? pathToFileURL(`${process.env.EA_T004_SOURCE_ROOT}/`)
   : new URL('../', import.meta.url);
-const { fetchTokenPairId } = await import(new URL('shared/public-trade-ops.js', sourceRoot));
+const { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, fetchTokenPairId } = await import(new URL('shared/public-trade-ops.js', sourceRoot));
 const intended = {
   tzktBase: 'https://inert.tzkt.test', escrowAddress: 'KT1Escrow',
   burnContractAddress: 'KT1Burn', burnTokenId: '0', burnAmount: 2,
@@ -143,8 +143,10 @@ function section(source, start, end) {
 function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, redeemAmount = 3 } = {}) {
   const drops = surface === 'drops';
   const source = readFileSync(new URL(drops ? 'drops/js/events.js' : 'exchange/js/exchange.js', sourceRoot), 'utf8').replace(/\r\n?/g, '\n');
-  const sent = []; const errors = []; const lookups = [];
+  const sent = []; const errors = []; const lookups = []; const storage = new Map();
   const context = vm.createContext({
+    createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus,
     TZKT_BASE: intended.tzktBase, BURN_REDEEM_CONTRACT_ADDRESS: intended.escrowAddress,
     BURN_REDEEM_CONTRACT: 'KT1ExchangeEscrow', REDEEM_CONTRACT_ADDRESS: 'KT1Redeem', REDEEM_TOKEN_CONTRACT: 'KT1ExchangeRedeem',
     redeemToken: { collection: 'REDEEM', tokenId: '29', redeemAmount },
@@ -152,7 +154,7 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
     collections: { FIRST: 'KT1First', SECOND: 'KT1Burn' },
     normalizeString: v => String(v ?? '').trim().toLowerCase(),
     getSelectedEventTokenWithBalance: () => ({ contractAddress: selected, tokenId: '0', oldBalance: 5 }),
-    getBurnCart: () => structuredClone(cart ?? [{ contractAddress: 'KT1Burn', tokenId: '0', quantity: 2, redeemAmount: 10 }]),
+    getBurnCart: () => structuredClone(cart ?? [{ contractAddress: 'KT1Burn', tokenId: '0', quantity: 2, startingBalance: 5, redeemAmount: 10 }]),
     fetchSharedTokenPairId: args => { lookups.push(args); return fetchTokenPairId(args); },
     getVerifiedPublicActiveAccount: async () => ({ address: 'inert-wallet' }),
     buildApprovalOps: async () => [{ kind: 'approval' }],
@@ -175,7 +177,8 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
     code += section(source, 'let eventExchangeInFlight', '// UI STATE TOGGLING:');
   } else {
     // Supply the page's current ownership guards as well as its trading functions.
-    code = section(source, 'function isCurrentExchangeWallet(', 'function resetBurnCartDisplay(');
+    code = section(source, 'const submittedTrades =', 'const EXCHANGE_WALLET_PENDING_CLASS');
+    code += section(source, 'function isCurrentExchangeWallet(', 'function resetBurnCartDisplay(');
     // Exchange's helper ends at its next section heading, not the entire approval/polling region.
     code += section(source, 'async function fetchTokenPairId(', '// -----------------------------------------------------');
     code += section(source, 'function assertTradedBalancesRefreshed(', '// -----------------------------------------------------');
@@ -250,7 +253,7 @@ test('Caller lookup and submitted Micheline agree on every term, including exact
   const huge = '900719925474099312345';
   const row = pair(huge, { burn_amount: '1', burn_token_id: huge, redeem_contract_address: 'KT1ExchangeRedeem', redeem_token_id: huge, redeem_amount: '10' });
   const f = consumer('exchange', { rows: [row],
-    cart: [{ contractAddress: 'KT1Burn', tokenId: huge, quantity: 3, redeemAmount: 10, redeemTokenId: huge }] });
+    cart: [{ contractAddress: 'KT1Burn', tokenId: huge, quantity: 3, startingBalance: 5, redeemAmount: 10, redeemTokenId: huge }] });
   await f.run(); assert.equal(f.sent.length, 1); assert.equal(f.errors.length, 0);
   for (const trade of f.sent[0].operationDetails[1].parameters.value) {
     assert.deepEqual(tradeTerms(trade), ['KT1Burn', huge, '1', 'KT1ExchangeRedeem', huge, '10', huge]);

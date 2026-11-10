@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import { isCurrentWalletProjection } from './reveal-coordinator.js';
+import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForConfirmation as reconcileConfirmation } from '../../shared/public-trade-ops.js';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
 
 // Execute current production selection, send and wallet lifecycle consumers.
@@ -14,18 +15,21 @@ function section(start, end) {
   return source.slice(begin, finish);
 }
 const flush = () => new Promise(resolve => setImmediate(resolve));
+const walletAbort = () => ({ type: 'error', version: '2', id: 'wallet-request', senderId: 'wallet-sender', errorType: 'ABORTED_ERROR' });
 function deferred() {
   let resolve;
   const promise = new Promise(yes => { resolve = yes; });
   return { promise, resolve };
 }
 
-function fixture({ pause, approved = false, failure, inventory = false } = {}) {
+function fixture({ pause, approved = false, failure, inventory = false, storage = new Map(), confirmation,
+  operationResponse = { transactionHash: 'inert-operation-hash' }, requestError, originType = 'extension' } = {}) {
   const gate = deferred(), started = new Set(), requests = [], approvals = [], mappings = [];
   const errors = [], modals = [], confirmations = [], balances = [], refreshes = [];
   const state = { redeemSupply: inventory ? null : 7, countdownPhase: 'live' };
   const checkbox = { checked: true }, listeners = new Set();
-  let account = { address: 'wallet-A' }, accountReads = 0;
+  const makeAccount = address => ({ address, senderId: 'wallet-sender', origin: { type: originType } });
+  let account = makeAccount('wallet-A'), accountReads = 0;
   const row = { dataset: { contractAddress: 'burn', tokenId: '4' },
     querySelector: () => ({ textContent: String(row.balance) }), balance: 5 };
   checkbox.closest = () => row;
@@ -35,11 +39,13 @@ function fixture({ pause, approved = false, failure, inventory = false } = {}) {
   async function boundary(name, result) {
     started.add(name);
     if (pause === name) await gate.promise;
-    if (failure === name) throw new Error(`inert ${name} failure`);
+    if (failure === name) throw (name === 'request' && requestError) || new Error(`inert ${name} failure`);
     return result;
   }
   const context = vm.createContext({
-    networkConfigAvailable: true, network: 'testnet',
+    networkConfigAvailable: true, network: 'testnet', TZKT_BASE: 'https://inert.test',
+    createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus,
     burnTokens: [{ collection: 'HEN', enabled: true, burnAmount: 2 }], collections: { HEN: 'burn', REDEEM: 'redeem' },
     redeemToken: { collection: 'REDEEM', tokenId: '7', redeemAmount: 3 }, REDEEM_CONTRACT_ADDRESS: 'redeem',
     BURN_REDEEM_CONTRACT_ADDRESS: 'escrow',
@@ -56,7 +62,7 @@ function fixture({ pause, approved = false, failure, inventory = false } = {}) {
     },
     fetchTokenPairId: (...terms) => { mappings.push(terms); return boundary('mapping', '10'); },
     window: { dAppClient: { requestOperation: payload => {
-      requests.push(structuredClone(payload)); return boundary('request', { transactionHash: 'inert-operation-hash' });
+      requests.push(structuredClone(payload)); return boundary('request', operationResponse);
     } } },
     document: {
       querySelector: selector => selector.includes(':checked') ? (checkbox.checked ? checkbox : null)
@@ -68,7 +74,7 @@ function fixture({ pause, approved = false, failure, inventory = false } = {}) {
     renderConnectedWalletTokenFailureState() {}, updateEventCartBurnToken() {},
     updateTokensWithWalletData: async () => {}, fetchNFTs: async () => [],
     resetEventsUI() { checkbox.checked = false; },
-    pollForConfirmation: hash => { confirmations.push(hash); return boundary('confirmation'); },
+    pollForConfirmation: (hash, receipt) => { confirmations.push(hash); return confirmation ? confirmation(hash, receipt) : boundary('confirmation'); },
     pollForNFTUpdate: (address, tokens) => {
       balances.push({ address, tokens: structuredClone(tokens) }); return boundary('balances', ['updated-holdings']);
     },
@@ -84,7 +90,7 @@ function fixture({ pause, approved = false, failure, inventory = false } = {}) {
   const change = (kind, reselect = false) => {
     if (kind === 'pending') sync('pending');
     else {
-      account = kind === 'disconnect' ? null : { address: kind === 'replacement' ? 'wallet-B' : 'wallet-A' };
+      account = kind === 'disconnect' ? null : makeAccount(kind === 'replacement' ? 'wallet-B' : 'wallet-A');
       if (kind === 'reconnect') { context.synchronizeDropsWalletState({ status: 'unconnected' }); }
       sync(account ? 'connected' : 'unconnected');
     }
@@ -362,9 +368,9 @@ for (const stage of ['initial-account', 'approval', 'mapping', 'final-account', 
   });
 }
 
-for (const stage of ['final-account', 'request', 'confirmation']) {
+for (const stage of ['final-account', 'request']) {
   test(`EA-XYZ-P3-T002: ${stage} failure reports error and releases ownership for retry`, async () => {
-    const f = fixture({ failure: stage }); await f.send();
+    const f = fixture({ failure: stage, requestError: walletAbort() }); await f.send();
     assert.equal(f.modals.at(-1)[0], 'ERROR'); assert.equal(f.pending(), false);
     assert.equal(f.refreshes.length, 0);
     const previousRequests = f.requests.length;
@@ -385,4 +391,112 @@ test('EA-XYZ-P3-T002: cancelled stale intent permits a fresh authorized trade', 
   const f = fixture({ pause: 'mapping' }); const run = f.send(); await f.waitAt('mapping');
   f.change('replacement', true); f.gate.resolve(); await run; assert.equal(f.requests.length, 0);
   f.change('reconnect', true); await f.send(); assert.equal(f.requests.length, 1); assert.equal(f.pending(), false);
+});
+
+test('TX-002: real confirmation timeout survives resets/reconnect/reload and reconciles without another send', async () => {
+  const storage = new Map();
+  let evidence = [], mode = 'missing';
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    if (mode === 'outage') throw new Error('inert outage');
+    if (mode === 'malformed') return { ok: true, json: async () => { throw new SyntaxError('inert JSON'); } };
+    return { ok: true, json: async () => evidence };
+  };
+  const confirmation = (hash, receipt) => reconcileConfirmation({ tzktBase: receipt.tzktBase, opHash: hash,
+    expectedDestination: receipt.escrowAddress, expectedEntrypoint: 'initiate_trade', submittedTrade: receipt,
+    timeout: 8, interval: 0 });
+  try {
+    const h = fixture({ storage, confirmation }); await h.send();
+    assert.equal(h.requests.length, 1); assert.equal(h.modals.at(-1)[0], 'CONFIRMATION UNKNOWN');
+    for (mode of ['outage', 'malformed', 'missing']) {
+      await h.context.retryTradeConfirmation(); await h.send();
+      assert.equal(h.requests.length, 1); assert.equal(h.refreshes.length, 0);
+    }
+    h.context.resetEventsUI(); h.checkbox.checked = true;
+    h.change('reconnect', true); await flush(); await h.send();
+    assert.equal(h.requests.length, 1);
+    const reloaded = fixture({ storage, confirmation }); await reloaded.send();
+    assert.equal(reloaded.requests.length, 0);
+    evidence = [{ id: 1, type: 'transaction', hash: 'inert-operation-hash', sender: { address: 'wallet-B' },
+      target: { address: 'escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied' }];
+    await reloaded.context.retryTradeConfirmation();
+    assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope()).status', reloaded.context), 'submitted');
+    evidence[0].sender.address = 'wallet-A';
+    await reloaded.context.retryTradeConfirmation();
+    assert.equal(reloaded.requests.length, 0);
+    assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope()).status', reloaded.context), 'applied');
+    assert.equal(vm.runInContext('confirmedDropsTrades.has("wallet-A")', reloaded.context), true);
+    assert.match(reloaded.modals.at(-1)[0], /BURN COMPLETE/);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('TX-002: verified terminal failure releases Drops receipt and permits an evidence-based fresh send', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => [{ id: 1, type: 'transaction',
+    hash: 'inert-operation-hash', sender: { address: 'wallet-A' }, target: { address: 'escrow' },
+    parameter: { entrypoint: 'initiate_trade' }, status: 'backtracked' }] });
+  try {
+    const h = fixture({ confirmation: (hash, receipt) => reconcileConfirmation({ tzktBase: receipt.tzktBase,
+      opHash: hash, submittedTrade: receipt, timeout: 8, interval: 0 }) });
+    await h.send(); assert.equal(h.requests.length, 1); assert.equal(h.refreshes.length, 0);
+    assert.equal(h.modals.at(-1)[0], 'ERROR'); assert.match(h.modals.at(-1)[1], /backtracked/);
+    assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope())', h.context), null);
+    await h.send(); assert.equal(h.requests.length, 2);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('TX-002: Drops captures opHash alias and retains missing-hash responses across retry', async () => {
+  const alias = fixture({ operationResponse: { opHash: 'alias-hash' }, failure: 'confirmation' });
+  await alias.send(); assert.deepEqual(alias.confirmations, ['alias-hash']);
+  await alias.send(); assert.equal(alias.requests.length, 1);
+  const missing = fixture({ operationResponse: {} });
+  await missing.send(); await missing.send(); await missing.context.retryTradeConfirmation();
+  assert.equal(missing.requests.length, 1); assert.equal(missing.confirmations.length, 0);
+  assert.match(missing.modals.at(-1)[1], /CHECK WALLET OPERATION HISTORY/);
+});
+
+test('TX-002: ambiguous Drops wallet rejections retain receipts across resets, reconnect and reload', async () => {
+  for (const [originType, rejection] of [
+    ['extension', new Error('inert transport outcome unknown')],
+    ['walletconnect', walletAbort()],
+    ['extension', { ...walletAbort(), senderId: '' }],
+    ['extension', { ...walletAbort(), senderId: 'other-wallet' }],
+    ['extension', { name: 'UnknownBeaconError', title: 'Aborted', message: '[ABORTED_ERROR]:The action was aborted by the user.' }],
+    ['extension', { ...walletAbort(), transactionHash: 'unverified-hash-hint' }],
+    ['extension', { ...walletAbort(), errorData: { transactionHash: 'unverified-hash-hint' } }],
+    ['unknown', walletAbort()]
+  ]) {
+    const storage = new Map();
+    const h = fixture({ storage, originType, failure: 'request', requestError: rejection });
+    await h.send(); assert.equal(h.requests.length, 1); assert.equal(h.modals.at(-1)[0], 'CONFIRMATION UNKNOWN');
+    assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope()).hash', h.context), null);
+    h.clearFailure(); h.context.resetEventsUI(); h.change('reconnect', true); await flush();
+    await h.send(); await h.context.retryTradeConfirmation(); assert.equal(h.requests.length, 1);
+    assert.equal(h.confirmations.length, 0, 'No hash is inferred from generic error payloads');
+    const reload = fixture({ storage }); await reload.send();
+    assert.equal(reload.requests.length, 0); assert.equal(reload.modals.at(-1)[0], 'CONFIRMATION UNKNOWN');
+  }
+});
+
+test('TX-002: explicit matching Drops wallet abort is retryable on extension and P2P', async () => {
+  for (const originType of ['extension', 'p2p']) {
+    const storage = new Map(), h = fixture({ storage, originType, failure: 'request', requestError: walletAbort() });
+    await h.send(); assert.equal(h.requests.length, 1); assert.equal(h.modals.at(-1)[0], 'ERROR');
+    assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope())', h.context), null);
+    const reload = fixture({ storage, originType }); await reload.send(); assert.equal(reload.requests.length, 1);
+  }
+});
+
+test('TX-002: Drops captures rejection provenance before the wallet await and retains a complete returned receipt', async () => {
+  const h = fixture({ originType: 'walletconnect', pause: 'request', failure: 'request', requestError: walletAbort() });
+  const run = h.send(); await h.waitAt('request');
+  h.state.activeAccount.origin.type = 'extension'; h.gate.resolve(); await run;
+  assert.equal(h.modals.at(-1)[0], 'CONFIRMATION UNKNOWN'); await h.send(); assert.equal(h.requests.length, 1);
+  const storage = new Map(), returned = fixture({ storage, failure: 'request', requestError: {
+    type: 'operation_response', version: '2', id: 'wallet-request', senderId: 'wallet-sender', transactionHash: 'returned-hash'
+  } });
+  await returned.send(); assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope()).hash', returned.context), 'returned-hash');
+  const reload = fixture({ storage }); await reload.send(); assert.equal(reload.requests.length, 0);
+  await reload.context.retryTradeConfirmation(); assert.deepEqual(reload.confirmations, ['returned-hash']);
+  assert.equal(reload.requests.length, 0);
 });

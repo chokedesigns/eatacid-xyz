@@ -24,6 +24,9 @@ import {
   setRegionPending
 } from './reveal-coordinator.js';
 import {
+  classifyPublicTradeRequestRejection,
+  createSubmittedTradeStore,
+  showSubmittedTradeStatus,
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
   pollForConfirmation as pollForSharedConfirmation,
@@ -766,13 +769,14 @@ async function buildApprovalOps(userWalletAddress, burnCart) {
 /**
  * Polls the TzKT API for operation confirmation until the transaction is applied or timeout.
  */
-async function pollForConfirmation(opHash, timeout = 120000, interval = 5000) {
+async function pollForConfirmation(opHash, submittedTrade, timeout = 120000, interval = 5000) {
   return pollForSharedConfirmation({
     tzktBase: TZKT_BASE,
     opHash,
     timeout,
     interval,
     expectedDestination: BURN_REDEEM_CONTRACT_ADDRESS,
+    submittedTrade,
     expectedEntrypoint: 'initiate_trade'
   });
 }
@@ -991,6 +995,63 @@ subscribeToAppState(() => {
  */
 let eventExchangeInFlight = false;
 
+const submittedTrades = createSubmittedTradeStore();
+function submittedTradeScope(account = synchronizedWalletAddress) {
+  return { network, tzktBase: TZKT_BASE, escrowAddress: BURN_REDEEM_CONTRACT_ADDRESS, account };
+}
+function showPendingTrade(record) {
+  showSubmittedTradeStatus({ record, document, showModal, retry: retryTradeConfirmation });
+}
+function restoreSubmittedTrade(account) {
+  const record = submittedTrades.get(submittedTradeScope(account));
+  if (!record) return;
+  if (record.status !== 'applied') {
+    showPendingTrade(record);
+    throw new Error('Trade confirmation is unknown. Retry confirmation before trading again.');
+  }
+  confirmedDropsTrades.set(account, record.tradedTokens);
+}
+async function retryTradeConfirmation() {
+  if (eventExchangeInFlight) return;
+  eventExchangeInFlight = true;
+  const address = synchronizedWalletAddress;
+  const generation = walletRefreshGeneration;
+  let record;
+  let statusVisible = false;
+  try {
+    const account = await getVerifiedPublicActiveAccount();
+    if (!account || account.address !== address || generation !== walletRefreshGeneration || address !== synchronizedWalletAddress) return;
+    record = submittedTrades.get(submittedTradeScope(address));
+    if (!record) return;
+    showModal('PROCESSING...', '[CHECKING SUBMITTED TRANSACTION. NO NEW TRANSACTION WILL BE SENT.]');
+    statusVisible = true;
+    record = await submittedTrades.reconcile(record, pollForConfirmation);
+    confirmedDropsTrades.set(address, record.tradedTokens);
+    if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
+    showModal('SUCCESS!', '[BURN COMPLETE. REFRESHING BALANCES...]');
+    await refreshDropsWallet(account, generation);
+    if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
+    const balancesPending = submittedTrades.get(submittedTradeScope(address));
+    showModal(balancesPending ? 'BURN COMPLETE.' : 'SUCCESS!', balancesPending
+      ? '[BALANCES STILL UPDATING. USE RETRY BALANCES.]' : '[BURN COMPLETE. BALANCES REFRESHED.]');
+    const spinner = document.querySelector('.loading-spinner-01');
+    if (spinner) spinner.style.display = 'none';
+    setTimeout(hideModal, 3000);
+  } catch (error) {
+    console.error('Error reconciling submitted trade:', error);
+    if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
+    if (error.code === 'PUBLIC_TRADE_FAILED') {
+      showModal('ERROR', error.message);
+      await refreshDropsWallet({ address }, generation);
+      if (address === synchronizedWalletAddress && generation === walletRefreshGeneration) setTimeout(hideModal, 3000);
+    } else if (record) showPendingTrade(record);
+    else showModal('ERROR', error.message);
+  } finally {
+    if (statusVisible && (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration)) hideModal();
+    eventExchangeInFlight = false;
+  }
+}
+
 function assertRedeemSupplyAvailable() {
   if (!Number.isFinite(AppState.redeemSupply) || AppState.redeemSupply <= 0) {
     throw new Error('Redeem supply is unavailable or sold out.');
@@ -1008,6 +1069,7 @@ async function handleEventExchange() {
   if (eventExchangeInFlight || confirmedDropsTrades.has(synchronizedWalletAddress)) return;
   eventExchangeInFlight = true;
   let tradeConfirmed = false;
+  let submittedTrade;
   let tradeAddress;
   let holdingsRequest;
   let countdownInterval;
@@ -1017,6 +1079,7 @@ async function handleEventExchange() {
     ? 'https://tzkt.io'
     : 'https://shadownet.tzkt.io';
   try {
+    restoreSubmittedTrade(synchronizedWalletAddress);
     assertRedeemSupplyAvailable();
     logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
 
@@ -1153,20 +1216,41 @@ async function handleEventExchange() {
     // Approval/mapping reads and this final account read can outlive the wallet
     // or selection that authorized the cart. Keep the final checks synchronous
     // with the wallet request, including after the last pre-send await.
-    const currentAccount = await getVerifiedPublicActiveAccount();
-    if (currentAccount?.address !== myAddr || !isCurrentTradeAccount(currentAccount)) {
-      throw new Error('Wallet changed. Please select your token again.');
-    }
-    const selected = getSelectedEventTokenWithBalance();
-    if (selected.contractAddress !== contractAddress || selected.tokenId !== tokenId ||
-        selected.oldBalance !== oldBalance || getBurnAmountForContract(selected.contractAddress) !== burnAmount) {
-      throw new Error('Selected token or balance changed. Please select your token again.');
-    }
+    const opResponse = await submittedTrades.withSubmissionLock(async () => {
+      const currentAccount = await getVerifiedPublicActiveAccount();
+      if (currentAccount?.address !== myAddr || !isCurrentTradeAccount(currentAccount)) {
+        throw new Error('Wallet changed. Please select your token again.');
+      }
+      const selected = getSelectedEventTokenWithBalance();
+      if (selected.contractAddress !== contractAddress || selected.tokenId !== tokenId ||
+          selected.oldBalance !== oldBalance || getBurnAmountForContract(selected.contractAddress) !== burnAmount) {
+        throw new Error('Selected token or balance changed. Please select your token again.');
+      }
 
-    // Step 2: Prompt wallet to sign and send
-    assertRedeemSupplyAvailable();
-    const opResponse = await window.dAppClient.requestOperation({
-      operationDetails: batchedOps
+      // Step 2: Prompt wallet to sign and send
+      assertRedeemSupplyAvailable();
+      submittedTrade = submittedTrades.reserve(submittedTradeScope(myAddr), tradeOperations, burnCart);
+      // Capture primitive transport provenance before the wallet await.
+      const rejectionContext = { senderId: currentAccount.senderId, originType: currentAccount.origin?.type };
+      let opResponse;
+      try {
+        opResponse = await window.dAppClient.requestOperation({ operationDetails: batchedOps });
+      } catch (error) {
+        const outcome = classifyPublicTradeRequestRejection(error, rejectionContext);
+        if (outcome.hash) {
+          submittedTrade = submittedTrades.submitted(submittedTrade, outcome.hash);
+        } else if (outcome.notSubmitted && !submittedTrade.hash) {
+          submittedTrades.cancel(submittedTrade);
+          submittedTrade = null;
+          throw new Error('Wallet request cancelled before submission. You can retry.', { cause: error });
+        }
+        // Ambiguous rejection keeps the reservation, including missing-hash
+        // uncertainty. Ending the wallet promise is not evidence of failure.
+        throw error;
+      }
+      // Capture before any UI callback or confirmation await can fail.
+      submittedTrade = submittedTrades.submitted(submittedTrade, opResponse?.transactionHash || opResponse?.opHash || null);
+      return opResponse;
     });
     logger.log('✅ Operation submitted!', opResponse);
 
@@ -1178,7 +1262,7 @@ async function handleEventExchange() {
     if (!opHash) throw new Error('OPERATION HASH NOT RETURNED.');
 
     // Step 4: Poll for on-chain confirmation
-    await pollForConfirmation(opHash);
+    await submittedTrades.reconcile(submittedTrade, pollForConfirmation);
     tradeConfirmed = true;
     confirmedDropsTrades.set(myAddr, burnCart);
     if (synchronizedWalletAddress === myAddr) {
@@ -1252,6 +1336,18 @@ async function handleEventExchange() {
     // Close modal after 3s
     setTimeout(hideModal, 3000);
   } catch (error) {
+    if (!tradeConfirmed && error.code !== 'PUBLIC_TRADE_FAILED') {
+      let retained = submittedTrade;
+      try { retained = submittedTrades.get(submittedTradeScope(retained?.account)) || retained; }
+      catch (storageError) { console.error('Cannot read submitted trade journal:', storageError); }
+      if (retained) {
+        console.error('Trade outcome remains unresolved:', error);
+        if (retained.account === synchronizedWalletAddress) {
+          showPendingTrade(retained);
+        }
+        return;
+      }
+    }
     if (tradeConfirmed && (tradeAddress !== synchronizedWalletAddress ||
         holdingsRequest !== walletHoldingsRequest)) return;
     console.error('❌ Error during exchange process:', error);
@@ -1811,6 +1907,7 @@ function renderConnectedWalletTokenFailureState() {
  * @param {Array} nfts - Array of NFT objects.
  */
 async function updateTokensWithWalletData(nfts) {
+  restoreSubmittedTrade(synchronizedWalletAddress);
   assertDropsTradeBalances(nfts);
   logger.log("updateTokensWithWalletData called with NFTs:", nfts);
 
@@ -1894,6 +1991,7 @@ async function updateTokensWithWalletData(nfts) {
   }
 
   renderConnectedWalletTokenState(eligible.length);
+  submittedTrades.clearApplied(submittedTradeScope());
   confirmedDropsTrades.delete(synchronizedWalletAddress);
   dropsBalanceRefreshFailed = false;
   updateAppState({});
@@ -2670,8 +2768,11 @@ function handleWalletDisconnected() {
 }
 
 async function refreshDropsWallet(account, generation, nftsPromise) {
+  // A retained receipt may supersede this shared wallet snapshot. Consume rejection.
+  if (nftsPromise) void Promise.resolve(nftsPromise).catch(error => logger.log('Superseded wallet snapshot:', error));
   const request = ++walletHoldingsRequest;
   try {
+    restoreSubmittedTrade(account.address);
     const nfts = await (nftsPromise || (confirmedDropsTrades.has(account.address)
       ? pollForNFTUpdate(account.address, confirmedDropsTrades.get(account.address))
       : fetchNFTs(account.address)));

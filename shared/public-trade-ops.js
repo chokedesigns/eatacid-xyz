@@ -1,6 +1,173 @@
 const DEBUG = false;
 const dlog = (...args) => { if (DEBUG) console.log(...args); };
 
+// Beacon 4.8.1 awaits the original request promise, exposing raw v2 messages.
+// WalletConnect sendOperations maps *every* rejection to ABORTED_ERROR, and
+// account reset synthesizes an abort with an empty senderId. Neither proves
+// non-submission. Only a matching wallet abort over extension/P2P is affirmative
+// cancellation evidence; class names, messages and generic error codes are not.
+export function classifyPublicTradeRequestRejection(error, { senderId, originType } = {}) {
+  const matchingEnvelope = typeof senderId === 'string' && senderId.length > 0 &&
+    error?.senderId === senderId && error?.version === '2' &&
+    typeof error?.id === 'string' && error.id.length > 0;
+  // ErrorResponse has no hash contract. Do not reinterpret loose hash fields or
+  // errorData as an operation receipt. Preserve a complete matching operation
+  // response if a request boundary rejects with that response instead.
+  const hash = matchingEnvelope && ['extension', 'p2p', 'walletconnect'].includes(originType) &&
+    error.type === 'operation_response' && typeof error.transactionHash === 'string' &&
+    /^[a-zA-Z0-9_-]{1,128}$/.test(error.transactionHash) ? error.transactionHash : null;
+  const hashClaimed = ['transactionHash', 'opHash', 'operationHash', 'hash'].some(key => error?.[key] != null);
+  return {
+    hash,
+    notSubmitted: matchingEnvelope && ['extension', 'p2p'].includes(originType) &&
+      error.type === 'error' && error.errorType === 'ABORTED_ERROR' &&
+      error.errorData == null && !hashClaimed
+  };
+}
+
+// One bounded browser journal shared by Drops and Exchange. Unresolved entries
+// never expire or get evicted. No wallet credentials or signing material are stored.
+export function createSubmittedTradeStore({ storage = () => globalThis.localStorage, locks = () => globalThis.navigator?.locks } = {}) {
+  const key = 'ea.public-trades.v1.';
+  const emergency = new Map();
+  const attempts = new Map();
+  const scopeKey = scope => JSON.stringify([scope.network, scope.tzktBase, scope.escrowAddress, scope.account]);
+  const copy = value => JSON.parse(JSON.stringify(value));
+  function read() {
+    const store = storage();
+    const rows = [];
+    if (store.length > 10000) throw new Error('Browser storage is too large to inspect safely. Trading remains blocked.');
+    for (let i = 0; i < store.length; i++) {
+      const entryKey = store.key(i);
+      if (!entryKey?.startsWith(key)) continue;
+      const raw = store.getItem(entryKey);
+      if (!raw || raw.length > 100000) throw new Error('Submitted trade receipt is invalid. Trading remains blocked.');
+      const row = JSON.parse(raw);
+      if (!row || !['network', 'tzktBase', 'escrowAddress', 'account', 'id'].every(k => typeof row[k] === 'string' && row[k]) ||
+          entryKey !== key + row.id ||
+          !['submitting', 'submitted', 'applied'].includes(row.status) ||
+          (row.hash !== null && (typeof row.hash !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(row.hash))) ||
+          !Array.isArray(row.operations) || !row.operations.length || row.operations.some(op =>
+            op?.destination !== row.escrowAddress || op?.parameters?.entrypoint !== 'initiate_trade' || !Array.isArray(op.parameters.value)) ||
+          !Array.isArray(row.tradedTokens) || !row.tradedTokens.length || row.tradedTokens.some(token =>
+            typeof token?.contractAddress !== 'string' || token.tokenId == null ||
+            !Number.isSafeInteger(token.quantity) || token.quantity <= 0 ||
+            !Number.isSafeInteger(token.startingBalance) || token.startingBalance < token.quantity)) {
+        throw new Error('Submitted trade journal is invalid. Trading remains blocked.');
+      }
+      rows.push(row);
+      if (rows.length > 32) throw new Error('Submitted trade journal is full. Trading remains blocked.');
+    }
+    for (const row of emergency.values()) {
+      const i = rows.findIndex(item => item.id === row.id);
+      if (i < 0) rows.push(row); else if (rows[i].status !== 'applied') rows[i] = row;
+    }
+    return rows;
+  }
+  function replace(record, next) {
+    const rows = read(), i = rows.findIndex(row => row.id === record.id && scopeKey(row) === scopeKey(record));
+    if (i < 0) throw new Error('Submitted trade receipt changed. Trading remains blocked.');
+    if (next) rows[i] = next; else rows.splice(i, 1);
+    try {
+      if (next) storage().setItem(key + record.id, JSON.stringify(next));
+      else storage().removeItem(key + record.id);
+      emergency.delete(record.id);
+    } catch (error) {
+      emergency.set(record.id, next || record);
+      throw new Error(`Cannot persist submitted trade status. Trading remains blocked: ${error.message}`);
+    }
+    return next && copy(next);
+  }
+  return {
+    async withSubmissionLock(send) {
+      const manager = locks();
+      if (!manager?.request) throw new Error('This browser cannot safely retain trade submissions. Trading is unavailable.');
+      return manager.request('ea.public-trades.submit', { ifAvailable: true }, lock => {
+        if (!lock) throw new Error('Another trade submission is in progress. Check its confirmation before retrying.');
+        return send();
+      });
+    },
+    get(scope) {
+      try { return copy(read().find(row => scopeKey(row) === scopeKey(scope)) || null); }
+      catch (error) {
+        const retained = [...emergency.values()].find(row => scopeKey(row) === scopeKey(scope));
+        if (retained) return copy(retained);
+        throw error;
+      }
+    },
+    reserve(scope, operations, tradedTokens) {
+      const rows = read();
+      if (rows.some(row => scopeKey(row) === scopeKey(scope))) throw new Error('A previous trade must be reconciled first.');
+      if (rows.length >= 32) throw new Error('Submitted trade journal is full. Reconcile retained operations first.');
+      const record = copy({ ...scope, id: `${Date.now()}-${Math.random()}`, hash: null,
+        status: 'submitting', operations, tradedTokens });
+      // Persist before opening the wallet; interrupted requests remain fail-closed.
+      const encoded = JSON.stringify(record);
+      if (encoded.length > 99800) throw new Error('Trade receipt exceeds browser retention capacity. No operation was sent.');
+      storage().setItem(key + record.id, encoded);
+      return record;
+    },
+    submitted(record, hash) {
+      const next = { ...record, hash: typeof hash === 'string' && /^[a-zA-Z0-9_-]{1,128}$/.test(hash) ? hash : null, status: 'submitted' };
+      // Retain the returned hash even if storage becomes unreadable immediately
+      // after the wallet responds. The persisted reservation still blocks reload.
+      emergency.set(record.id, next);
+      return replace(record, next);
+    },
+    cancel(record) { replace(record, null); },
+    clearApplied(scope) {
+      const record = this.get(scope);
+      if (record?.status === 'applied') replace(record, null);
+    },
+    reconcile(record, poll) {
+      if (attempts.has(record.id)) return attempts.get(record.id);
+      const manager = locks();
+      if (!manager?.request) return Promise.reject(new Error('This browser cannot safely reconcile retained trades.'));
+      const attempt = manager.request(`ea.public-trades.reconcile.${record.id}`, async () => {
+        const current = this.get(record);
+        if (!current || current.id !== record.id) throw new Error('Submitted trade receipt changed.');
+        if (current.status === 'applied') return current;
+        if (!current.hash) throw new Error('Submission outcome unknown; no operation hash was returned. Check your wallet operation history.');
+        try {
+          await poll(current.hash, current);
+        } catch (error) {
+          const latest = this.get(record);
+          if (latest?.id === current.id && latest.status === 'applied') return latest;
+          if (error.code === 'PUBLIC_TRADE_FAILED') replace(current, null);
+          throw error;
+        }
+        const latest = this.get(record);
+        if (latest?.id === current.id && latest.status === 'applied') return latest;
+        return replace(current, { ...current, status: 'applied' });
+      }).finally(() => attempts.delete(record.id));
+      attempts.set(record.id, attempt);
+      return attempt;
+    }
+  };
+}
+
+// Uses existing modal regions, with a status-only retry and network-scoped link.
+export function showSubmittedTradeStatus({ record, document, showModal, retry }) {
+  showModal('CONFIRMATION UNKNOWN', record.hash
+    ? '[TRADE RETAINED. DO NOT REPEAT THIS TRADE. RETRY CONFIRMATION STATUS.]'
+    : '[SUBMISSION OUTCOME UNKNOWN. NO HASH RETURNED. CHECK WALLET OPERATION HISTORY. TRADING REMAINS BLOCKED.]');
+  const modal = document.querySelector('.loading-modal-div');
+  const linkRegion = modal?.querySelector('.loading-modal-text-4');
+  if (linkRegion && record.hash) {
+    const link = document.createElement('a');
+    link.href = `${record.network === 'mainnet' ? 'https://tzkt.io' : 'https://shadownet.tzkt.io'}/${encodeURIComponent(record.hash)}`;
+    link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = 'VIEW ON BLOCK EXPLORER';
+    linkRegion.textContent = ''; linkRegion.appendChild(link); linkRegion.style.display = 'block';
+  }
+  const retryRegion = modal?.querySelector('.loading-modal-text-5');
+  if (retryRegion) {
+    const button = document.createElement('button');
+    button.textContent = 'RETRY CONFIRMATION'; button.type = 'button';
+    button.addEventListener('click', () => { void retry(); });
+    retryRegion.textContent = ''; retryRegion.appendChild(button); retryRegion.style.display = 'block';
+  }
+}
+
 /**
  * Resolves one active token_pair_id matching all six intended trade terms.
  * The configured indexer and escrow scope the mapping; ambiguity fails closed.
@@ -212,7 +379,8 @@ export async function pollForConfirmation({
   interval = 5000,
   logPrefix,
   expectedDestination,
-  expectedEntrypoint
+  expectedEntrypoint,
+  submittedTrade
 }) {
   const startTime = Date.now();
   let lastTzktPollingError = null;
@@ -230,16 +398,25 @@ export async function pollForConfirmation({
       continue;
     }
 
-    const ops = await response.json();
+    let ops;
+    try { ops = await response.json(); }
+    catch (error) {
+      lastTzktPollingError = error;
+      await delay(interval);
+      continue;
+    }
     logIfEnabled(logPrefix, "Polling confirmation from", tzktBase, "ops:", ops);
 
     const confirmation = getOperationConfirmation(ops, {
       expectedDestination,
-      expectedEntrypoint
+      expectedEntrypoint,
+      submittedTrade
     });
 
     if (confirmation.failed) {
-      throw new Error(confirmation.message);
+      const error = new Error(confirmation.message);
+      error.code = 'PUBLIC_TRADE_FAILED';
+      throw error;
     }
 
     if (confirmation.applied) {
@@ -356,8 +533,24 @@ export function __getOperationConfirmationForFixture(ops, expected = {}) {
 
 function getOperationConfirmation(ops, {
   expectedDestination,
-  expectedEntrypoint
+  expectedEntrypoint,
+  submittedTrade
 }) {
+  if (submittedTrade) {
+    const matching = toOperationList(ops).filter(op => op?.type === 'transaction' &&
+      op.hash === submittedTrade.hash && op.sender?.address === submittedTrade.account &&
+      getOperationDestination(op) === submittedTrade.escrowAddress &&
+      getOperationEntrypoint(op) === 'initiate_trade');
+    // Every submitted top-level trade call must be present with distinct indexer
+    // identities and a terminal status. Partial/malformed evidence stays unknown.
+    if (matching.length !== submittedTrade.operations.length ||
+        matching.some(op => !Number.isSafeInteger(op.id) || op.id < 0) ||
+        new Set(matching.map(op => op.id)).size !== matching.length) return { applied: false, failed: false };
+    if (matching.every(isAppliedOperation)) return { applied: true, failed: false };
+    if (matching.every(isTerminalFailedOperation)) return { applied: false, failed: true,
+      message: `Transaction confirmation failed: expected initiate_trade operations ended with status ${matching.map(getOperationStatus).join(', ')}.` };
+    return { applied: false, failed: false };
+  }
   if (!expectedDestination && !expectedEntrypoint) {
     return { applied: isAppliedOperationResponse(ops), failed: false };
   }

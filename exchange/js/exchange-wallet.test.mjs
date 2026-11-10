@@ -3,12 +3,13 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
-import { pollForNFTUpdate } from '../../shared/public-trade-ops.js';
+import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForConfirmation as reconcileConfirmation, pollForNFTUpdate } from '../../shared/public-trade-ops.js';
 
 // Execute the complete page module with inert DOM, wallet and indexer boundaries.
 const source = readFileSync(process.env.EA_T013_SOURCE || new URL('./exchange.js', import.meta.url), 'utf8')
   .replace(/import[\s\S]*?from\s+['"][^'"]+['"];\s*/g, '');
 const flush = () => new Promise(resolve => setImmediate(resolve));
+const walletAbort = () => ({ type: 'error', version: '2', id: 'wallet-request', senderId: 'wallet-sender', errorType: 'ABORTED_ERROR' });
 function deferred() {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
@@ -45,7 +46,7 @@ class Element {
   async click() { for (const listener of this.listeners.click || []) await listener({ preventDefault() {} }); }
 }
 const nft = (balance, contractAddress = 'KT1419', tokenId = '0') => ({ balance, contractAddress, tokenId });
-function fixture() {
+function fixture({ storage = new Map(), originType = 'extension' } = {}) {
   const document = new Element(); document.readyState = 'loading'; document.body = document;
   document.createElement = () => new Element();
   const rows = [], dropdowns = [], panes = [];
@@ -81,6 +82,8 @@ function fixture() {
     approve: async () => [{ kind: 'approval' }], pair: async () => '7', confirm: async () => {},
     poll: async opts => opts.fetchNFTs(opts.address), connectCalls: 0 };
   const context = vm.createContext({ document, window: {}, fetchFa2BalancePages,
+    createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus,
     cfg: { network: 'testnet', rpc: {}, tzkt: { testnet: 'https://inert.test' }, contracts: { testnet: {
       collections: { pane0: 'KT1419', pane1: 'KT1Canaan' }, escrow: 'KT1Escrow', redeemTokenContract: 'KT1Redeem' } } },
     createPublicLogger: () => ({ log() {}, debug() {} }),
@@ -104,7 +107,7 @@ function fixture() {
   context.bootExchangePage(); timers.shift()();
   h.state = state => { h.walletState = state; context.receivePublicWalletState(state); };
   h.connect = async (address = 'wallet-A', rows = [nft(1)]) => {
-    h.account = { address }; h.state({ status: 'connected', account: h.account, nftsPromise: Promise.resolve(rows) }); await flush();
+    h.account = { address, senderId: 'wallet-sender', origin: { type: originType } }; h.state({ status: 'connected', account: h.account, nftsPromise: Promise.resolve(rows) }); await flush();
   };
   h.disconnect = () => { h.account = null; h.state({ status: 'unconnected', account: null }); };
   h.select = (value = '1', index = 0) => { dropdowns[index].value = value; context.updateTotal(); };
@@ -118,6 +121,139 @@ function unavailable(h) {
   }
   assert.equal(h.cartRows.children.length, 0); assert.equal(h.controls.live.style.display, 'none');
 }
+
+test('TX-002: unknown Exchange receipt survives Retry Balances, reset and reload; applied evidence preserves balance gate', async () => {
+  const storage = new Map(), originalFetch = globalThis.fetch;
+  let evidence = [];
+  globalThis.fetch = async () => ({ ok: true, json: async () => evidence });
+  const useRealConfirmation = h => { h.confirm = opts => reconcileConfirmation({ ...opts, timeout: 8, interval: 0 }); };
+  try {
+    const h = fixture({ storage }); useRealConfirmation(h);
+    await h.connect('wallet-A', [nft(5)]); h.select(); await h.trade();
+    assert.equal(h.sent.length, 1); unavailable(h);
+    assert.equal(h.modal.querySelector('.loading-modal-text').innerHTML, 'CONFIRMATION UNKNOWN');
+    const link = h.modal.querySelector('.loading-modal-text-4').children.at(-1);
+    assert.equal(link.href, 'https://shadownet.tzkt.io/inert-hash');
+    assert.equal(h.modal.querySelector('.loading-modal-text-5').children.at(-1).textContent, 'RETRY CONFIRMATION');
+    h.fetchRows = async () => [nft(5)];
+    await h.controls.connect.click(); h.select(); await h.trade();
+    assert.equal(h.sent.length, 1); unavailable(h);
+    h.context.resetExchangeUI(); h.disconnect(); await h.connect('wallet-A', [nft(5)]);
+    h.select(); await h.trade(); assert.equal(h.sent.length, 1);
+    const reload = fixture({ storage }); useRealConfirmation(reload);
+    await reload.connect('wallet-A', [nft(5)]); reload.select(); await reload.trade();
+    assert.equal(reload.sent.length, 0); unavailable(reload);
+    evidence = [{ id: 1, type: 'transaction', hash: 'inert-hash', sender: { address: 'wallet-A' },
+      target: { address: 'KT1Escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied' }];
+    reload.fetchRows = async () => [nft(5)];
+    const timersBefore = reload.timers.length;
+    await reload.context.retryTradeConfirmation();
+    assert.equal(reload.call('submittedTrades.get(submittedTradeScope()).status'), 'applied'); unavailable(reload);
+    assert.match(reload.modal.querySelector('.loading-modal-text-2').innerHTML, /RETRY BALANCES/);
+    assert.equal(reload.modal.querySelector('.loading-spinner-01').style.display, 'none');
+    assert.ok(reload.timers.length > timersBefore, 'Applied status recovery dismisses modal for balance retry');
+    reload.timers.at(-1)(); assert.equal(reload.modal.style.display, 'none');
+    reload.fetchRows = async () => [nft(4)]; await reload.controls.connect.click();
+    assert.equal(reload.call('submittedTrades.get(submittedTradeScope())'), null);
+    assert.equal(reload.dropdowns[0].options.length, 5); assert.equal(reload.sent.length, 0);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('TX-002: successful confirmation-status retry finalizes and dismisses its modal', async () => {
+  const h = fixture(); await h.connect('wallet-A', [nft(5)]); h.select();
+  h.confirm = async () => { throw new Error('inert unknown'); }; await h.trade();
+  h.confirm = async () => {}; h.fetchRows = async () => [nft(4)];
+  await h.context.retryTradeConfirmation();
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+  assert.equal(h.modal.querySelector('.loading-modal-text').innerHTML, 'SUCCESS!');
+  assert.equal(h.modal.querySelector('.loading-spinner-01').style.display, 'none');
+  h.timers.at(-1)(); assert.equal(h.modal.style.display, 'none'); assert.equal(h.sent.length, 1);
+});
+
+test('TX-002: status completion for an old account cannot publish into its replacement wallet', async () => {
+  const h = fixture(); await h.connect('wallet-A', [nft(5)]); h.select();
+  h.confirm = async () => { throw new Error('inert unknown'); }; await h.trade();
+  const gate = deferred(); h.confirm = () => gate.promise;
+  const retry = h.context.retryTradeConfirmation(); await flush();
+  h.disconnect(); await h.connect('wallet-B', [nft(2)]);
+  gate.resolve(); await retry;
+  assert.equal(h.dropdowns[0].options.length, 3); assert.equal(h.sent.length, 1);
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope("wallet-A")).status'), 'applied');
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope("wallet-B"))'), null);
+  assert.equal(h.call('confirmedExchangeTrades.has("wallet-B")'), false);
+  assert.equal(h.modal.style.display, 'none', 'Old status attempt releases its modal after wallet replacement');
+});
+
+test('TX-002: Exchange verifies failure before allowing another send; pre-submit rejection has no pending receipt', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => [{ id: 1, type: 'transaction', hash: 'inert-hash',
+    sender: { address: 'wallet-A' }, target: { address: 'KT1Escrow' },
+    parameter: { entrypoint: 'initiate_trade' }, status: 'failed' }] });
+  try {
+    const h = fixture(); await h.connect('wallet-A', [nft(5)]); h.select();
+    const send = h.context.window.dAppClient.requestOperation;
+    h.context.window.dAppClient.requestOperation = async () => { throw walletAbort(); };
+    await h.trade(); assert.equal(h.sent.length, 0); assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+    h.context.window.dAppClient.requestOperation = send;
+    h.confirm = opts => reconcileConfirmation({ ...opts, timeout: 8, interval: 0 });
+    await h.trade(); assert.equal(h.sent.length, 1); assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+    assert.match(h.modal.querySelector('.loading-modal-text-2').innerHTML, /status failed/);
+    h.fetchRows = async () => [nft(5)]; await h.controls.connect.click(); h.select(); await h.trade();
+    assert.equal(h.sent.length, 2);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('TX-002: ambiguous Exchange request rejection survives Retry Balances, reset, reconnect and reload', async () => {
+  for (const [originType, rejection] of [
+    ['extension', new Error('inert broadcast outcome unknown')], ['walletconnect', walletAbort()],
+    ['extension', { ...walletAbort(), senderId: '' }], ['extension', { ...walletAbort(), senderId: 'other-wallet' }],
+    ['extension', { name: 'UnknownBeaconError', title: 'Aborted', message: '[ABORTED_ERROR]:The action was aborted by the user.' }],
+    ['extension', { ...walletAbort(), transactionHash: 'unverified-hash-hint' }],
+    ['unknown', walletAbort()]
+  ]) {
+    const storage = new Map(), h = fixture({ storage, originType });
+    await h.connect('wallet-A', [nft(5)]); h.select();
+    const send = h.context.window.dAppClient.requestOperation;
+    let requests = 0;
+    h.context.window.dAppClient.requestOperation = async () => { requests++; throw rejection; };
+    await h.trade(); assert.equal(requests, 1); unavailable(h);
+    assert.equal(h.call('submittedTrades.get(submittedTradeScope()).hash'), null);
+    h.context.window.dAppClient.requestOperation = send;
+    h.fetchRows = async () => [nft(5)]; await h.controls.connect.click();
+    h.context.resetExchangeUI(); h.disconnect(); await h.connect('wallet-A', [nft(5)]);
+    h.select(); await h.trade(); await h.context.retryTradeConfirmation();
+    assert.equal(h.sent.length, 0); assert.equal(h.polls.length, 0);
+    const reload = fixture({ storage }); await reload.connect('wallet-A', [nft(5)]); reload.select(); await reload.trade();
+    assert.equal(reload.sent.length, 0); unavailable(reload);
+    assert.match(reload.modal.querySelector('.loading-modal-text-2').innerHTML, /CHECK WALLET OPERATION HISTORY/);
+  }
+});
+
+test('TX-002: matching Exchange extension/P2P cancellation clears only the unsubmitted reservation', async () => {
+  for (const originType of ['extension', 'p2p']) {
+    const storage = new Map(), h = fixture({ storage, originType });
+    await h.connect('wallet-A', [nft(5)]); h.select();
+    h.context.window.dAppClient.requestOperation = async () => { throw walletAbort(); };
+    await h.trade(); assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+    assert.equal(h.modal.querySelector('.loading-modal-text').innerHTML, 'ERROR');
+    const reload = fixture({ storage, originType }); await reload.connect('wallet-A', [nft(5)]); reload.select();
+    reload.fetchRows = async () => [nft(4)]; await reload.trade(); assert.equal(reload.sent.length, 1);
+  }
+});
+
+test('TX-002: Exchange preserves complete matching operation response surfaced by a rejected promise', async () => {
+  const storage = new Map(), h = fixture({ storage }); await h.connect('wallet-A', [nft(5)]); h.select();
+  h.context.window.dAppClient.requestOperation = async () => { throw {
+    type: 'operation_response', version: '2', id: 'wallet-request', senderId: 'wallet-sender', transactionHash: 'returned-hash'
+  }; };
+  await h.trade(); assert.equal(h.call('submittedTrades.get(submittedTradeScope()).hash'), 'returned-hash');
+  const link = h.modal.querySelector('.loading-modal-text-4').children.at(-1);
+  assert.equal(link.href, 'https://shadownet.tzkt.io/returned-hash');
+  const reload = fixture({ storage }); await reload.connect('wallet-A', [nft(5)]); reload.select(); await reload.trade();
+  assert.equal(reload.sent.length, 0); reload.fetchRows = async () => [nft(4)];
+  await reload.context.retryTradeConfirmation(); assert.equal(reload.sent.length, 0);
+  assert.equal(reload.call('submittedTrades.get(submittedTradeScope())'), null);
+});
 
 test('BAL-001: independent Exchange fetch renders eligible holdings after page one', async () => {
   const h = fixture();
@@ -286,7 +422,7 @@ test('Malformed balances remain unavailable; zero and later valid balances recov
 });
 
 test('Failed transaction confirmation remains an error and never claims burn success', async () => {
-  const h = fixture(); await h.connect(); h.select(); h.confirm = async () => { throw new Error('operation failed'); };
+  const h = fixture(); await h.connect(); h.select(); h.confirm = async () => { throw Object.assign(new Error('operation failed'), { code: 'PUBLIC_TRADE_FAILED' }); };
   await h.trade(); unavailable(h);
   assert.equal(h.modal.querySelector('.loading-modal-text').innerHTML, 'ERROR');
   assert.match(h.modal.querySelector('.loading-modal-text-2').innerHTML, /operation failed/);
