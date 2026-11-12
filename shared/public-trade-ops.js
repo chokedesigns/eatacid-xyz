@@ -392,57 +392,93 @@ export async function pollForConfirmation({
   expectedEntrypoint,
   submittedTrade
 }) {
-  const startTime = Date.now();
+  const deadline = Date.now() + timeout;
   let lastTzktPollingError = null;
-
-  while (Date.now() - startTime < timeout) {
-    let response;
+  const timeoutError = () => new Error(lastTzktPollingError
+    ? `Transaction confirmation timed out. Last TzKT polling error: ${lastTzktPollingError.message}`
+    : 'Transaction confirmation timed out.');
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
+  let expired = false;
+  let deadlineTimer;
+  const deadlineReached = new Promise((_, reject) => {
+    deadlineTimer = setTimeout(() => {
+      expired = true;
+      reject(timeoutError());
+      controller?.abort();
+    }, Math.max(0, timeout));
+  });
+  function checkDeadline() {
+    if (expired || Date.now() >= deadline) throw timeoutError();
+  }
+  // Race every boundary separately: an abandoned fetch must never start a body
+  // read or interpret late evidence, even when it ignores the abort signal.
+  async function withinDeadline(read) {
+    checkDeadline();
+    const result = await Promise.race([deadlineReached, read()]);
+    checkDeadline();
+    return result;
+  }
+  async function waitForNextPoll() {
+    let timer;
     try {
-      response = await fetch(`${tzktBase}/v1/operations/${opHash}`);
-      await assertTzktResponseOk(response, `poll operation confirmation for ${opHash}`);
-    } catch (error) {
-      lastTzktPollingError = error;
-      logIfEnabled(logPrefix, "Polling confirmation request failed:", error);
+      await withinDeadline(() => new Promise(resolve => { timer = setTimeout(resolve, interval); }));
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  try {
+    while (Date.now() < deadline) {
+      let response;
+      try {
+        response = await withinDeadline(() => fetch(`${tzktBase}/v1/operations/${opHash}`, { signal: controller?.signal }));
+        await withinDeadline(() => assertTzktResponseOk(response, `poll operation confirmation for ${opHash}`));
+      } catch (error) {
+        checkDeadline();
+        lastTzktPollingError = error;
+        logIfEnabled(logPrefix, "Polling confirmation request failed:", error);
+        logIfEnabled(logPrefix, "Waiting for transaction confirmation...");
+        await waitForNextPoll();
+        continue;
+      }
+
+      let ops;
+      try { ops = await withinDeadline(() => response.json()); }
+      catch (error) {
+        checkDeadline();
+        lastTzktPollingError = error;
+        await waitForNextPoll();
+        continue;
+      }
+      logIfEnabled(logPrefix, "Polling confirmation from", tzktBase, "ops:", ops);
+
+      const confirmation = getOperationConfirmation(ops, {
+        expectedDestination,
+        expectedEntrypoint,
+        submittedTrade
+      });
+
+      checkDeadline();
+      if (confirmation.failed) {
+        const error = new Error(confirmation.message);
+        error.code = 'PUBLIC_TRADE_FAILED';
+        throw error;
+      }
+
+      if (confirmation.applied) {
+        logIfEnabled(logPrefix, "Transaction confirmed on-chain.");
+        return ops;
+      }
+
       logIfEnabled(logPrefix, "Waiting for transaction confirmation...");
-      await delay(interval);
-      continue;
+      await waitForNextPoll();
     }
 
-    let ops;
-    try { ops = await response.json(); }
-    catch (error) {
-      lastTzktPollingError = error;
-      await delay(interval);
-      continue;
-    }
-    logIfEnabled(logPrefix, "Polling confirmation from", tzktBase, "ops:", ops);
-
-    const confirmation = getOperationConfirmation(ops, {
-      expectedDestination,
-      expectedEntrypoint,
-      submittedTrade
-    });
-
-    if (confirmation.failed) {
-      const error = new Error(confirmation.message);
-      error.code = 'PUBLIC_TRADE_FAILED';
-      throw error;
-    }
-
-    if (confirmation.applied) {
-      logIfEnabled(logPrefix, "Transaction confirmed on-chain.");
-      return ops;
-    }
-
-    logIfEnabled(logPrefix, "Waiting for transaction confirmation...");
-    await delay(interval);
+    throw timeoutError();
+  } finally {
+    clearTimeout(deadlineTimer);
+    controller?.abort();
   }
-
-  if (lastTzktPollingError) {
-    throw new Error(`Transaction confirmation timed out. Last TzKT polling error: ${lastTzktPollingError.message}`);
-  }
-
-  throw new Error("Transaction confirmation timed out.");
 }
 
 /**

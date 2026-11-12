@@ -274,6 +274,50 @@ test('TX-002: unknown Exchange receipt survives Retry Balances, reset and reload
   } finally { globalThis.fetch = originalFetch; }
 });
 
+for (const stage of ['fetch', 'json', 'http-text']) {
+  test(`AUD-003-010: Exchange ${stage} stall retains receipt on reload and recovers through the retry button`, async t => {
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
+    const storage = new Map(), gate = deferred();
+    let signal, applied = false, calls = 0;
+    const evidence = [{ id: 1, type: 'transaction', hash: 'inert-hash', sender: { address: 'wallet-A' },
+      target: { address: 'KT1Escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied' }];
+    t.mock.method(globalThis, 'fetch', (_url, init) => {
+      signal = init.signal; calls++;
+      if (applied) return Promise.resolve({ ok: true, json: async () => evidence });
+      if (stage === 'fetch') return gate.promise;
+      return Promise.resolve({ ok: stage === 'json', status: 503,
+        [stage === 'json' ? 'json' : 'text']: () => gate.promise });
+    });
+    const wire = h => { h.confirm = opts => reconcileConfirmation({ ...opts, timeout: 25, interval: 5 }); };
+    const h = fixture({ storage }); wire(h);
+    await h.connect('wallet-A', [nft(5)]); h.select();
+    const trade = h.trade(); await flush();
+    assert.equal(h.call('exchangeInFlight'), true); assert.equal(h.sent.length, 1);
+    t.mock.timers.tick(25); await flush(); await trade;
+    assert.equal(signal.aborted, true); assert.equal(h.call('exchangeInFlight'), false); unavailable(h);
+    assert.equal(h.modal.querySelector('.loading-modal-text').innerHTML, 'CONFIRMATION UNKNOWN');
+    const retained = JSON.stringify(h.call('submittedTrades.get(submittedTradeScope())'));
+    assert.equal(JSON.parse(retained).hash, 'inert-hash'); assert.equal(JSON.parse(retained).status, 'submitted');
+    gate.resolve(stage === 'fetch' ? { ok: true, json: async () => evidence } : stage === 'json' ? evidence : 'late error');
+    await flush();
+    assert.equal(JSON.stringify(h.call('submittedTrades.get(submittedTradeScope())')), retained);
+    assert.equal(h.polls.length, 0); assert.equal(calls, 1);
+    await h.trade(); assert.equal(h.sent.length, 1);
+    const reload = fixture({ storage }); wire(reload);
+    await reload.connect('wallet-A', [nft(5)]); reload.select(); await reload.trade();
+    assert.equal(reload.sent.length, 0); unavailable(reload);
+    applied = true; reload.fetchRows = async () => [nft(5)];
+    // The production status handler returns void; flush its asynchronous publication.
+    await reload.modal.querySelector('.loading-modal-text-5').children.at(-1).click(); await flush();
+    assert.equal(reload.call('exchangeInFlight'), false);
+    assert.equal(reload.call('submittedTrades.get(submittedTradeScope()).status'), 'applied'); unavailable(reload);
+    reload.fetchRows = async () => [nft(4)]; await reload.controls.connect.click();
+    assert.equal(reload.call('submittedTrades.get(submittedTradeScope())'), null);
+    assert.equal(reload.dropdowns[0].disabled, false); assert.equal(reload.dropdowns[0].options.length, 5);
+    assert.equal(reload.sent.length, 0); assert.equal(calls, 2);
+  });
+}
+
 test('TX-002: successful confirmation-status retry finalizes and dismisses its modal', async () => {
   const h = fixture(); await h.connect('wallet-A', [nft(5)]); h.select();
   h.confirm = async () => { throw new Error('inert unknown'); }; await h.trade();

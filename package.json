@@ -21,7 +21,7 @@
     "clean:cache": "rimraf .parcel-cache",
     "clean:prod": "rimraf dist/prod",
     "clean:staging": "rimraf dist/staging",
-    "test:public-trade-ops": "node shared/public-trade-ops.fixtures.mjs",
+    "test:public-trade-ops": "node shared/public-trade-ops.fixtures.mjs && node --test --experimental-test-isolation=none shared/public-confirmation-deadline.test.mjs",
     "thumbs:input": "node assets/thumbs/scripts/thumbs.mjs input",
     "thumbs:backfill": "node assets/thumbs/scripts/thumbs.mjs backfill",
     "test:thumbs": "node assets/thumbs/scripts/thumbs.test.mjs",

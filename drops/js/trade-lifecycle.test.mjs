@@ -433,6 +433,45 @@ test('TX-002: real confirmation timeout survives resets/reconnect/reload and rec
   } finally { globalThis.fetch = originalFetch; }
 });
 
+for (const stage of ['fetch', 'json', 'http-text']) {
+  test(`AUD-003-010: Drops ${stage} stall exits processing, retains hash across reload and allows status recovery`, async t => {
+    t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 0 });
+    const storage = new Map(), gate = deferred();
+    let signal, applied = false, calls = 0;
+    const evidence = [{ id: 1, type: 'transaction', hash: 'inert-operation-hash', sender: { address: 'wallet-A' },
+      target: { address: 'escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied' }];
+    t.mock.method(globalThis, 'fetch', (_url, init) => {
+      signal = init.signal; calls++;
+      if (applied) return Promise.resolve({ ok: true, json: async () => evidence });
+      if (stage === 'fetch') return gate.promise;
+      return Promise.resolve({ ok: stage === 'json', status: 503,
+        [stage === 'json' ? 'json' : 'text']: () => gate.promise });
+    });
+    const confirmation = (hash, receipt) => reconcileConfirmation({ tzktBase: receipt.tzktBase,
+      opHash: hash, submittedTrade: receipt, timeout: 25, interval: 5 });
+    const h = fixture({ storage, confirmation }), trade = h.send();
+    await flush(); assert.equal(h.pending(), true); assert.equal(h.requests.length, 1);
+    t.mock.timers.tick(25); await flush(); await trade;
+    assert.equal(signal.aborted, true); assert.equal(h.pending(), false);
+    assert.equal(h.modals.at(-1)[0], 'CONFIRMATION UNKNOWN');
+    const retained = vm.runInContext('submittedTrades.get(submittedTradeScope())', h.context);
+    assert.equal(retained.hash, 'inert-operation-hash'); assert.equal(retained.status, 'submitted');
+    const modals = h.modals.length;
+    gate.resolve(stage === 'fetch' ? { ok: true, json: async () => evidence } : stage === 'json' ? evidence : 'late error');
+    await flush();
+    assert.equal(h.modals.length, modals); assert.equal(h.refreshes.length, 0); assert.equal(calls, 1);
+    assert.deepEqual(vm.runInContext('submittedTrades.get(submittedTradeScope())', h.context), retained);
+    h.checkbox.checked = true; await h.send(); assert.equal(h.requests.length, 1);
+    const reload = fixture({ storage, confirmation }); await reload.send();
+    assert.equal(reload.requests.length, 0); assert.equal(reload.modals.at(-1)[0], 'CONFIRMATION UNKNOWN');
+    applied = true; await reload.context.retryTradeConfirmation();
+    assert.equal(reload.pending(), false); assert.equal(reload.requests.length, 0);
+    assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope()).status', reload.context), 'applied');
+    assert.equal(vm.runInContext('confirmedDropsTrades.has("wallet-A")', reload.context), true);
+    assert.match(reload.modals.at(-1)[0], /BURN COMPLETE/);
+  });
+}
+
 test('TX-002: verified terminal failure releases Drops receipt and permits an evidence-based fresh send', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => ({ ok: true, json: async () => [{ id: 1, type: 'transaction',
