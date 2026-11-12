@@ -112,7 +112,8 @@ function fixture({ enabled = ['HEN', 'INTRODUCTIONS'] } = {}) {
   const heading = wallet.appendChild(new Element('available-burn-tokens-exchange-text'));
   const spinner = wallet.appendChild(new Element('available-token-ui-loading---events'));
   const empty = wallet.appendChild(new Element('no-tokens-in-walet-div---events'));
-  const state = { activeAccount: null, walletConnected: false, selectedTokenId: null };
+  const state = { activeAccount: null, walletConnected: false, selectedTokenId: null,
+    countdownPhase: 'live', contractPaused: false };
   const window = { getComputedStyle: el => el.style };
   const errors = [], requests = [], storage = new Map();
   const context = vm.createContext({
@@ -384,10 +385,13 @@ for (const older of ['standby', 'trade']) {
     const trade = tradeFixture(h, { holdings: [nft('0', 'HEN', 3)] }); const old = deferred();
     Object.assign(h.context, { TZKT_BASE: 'https://inert.invalid',
       fetch: async () => ({ ok: true, status: 200, json: async () => ({ paused: false }) }) });
-    vm.runInContext(section('async function pollForUnpause(', 'function startCountdown('), h.context);
+    Object.assign(h.context, { AbortController, setTimeout, clearTimeout });
+    vm.runInContext(section('async function readEscrowPaused(', 'function startCountdown('), h.context);
     h.context.fetchNFTs = () => old.promise;
     const first = older === 'standby' ? h.context.pollForUnpause('escrow') : trade.send();
     await flush(); h.context.fetchNFTs = async () => [nft('0', 'HEN', 3)];
+    // Model a current verified unpause while the older holdings producer is pending.
+    h.state.contractPaused = false;
     if (older === 'standby') await trade.send(); else await h.context.pollForUnpause('escrow');
     old.resolve([nft('0', 'HEN', 5)]); await first;
     assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, '3');

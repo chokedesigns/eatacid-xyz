@@ -26,7 +26,7 @@ function fixture({ pause, approved = false, failure, inventory = false, storage 
   operationResponse = { transactionHash: 'inert-operation-hash' }, requestError, originType = 'extension' } = {}) {
   const gate = deferred(), started = new Set(), requests = [], approvals = [], mappings = [];
   const errors = [], modals = [], confirmations = [], balances = [], refreshes = [];
-  const state = { redeemSupply: inventory ? null : 7, countdownPhase: 'live' };
+  const state = { redeemSupply: inventory ? null : 7, countdownPhase: 'live', contractPaused: false };
   const checkbox = { checked: true }, listeners = new Set();
   const makeAccount = address => ({ address, senderId: 'wallet-sender', origin: { type: originType } });
   let account = makeAccount('wallet-A'), accountReads = 0;
@@ -155,6 +155,38 @@ function installInventory(f) {
     fail: () => { provider = async () => ({ ok: false, status: 503 }); },
   };
 }
+
+for (const state of [
+  { contractPaused: true }, { contractPaused: null }, { contractPaused: undefined },
+  { countdownPhase: 'standby' }, { countdownPhase: 'pre' }, { countdownPhase: 'config-error' },
+]) {
+  test(`AUD-003-011: a captured action rejects ineligible entry ${JSON.stringify(state)}`, async () => {
+    const storage = new Map(), f = fixture({ storage });
+    Object.assign(f.state, state); await f.send();
+    assert.equal(f.started.size, 0); assert.equal(f.requests.length, 0); assert.equal(storage.size, 0);
+    assert.match(f.modals.at(-1)[1], /paused|status is unavailable/);
+  });
+}
+
+for (const stage of ['initial-account', 'approval', 'mapping', 'final-account']) {
+  for (const state of [{ contractPaused: true }, { countdownPhase: 'standby' }, { countdownPhase: 'pre' }]) {
+    test(`AUD-003-011: invalidation during ${stage} prevents reservation and wallet request ${JSON.stringify(state)}`, async () => {
+      const storage = new Map(), f = fixture({ storage, pause: stage });
+      const run = f.send(); await f.waitAt(stage);
+      Object.assign(f.state, state); f.gate.resolve(); await run;
+      assert.equal(f.requests.length, 0); assert.equal(storage.size, 0);
+      assert.equal(f.confirmations.length, 0); assert.equal(f.pending(), false);
+    });
+  }
+}
+
+test('AUD-003-011: an otherwise-ready verified unpause restores the normal submission path', async () => {
+  const f = fixture();
+  f.state.contractPaused = true; f.state.countdownPhase = 'standby'; await f.send();
+  assert.equal(f.requests.length, 0);
+  f.state.contractPaused = false; f.state.countdownPhase = 'live'; await f.send();
+  assert.equal(f.requests.length, 1); assert.equal(f.confirmations.length, 1);
+});
 
 test('BAL-002: initial failure is unavailable and disabled, then seven verified units restore trading', async () => {
   const f = fixture({ inventory: true }), s = f.inventory;

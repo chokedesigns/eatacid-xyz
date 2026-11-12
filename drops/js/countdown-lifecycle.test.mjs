@@ -30,8 +30,8 @@ function fixture({ past = false, pendingTime = false, wallet = false, networkAva
   f.document = Object.assign(new TrackedTarget(), { hidden: false });
   const state = { walletConnected: wallet, activeAccount: wallet ? { address: 'inert-wallet' } : null };
   const pills = [{}, {}]; const storage = []; const nft = []; const errors = []; const waits = new Map();
-  const publications = []; const waitDelays = [];
-  let waitId = 0; let walletRenders = 0; let configValid = true; let resolveTime; let timeSignal;
+  const publications = []; const waitDelays = []; const deadlines = new Map();
+  let waitId = 0; let walletRenders = 0; let configValid = true; let resolveTime; let timeSignal; let pauseNow = 0;
   if (pendingTime) f.clock = createTrustedClock({
     monotonicNow: () => f.mono, wallNow: () => f.wall, nonce: () => 'inert',
     setTimeoutFn: () => 1, clearTimeoutFn() {},
@@ -39,7 +39,7 @@ function fixture({ past = false, pendingTime = false, wallet = false, networkAva
   });
   const context = vm.createContext({
     window: f.window, document: { querySelector: sel => sel.endsWith('-mobile') ? pills[1] : pills[0] },
-    AbortController, TIME_UNAVAILABLE, applyEllipsis() {}, AppState: state,
+    AbortController, Date: { now: () => pauseNow }, TIME_UNAVAILABLE, applyEllipsis() {}, AppState: state,
     updateAppState: patch => { publications.push(patch); Object.assign(state, patch); },
     console: { warn() {}, error: (...args) => errors.push(args) }, logger: { log() {} },
     dropDate: {}, dropTime: {},
@@ -51,18 +51,23 @@ function fixture({ past = false, pendingTime = false, wallet = false, networkAva
     BURN_REDEEM_CONTRACT_ADDRESS: 'inert', TZKT_BASE: 'https://inert.invalid', networkConfigAvailable: networkAvailable,
     networkUnavailableMessage: 'This network is not configured yet.',
     fetch: (url, options) => new Promise((resolve, reject) => storage.push({ url, options, resolve, reject })),
-    fetchNFTs: () => new Promise(resolve => nft.push(resolve)),
+    fetchNFTs: () => new Promise((resolve, reject) => nft.push(Object.assign(resolve, { reject }))),
     updateTokensWithWalletData: async () => { walletRenders++; },
     walletRefreshGeneration: 0,
     walletHoldingsRequest: 0,
-    setTimeout: (fn, delay) => { const id = ++waitId; waits.set(id, fn); waitDelays.push(delay); return id; },
-    clearTimeout: id => waits.delete(id),
+    setTimeout: (fn, delay) => {
+      const id = ++waitId;
+      if (delay === 3000) { waits.set(id, fn); waitDelays.push(delay); }
+      else { assert.equal(delay, 10000); deadlines.set(id, fn); }
+      return id;
+    },
+    clearTimeout: id => { waits.delete(id); deadlines.delete(id); },
     dropsBalanceRefreshFailed: false, handleEventExchange() {},
   });
   vm.runInContext(code, context);
   const call = text => vm.runInContext(text, context);
   const pagehide = persisted => f.window.dispatchEvent(Object.assign(new Event('pagehide'), { persisted }));
-  return { f, state, pills, storage, nft, errors, waits, waitDelays, publications, call, pagehide,
+  return { f, state, pills, storage, nft, errors, waits, deadlines, waitDelays, publications, call, pagehide,
     async retry() {
       assert.equal(waits.size, 1, 'exactly one delayed retry');
       [...waits.values()][0](); await flush();
@@ -73,6 +78,7 @@ function fixture({ past = false, pendingTime = false, wallet = false, networkAva
       return call('computeExchangeButtonState(AppState)');
     },
     listenerCount: () => f.window.count() + f.document.count(),
+    advancePauseRead: ms => { pauseNow += ms; },
     invalidateConfig: () => { configValid = false; },
     resolveTime: () => resolveTime(response(BASE + 50)),
     timeSignal: () => timeSignal, walletRenders: () => walletRenders };
@@ -91,7 +97,7 @@ test('public replacement disposes previous countdown and exactly one owner remai
   assert.equal(h.state.countdownTimerId, null);
 });
 
-test('BAL-003: HTTP 503 false stays unavailable; a verified retry publishes LIVE exactly once', async () => {
+test('BAL-003: HTTP 503 false stays unavailable; a verified retry publishes LIVE and keeps monitoring', async () => {
   const h = fixture({ past: true }); let bodyReads = 0;
   h.call('startCountdown()'); await flush();
   h.storage[0].resolve({ ok: false, status: 503, json: async () => { bodyReads++; return { paused: false }; } });
@@ -109,7 +115,7 @@ test('BAL-003: HTTP 503 false stays unavailable; a verified retry publishes LIVE
   assert.equal(h.pills[0].textContent, 'LIVE NOW!'); assert.equal(h.pills[1].textContent, 'LIVE NOW!');
   assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
   h.f.tick(6000); await flush();
-  assert.equal(h.storage.length, 2); assert.equal(h.waits.size, 0);
+  assert.equal(h.storage.length, 2); assert.equal(h.waits.size, 1);
   assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
   h.call('stopPublicCountdown()');
 });
@@ -160,7 +166,7 @@ test('BAL-003: verified paused status retains STANDBY messaging through retry fa
   }
   await h.retry();
   h.storage[3].resolve({ ok: true, status: 200, json: async () => ({ paused: false }) }); await flush();
-  assert.equal(h.state.countdownPhase, 'live'); assert.equal(h.waits.size, 0);
+  assert.equal(h.state.countdownPhase, 'live'); assert.equal(h.waits.size, 1);
   assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
   h.call('stopPublicCountdown()');
 });
@@ -198,11 +204,14 @@ test('BAL-003: verified unpause refreshes the current wallet before enabling the
   assert.equal(h.nft.length, 1); assert.equal(h.walletRenders(), 0);
   assert.equal(h.state.countdownPhase, 'standby'); assert.equal(h.buttonState().clickAction, null);
   h.nft[0]([]); await flush();
-  assert.equal(h.walletRenders(), 1); assert.equal(h.state.countdownPhase, 'live');
+  assert.equal(h.walletRenders(), 1); assert.equal(h.state.countdownPhase, 'standby');
+  assert.equal(h.buttonState().clickAction, null, 'holdings await requires a fresh pause read');
+  h.storage[1].resolve({ ok: true, json: async () => ({ paused: false }) }); await flush();
+  assert.equal(h.state.countdownPhase, 'live');
   assert.equal(h.buttonState().liveClass, true);
   assert.equal(h.buttonState().clickAction, h.call('handleEventExchange'));
   assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
-  assert.equal(h.storage.length, 1); assert.equal(h.waits.size, 0);
+  assert.equal(h.storage.length, 2); assert.equal(h.waits.size, 1);
   h.call('stopPublicCountdown()');
 });
 
@@ -340,11 +349,13 @@ test('verified standby unpause survives retired wallet refreshes without stale r
     }
     h.nft[0]([]); await flush();
     assert.equal(h.walletRenders(), 0, change);
+    assert.equal(h.state.countdownPhase, 'standby', change);
+    h.storage[1].resolve({ ok: true, json: async () => ({ paused: false }) }); await flush();
     assert.equal(h.state.countdownPhase, 'live', change);
     assert.equal(h.state.contractPaused, false);
     assert.equal(h.pills[0].textContent, 'LIVE NOW!');
     assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
-    assert.equal(h.storage.length, 1); assert.equal(h.waits.size, 0);
+    assert.equal(h.storage.length, 2); assert.equal(h.waits.size, 1);
     assert.equal(h.errors.length, 0);
     h.call('stopPublicCountdown()');
   }
@@ -377,4 +388,156 @@ test('replacement with invalid configuration still disposes the previous owner',
   h.invalidateConfig(); h.call('startCountdown()');
   assert.equal(h.state.countdownPhase, 'config-error');
   assert.equal(h.f.timers.size, 0); assert.equal(h.listenerCount(), 0);
+});
+
+const pauseReply = paused => ({ ok: true, status: 200, json: async () => ({ paused }) });
+async function reply(h, index, paused) { h.storage[index].resolve(pauseReply(paused)); await flush(); }
+
+test('AUD-003-011: initial pause, LIVE, later pause and verified unpause retain readiness gates', async () => {
+  const h = fixture({ past: true });
+  Object.assign(h.state, { walletConnected: true, selectedTokenId: '4', redeemSupply: 7 });
+  h.call('startCountdown()'); await flush(); await reply(h, 0, true);
+  assert.equal(h.buttonState().clickAction, null);
+  await h.retry(); await reply(h, 1, false);
+  assert.equal(h.state.countdownPhase, 'live');
+  assert.equal(h.buttonState().clickAction, h.call('handleEventExchange'));
+  await h.retry(); await reply(h, 2, false);
+  assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
+  assert.equal(h.nft.length, 0, 'unchanged unpause does not refresh wallet holdings');
+  await h.retry(); await reply(h, 3, true);
+  assert.equal(h.state.countdownPhase, 'standby'); assert.equal(h.state.contractPaused, true);
+  assert.equal(h.pills[0].textContent, 'STANDBY…'); assert.equal(h.pills[1].textContent, 'STANDBY…');
+  assert.equal(h.buttonState().clickAction, null); assert.equal(h.buttonState().liveClass, false);
+  h.state.redeemSupply = null;
+  await h.retry(); await reply(h, 4, false);
+  assert.equal(h.state.countdownPhase, 'live'); assert.equal(h.buttonState().clickAction, null);
+  for (const supply of [0, NaN, -1]) {
+    h.state.redeemSupply = supply; assert.equal(h.buttonState().clickAction, null);
+  }
+  h.state.redeemSupply = 7; h.state.selectedTokenId = null;
+  assert.equal(h.buttonState().clickAction, null);
+  h.state.selectedTokenId = '4'; h.state.walletConnected = false;
+  assert.notEqual(h.buttonState().clickAction, h.call('handleEventExchange'));
+  h.state.walletConnected = true;
+  assert.equal(h.buttonState().clickAction, h.call('handleEventExchange'));
+  for (const status of [true, null, undefined]) {
+    h.state.contractPaused = status; assert.equal(h.buttonState().clickAction, null);
+  }
+  h.call('stopPublicCountdown()'); await flush();
+  assert.equal(h.waits.size, 0); assert.equal(h.deadlines.size, 0); assert.equal(h.listenerCount(), 0);
+});
+
+for (const [name, result] of [
+  ['HTTP false', { ok: false, status: 503, json: async () => ({ paused: false }) }],
+  ['malformed status', { ok: true, json: async () => ({ paused: 'false' }) }],
+  ['missing status', { ok: true, json: async () => ({}) }],
+  ['JSON failure', { ok: true, json: async () => { throw new SyntaxError('invalid JSON'); } }],
+  ['transport failure', new Error('offline')],
+]) {
+  test(`AUD-003-011: later ${name} retires LIVE and a verified retry recovers`, async () => {
+    const h = fixture({ past: true });
+    Object.assign(h.state, { walletConnected: true, selectedTokenId: '4', redeemSupply: 7 });
+    h.call('startCountdown()'); await flush(); await reply(h, 0, false); await h.retry();
+    if (result instanceof Error) h.storage[1].reject(result); else h.storage[1].resolve(result);
+    await flush();
+    assert.equal(h.state.contractPaused, true); assert.equal(h.state.countdownPhase, 'standby');
+    assert.equal(h.pills[0].textContent, 'STATUS UNAVAILABLE'); assert.equal(h.buttonState().clickAction, null);
+    assert.equal(h.errors.length, 1); assert.equal(h.waits.size, 1); assert.equal(h.deadlines.size, 0);
+    await h.retry(); await reply(h, 2, false);
+    assert.equal(h.state.countdownPhase, 'live'); assert.equal(h.buttonState().clickAction, h.call('handleEventExchange'));
+    h.call('stopPublicCountdown()'); await flush();
+  });
+}
+
+for (const stage of ['fetch', 'body']) {
+  test(`AUD-003-011: stalled LIVE ${stage} expires; late unpause cannot overwrite newer pause`, async () => {
+    const h = fixture({ past: true });
+    h.call('startCountdown()'); await flush(); await reply(h, 0, false); await h.retry();
+    const old = h.storage[1]; let finishBody;
+    if (stage === 'body') {
+      old.resolve({ ok: true, json: () => new Promise(resolve => { finishBody = resolve; }) }); await flush();
+    }
+    assert.equal(h.waits.size, 0); assert.equal(h.deadlines.size, 1);
+    await flush(); assert.equal(h.storage.length, 2, 'no overlapping poll during a pending read');
+    [...h.deadlines.values()][0](); await flush();
+    assert.equal(old.options.signal.aborted, true);
+    assert.equal(h.state.countdownPhase, 'standby'); assert.equal(h.state.contractPaused, true);
+    assert.equal(h.pills[0].textContent, 'STATUS UNAVAILABLE');
+    await h.retry(); await reply(h, 2, true);
+    if (stage === 'body') finishBody({ paused: false }); else old.resolve(pauseReply(false));
+    await flush();
+    assert.equal(h.state.countdownPhase, 'standby'); assert.equal(h.state.contractPaused, true);
+    assert.equal(h.pills[0].textContent, 'STANDBY…'); assert.equal(h.waits.size, 1);
+    h.call('stopPublicCountdown()'); await flush();
+    assert.equal(h.deadlines.size, 0); assert.equal(h.waits.size, 0);
+  });
+}
+
+test('AUD-003-011: wallet refresh on later unpause needs a fresh status; unchanged LIVE avoids repeated refresh', async () => {
+  const h = fixture({ past: true, wallet: true });
+  h.call('startCountdown()'); await flush(); await reply(h, 0, false);
+  h.nft[0]([]); await flush(); await reply(h, 1, false);
+  await h.retry(); await reply(h, 2, false);
+  assert.equal(h.nft.length, 1); assert.equal(h.walletRenders(), 1);
+  await h.retry(); await reply(h, 3, true);
+  await h.retry(); await reply(h, 4, false);
+  assert.equal(h.state.countdownPhase, 'standby'); assert.equal(h.nft.length, 2);
+  h.nft[1]([]); await flush();
+  assert.equal(h.state.countdownPhase, 'standby');
+  await reply(h, 5, true);
+  assert.equal(h.state.countdownPhase, 'standby', 'pause during holdings refresh never publishes LIVE');
+  assert.equal(h.publications.filter(p => p.countdownPhase === 'live').length, 1);
+  h.call('stopPublicCountdown()'); await flush();
+});
+
+test('AUD-003-011: overdue unpause cannot publish LIVE before a throttled deadline callback', async () => {
+  const h = fixture({ past: true });
+  h.call('startCountdown()'); await flush();
+  assert.equal(h.storage[0].options.cache, 'no-store');
+  h.advancePauseRead(10001); await reply(h, 0, false);
+  assert.equal(h.state.contractPaused, true); assert.equal(h.state.countdownPhase, 'standby');
+  assert.equal(h.storage[0].options.signal.aborted, true); assert.equal(h.deadlines.size, 0);
+  await h.retry(); await reply(h, 1, false);
+  assert.equal(h.state.countdownPhase, 'live');
+  h.call('stopPublicCountdown()'); await flush();
+});
+
+test('AUD-003-011: failed holdings refresh on later unpause remains non-LIVE and retries', async () => {
+  const h = fixture({ past: true, wallet: true });
+  Object.assign(h.state, { selectedTokenId: '4', redeemSupply: 7 });
+  h.call('startCountdown()'); await flush(); await reply(h, 0, false);
+  h.nft[0]([]); await flush(); await reply(h, 1, false);
+  await h.retry(); await reply(h, 2, true);
+  await h.retry(); await reply(h, 3, false);
+  h.nft[1].reject(new Error('wallet holdings unavailable')); await flush();
+  assert.equal(h.state.countdownPhase, 'standby'); assert.equal(h.state.contractPaused, true);
+  assert.equal(h.buttonState().clickAction, null); assert.equal(h.waits.size, 1);
+  await h.retry(); await reply(h, 4, false);
+  h.nft[2]([]); await flush(); await reply(h, 5, false);
+  assert.equal(h.state.countdownPhase, 'live');
+  assert.equal(h.buttonState().clickAction, h.call('handleEventExchange'));
+  h.call('stopPublicCountdown()'); await flush();
+});
+
+test('AUD-003-011: LIVE teardown, replacement and BFCache leave one fresh owner and reject stale reads', async () => {
+  for (const transition of ['stop', 'replace', 'pagehide', 'cache']) {
+    const h = fixture({ past: true });
+    h.call('startCountdown()'); await flush(); await reply(h, 0, false); await h.retry();
+    const old = h.storage[1];
+    if (transition === 'stop') h.call('stopPublicCountdown()');
+    else if (transition === 'replace') h.call('startCountdown()');
+    else h.pagehide(transition === 'cache');
+    await flush();
+    assert.equal(h.state.contractPaused, true); assert.notEqual(h.state.countdownPhase, 'live');
+    if (transition === 'cache') {
+      h.f.window.dispatchEvent(Object.assign(new Event('pageshow'), { persisted: true })); await flush();
+    }
+    const resumed = transition === 'cache' || transition === 'replace';
+    if (resumed) await reply(h, 2, true);
+    old.resolve(pauseReply(false)); await flush();
+    assert.notEqual(h.state.countdownPhase, 'live'); assert.equal(old.options.signal.aborted, true);
+    assert.equal(h.storage.length, resumed ? 3 : 2);
+    h.call('stopPublicCountdown()'); await flush();
+    assert.equal(h.waits.size, 0); assert.equal(h.deadlines.size, 0); assert.equal(h.listenerCount(), 0);
+  }
 });

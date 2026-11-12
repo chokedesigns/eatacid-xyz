@@ -118,7 +118,7 @@ if (!networkConfigAvailable) {
 const AppState = {
   activeAccount: null,                                   // currently connected wallet
   cartItems: [],                                         // will hold items added to the cart
-  contractPaused: false,                                 // reflects on-chain pause status
+  contractPaused: true,                                  // fail closed until on-chain unpause is verified
   countdownTimerId: null,                                // will be set in countdown logic
   exchangeButtonInterval: window.exchangeButtonInterval || null, // hover/debounce timer
   exchangeDisabled: false,                               // drives Exchange button disabled state
@@ -1069,6 +1069,12 @@ function assertRedeemSupplyAvailable() {
   }
 }
 
+function assertDropLive() {
+  if (AppState.countdownPhase !== 'live' || AppState.contractPaused !== false) {
+    throw new Error('Drop is paused or its status is unavailable.');
+  }
+}
+
 async function handleEventExchange() {
   if (!networkConfigAvailable) {
     console.error(networkUnavailableMessage);
@@ -1091,6 +1097,7 @@ async function handleEventExchange() {
     : 'https://shadownet.tzkt.io';
   try {
     restoreSubmittedTrade(synchronizedWalletAddress);
+    assertDropLive();
     assertRedeemSupplyAvailable();
     logger.log(`🚀 Exchange button clicked! Starting process on ${network}...`);
 
@@ -1242,6 +1249,7 @@ async function handleEventExchange() {
       }
 
       // Step 2: Prompt wallet to sign and send
+      assertDropLive();
       assertRedeemSupplyAvailable();
       submittedTrade = submittedTrades.reserve(submittedTradeScope(myAddr), tradeOperations, burnCart);
       // Capture primitive transport provenance before the wallet await.
@@ -2302,6 +2310,7 @@ function stopPublicCountdown() {
   owner?.abort.abort();
   if (owner) window.removeEventListener('pagehide', owner.onPagehide);
   AppState.countdownTimerId = null;
+  if (owner) updateAppState({ contractPaused: true, countdownPhase: 'pre', currentCountdown: TIME_UNAVAILABLE });
 }
 
 function waitForUnpauseRetry(interval, signal) {
@@ -2317,12 +2326,53 @@ function waitForUnpauseRetry(interval, signal) {
   });
 }
 
+/** Bounds storage fetch and body parsing; abandoned responses never mutate state. */
+async function readEscrowPaused(contractAddress, signal) {
+  const controller = new AbortController();
+  const deadline = Date.now() + 10000;
+  let timer;
+  let cancel;
+  const cancelled = new Promise((_, reject) => {
+    cancel = () => {
+      reject(new Error('Escrow pause read cancelled'));
+      controller.abort();
+    };
+    signal?.addEventListener('abort', cancel, { once: true });
+    timer = setTimeout(() => {
+      reject(new Error('Escrow pause read timed out'));
+      controller.abort();
+    }, 10000);
+    if (signal?.aborted) cancel();
+  });
+  try {
+    const paused = await Promise.race([cancelled, (async () => {
+      if (!networkConfigAvailable) throw new Error(networkUnavailableMessage);
+      const res = await fetch(`${TZKT_BASE}/v1/contracts/${contractAddress}/storage`, {
+        signal: controller.signal, cache: 'no-store'
+      });
+      if (res.ok !== true) throw new Error(`Escrow storage HTTP ${res.status}`);
+      const storage = await res.json();
+      if (typeof storage?.paused !== 'boolean') throw new Error('Escrow storage paused status is unavailable');
+      return storage.paused;
+    })()]);
+    // A throttled timer must not let an overdue response authorize LIVE.
+    if (Date.now() >= deadline) {
+      controller.abort();
+      throw new Error('Escrow pause read timed out');
+    }
+    return paused;
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', cancel);
+  }
+}
+
 /**
- * Polls the escrow contract’s storage until its `paused` flag flips to false,
- * then re-fetches & re-renders the user's NFTs. Only a verified unpause returns true.
+ * Verifies unpause and refreshes wallet holdings. With onVerifiedUnpause, keeps
+ * one serial pause poll alive until its owner is retired, including while LIVE.
  */
 async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
-  signal, isCurrent = () => true
+  signal, isCurrent = () => true, onVerifiedUnpause
 } = {}) {
   if (signal?.aborted || !isCurrent()) return;
   // entering standby-polling: mark on-chain paused
@@ -2330,58 +2380,63 @@ async function pollForUnpause(contractAddress, interval = 3000, onPauseStatus, {
 
   logger.log(`[pollForUnpause] polling ${contractAddress} every ${interval}ms`);
   let attempt = 0;
+  let walletReady = false;
   while (!signal?.aborted && isCurrent()) {
     attempt++;
     logger.log(`[pollForUnpause] attempt #${attempt}`);
     try {
-      if (!networkConfigAvailable) throw new Error(networkUnavailableMessage);
-      const res = await fetch(
-        `${TZKT_BASE}/v1/contracts/${contractAddress}/storage`,
-        { signal }
-      );
+      const paused = await readEscrowPaused(contractAddress, signal);
       if (signal?.aborted || !isCurrent()) return;
-      if (res.ok !== true) throw new Error(`Escrow storage HTTP ${res.status}`);
-      const storage = await res.json();
-      if (signal?.aborted || !isCurrent()) return;
-      const paused = storage?.paused;
-      if (typeof paused !== 'boolean') throw new Error('Escrow storage paused status is unavailable');
       logger.log(`[pollForUnpause] paused =`, paused);
 
       onPauseStatus?.(paused);
 
-      if (paused === false) {
+      if (paused) {
+        walletReady = false;
+        updateAppState({ contractPaused: true });
+      } else {
         logger.log("[pollForUnpause] detected unpause!");
-        updateAppState({ contractPaused: false });
 
-        if (AppState.walletConnected) {
+        if (!walletReady && AppState.walletConnected) {
           const account = AppState.activeAccount;
           if (account) {
             const generation = walletRefreshGeneration;
             let request = walletHoldingsRequest;
             const nfts = await fetchNFTs(account.address);
             if (signal?.aborted || !isCurrent()) return;
-            // Retiring wallet-only work does not revoke the verified escrow unpause.
-            if (generation !== walletRefreshGeneration ||
-                request !== walletHoldingsRequest ||
-                AppState.activeAccount?.address !== account.address) return true;
-            try {
-              request = ++walletHoldingsRequest;
-              await updateTokensWithWalletData(nfts);
-            } catch (error) {
-              if (request === walletHoldingsRequest && generation === walletRefreshGeneration &&
-                  !signal?.aborted && isCurrent()) {
-                renderConnectedWalletTokenFailureState();
-                updateEventCartBurnToken();
+            // Wallet-only retirement cannot repaint a replacement projection.
+            if (generation === walletRefreshGeneration &&
+                request === walletHoldingsRequest &&
+                AppState.activeAccount?.address === account.address) {
+              try {
+                request = ++walletHoldingsRequest;
+                await updateTokensWithWalletData(nfts);
+              } catch (error) {
+                if (request === walletHoldingsRequest && generation === walletRefreshGeneration &&
+                    !signal?.aborted && isCurrent()) {
+                  renderConnectedWalletTokenFailureState();
+                  updateEventCartBurnToken();
+                }
+                throw error;
               }
-              throw error;
             }
+            if (signal?.aborted || !isCurrent()) return;
+            walletReady = true;
+            // The holdings await may outlive the pause observation. Re-read
+            // storage before publishing LIVE, without refreshing holdings again.
+            if (onVerifiedUnpause) continue;
           }
         }
-        return true;
+        walletReady = true;
+        if (AppState.contractPaused !== false) updateAppState({ contractPaused: false });
+        if (!onVerifiedUnpause) return true;
+        onVerifiedUnpause();
       }
     } catch (err) {
       if (signal?.aborted || !isCurrent()) return;
       console.error(`[pollForUnpause] fetch error:`, err);
+      walletReady = false;
+      updateAppState({ contractPaused: true });
       onPauseStatus?.(null);
     }
     if (signal?.aborted || !isCurrent()) return;
@@ -2489,17 +2544,24 @@ function startCountdown() {
         if (paused === true) {
           receivedPauseStatus = true;
           setCountdownText('STANDBY…');
-        } else if (paused == null && !receivedPauseStatus) {
-          setCountdownText('STATUS UNAVAILABLE');
+          updateAppState({ countdownPhase: 'standby', currentCountdown: 'STANDBY…' });
+        } else if (paused == null) {
+          const text = receivedPauseStatus ? 'STANDBY…' : 'STATUS UNAVAILABLE';
+          setCountdownText(text);
+          updateAppState({ countdownPhase: 'standby', currentCountdown: text });
         }
-      }, { signal: owner.abort.signal, isCurrent }).then(verifiedUnpause => {
-        if (verifiedUnpause !== true || !isCurrent()) return;
-        setCountdownText('LIVE NOW!');
-        updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
-      }).catch(err => {
+      }, { signal: owner.abort.signal, isCurrent, onVerifiedUnpause() {
+        if (!isCurrent()) return;
+        receivedPauseStatus = false;
+        if (AppState.countdownPhase !== 'live') {
+          setCountdownText('LIVE NOW!');
+          updateAppState({ countdownPhase: 'live', currentCountdown: 'LIVE NOW!' });
+        }
+      } }).catch(err => {
         if (!isCurrent()) return;
         console.error('[startCountdown] pollForUnpause error:', err);
         setCountdownText('STATUS UNAVAILABLE');
+        updateAppState({ contractPaused: true, countdownPhase: 'standby', currentCountdown: 'STATUS UNAVAILABLE' });
       });
     }
   });
@@ -2581,7 +2643,7 @@ function computeExchangeButtonState({
         pulse      = true;
         break;
       case 'live':
-        if (!Number.isFinite(redeemSupply) || redeemSupply <= 0) break;
+        if (contractPaused !== false || !Number.isFinite(redeemSupply) || redeemSupply <= 0) break;
         defaultColor = contractPaused ? '#363636' : '#d4d4d4';
         hoverLabel   = 'EXCHANGE';
         hoverColor   = '#f5c414';

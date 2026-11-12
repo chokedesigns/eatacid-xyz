@@ -24,9 +24,9 @@ test('public countdown uses synchronized time on both pills and retains manual-u
     computeDropInstant, formatDropCountdown,
     startDropCountdown: options => startDropCountdown({ ...options, ...f.options }),
     BURN_REDEEM_CONTRACT_ADDRESS: 'unchanged-escrow',
-    pollForUnpause: (address, delay, status) => {
+    pollForUnpause: (address, delay, status, options) => {
       polls++; assert.equal(address, 'unchanged-escrow'); assert.equal(delay, 3000);
-      status(true); return new Promise(resolve => { unpause = resolve; });
+      status(true); return new Promise(() => { unpause = options.onVerifiedUnpause; });
     },
   });
   vm.runInContext(countdownSource + '\nstartCountdown();', context);
