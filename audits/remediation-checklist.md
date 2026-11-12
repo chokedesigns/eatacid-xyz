@@ -1,47 +1,53 @@
-Group 0 — Drop configuration integrity
+Group 0 — Test evidence
 
-0.1 Qualify writer/build behavior under LF/CRLF drop-parameter mirror drift
+0.1 Repair Public fixtures and rerun uncovered transaction assertions
 
-0.2 Block drop-parameter projection during unresolved writer recovery
+Group 1 — Wallet and transaction recovery
 
-0.3 Validate authored drops against Public trade support
+1.1 Validate Drops receipt balances before wallet submission
 
-Group 1 — Exact Admin pair identities
+1.2 Fence Public wallet verification against newer account events
 
-1.1 Preserve exact token IDs through drop-pair creation
+1.3 Bind Admin Drops batches to the reviewing wallet account
 
-1.2 Preserve exact selected pair IDs during cleanup
+1.4 Bound shared confirmation requests and preserve pending outcomes
 
-1.3 Preserve stored token IDs in amount-only pair edits
+1.5 Reconcile ambiguous Treasury operations before repeat submission
 
-Group 2 — Wallet and pending-action authority
+1.6 Reconcile ambiguous pause toggles before another toggle
 
-2.1 Retire stale wallet boot results before destructive validation
+1.7 Aggregate duplicate Exchange identities for balance recovery
 
-2.2 Fence Admin pause and treasury sends against account and target changes
+Group 2 — Readiness and Health evidence
 
-Group 3 — Complete balances and truthful drop readiness
+2.1 Recheck escrow pause throughout Public LIVE state
 
-3.1 Complete Public and Admin balance reads before asserting absence
+2.2 Preserve exact token IDs in Admin pair status
 
-3.2 Recover failed initial drop inventory reads and block unknown-supply trades
+2.3 Reject malformed Admin pair pages as unavailable
 
-3.3 Require successful standby responses before publishing LIVE
+2.4 Validate complete Health balance pages and holder identities
 
-Group 4 — Transaction outcomes and limits
+2.5 Refresh chain economics on manual Health recheck
 
-4.1 Validate complete scoped operation evidence in legacy Admin confirmations
+2.6 Require CANAAN $ACID value in Health CSV
 
-4.2 Retain and reconcile uncertain Public submissions before retry
+Group 3 — Drop writer and local authoring state
 
-4.3 Bound Exchange quantity selection and trade expansion
+3.1 Block READY and preview while a writer journal is pending
 
-Group 5 — Asset tooling recovery
+3.2 Invalidate local Drops actions when writer health fails
 
-5.1 Preserve concurrent thumbnail imports during manifest rollback
+3.3 Verify falsy generated projections before completion
 
-5.2 Preserve unknown CMS write outcomes across upload and response-body failures
+3.4 Preserve external source edits during pending recovery
 
-Group 6 — Health diagnostics
+Group 4 — Asset and CMS tools
 
-6.1 Keep malformed and negative balances unknown in economics diagnostics
+4.1 Coordinate standalone thumbnail generation with input rollback
+
+4.2 Reject incomplete CMS item and asset pagination
+
+Group 5 — Local navigation
+
+5.1 Correct Collection Utility footer links in tracked shells

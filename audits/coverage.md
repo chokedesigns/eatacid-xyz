@@ -1,6 +1,59 @@
 # Correctness review coverage
 
-**Status: ENUMERATED — NOT YET AUDITED.** AUD-001 initial source-driven enumeration, 2026-11-02. This map identifies consequential behavior for subsequent complete audit passes. It establishes neither correctness nor deployed identity.
+**Current result: AUD-003 COMPLETE SOURCE EXAMINATION — WITH FINDINGS — 2026-11-12.** All 33 established workflows below were reexamined against current source; 0 partial and 0 unexamined. The [AUD-003 findings](AUD-003-findings.md) consolidate 21 inert candidate reproductions into 20 distinct findings. Eleven Public fixture failures are classified separately. This is not a clean result or live deployment certification. Material findings preclude the conditional post-clean source-driven enumeration refresh.
+
+## AUD-003 review context and dispositions
+
+| Repository | Exact current source and state at investigation start |
+| --- | --- |
+| Outer, including contracts | `ticket-AUD-003-full-correctness-pass`, HEAD `d45e0549029ca383f1e8b08e7c88b16997f12a30`; tracked/staged content clean; 22 retained untracked AUD-003 reproduction/diagnostic scripts. |
+| Independent Admin, read-only | `codex`, HEAD `2764a96daaed44dfefe6b970fc99a1c88626075d`; tracked/staged content clean. Its index byte hash differs from the initial protected snapshot as previously documented; no staged content differs. |
+
+Source/toolchain assumptions remain Windows, Node `v22.16.0`, npm `10.4.0`, Beacon SDK `4.8.1`, Taquito `19.0.2`, Parcel `2.16.4`, Sharp `0.35.3`; Pages CI specifies Node 20. The current `testnet` slot is Shadownet, with separate Drops and Exchange escrows stated in the historical map below; Mainnet configuration remains incomplete. Active SPLINTERED source settings are unchanged. Historical release/provenance records and locally generated output do not identify current deployed Pages, originated escrow storage or live FA2 behavior.
+
+Each row below names one already established workflow. “Examined” means its consequential available-source control/data paths, adverse inputs, effect boundaries and consumers were traced; external live dependencies remain qualified in the [findings report](AUD-003-findings.md). Findings may appear in more than one consumer row without becoming duplicate root findings.
+
+| # | Workflow | AUD-003 disposition and finding references |
+| --- | --- | --- |
+| 1 | Public arrival/navigation/Utility | Examined; [013](AUD-003-findings.md#aud-003-013--collection-utility-footer-link-does-not-navigate-in-local-shells). |
+| 2 | Network/escrow/token identity | Examined; source targets/strict selectors preserved, live targets unverified. |
+| 3 | Public wallet lifecycle/holdings | Examined; [001](AUD-003-findings.md#aud-003-001--stale-public-wallet-helper-can-disconnect-a-newer-account). |
+| 4 | Drops configuration/catalog/selection | Examined; current Public compatibility and exact CMS/registry identity gates traced. |
+| 5 | Drop time/pause/inventory availability | Examined; [011](AUD-003-findings.md#aud-003-011--drops-remains-live-and-actionable-after-a-later-pause). |
+| 6 | Drops burn/redeem and refresh | Examined; [002](AUD-003-findings.md#aud-003-002--unsafe-drops-starting-balance-can-strand-a-submitted-hash), [010](AUD-003-findings.md#aud-003-010--a-stalled-confirmation-fetch-defeats-the-public-timeout). |
+| 7 | Exchange cart/economics | Examined; [012](AUD-003-findings.md#aud-003-012--duplicate-exchange-rows-undercount-balance-reduction). |
+| 8 | Exchange multi-token submission | Examined; [010](AUD-003-findings.md#aud-003-010--a-stalled-confirmation-fetch-defeats-the-public-timeout), [012](AUD-003-findings.md#aud-003-012--duplicate-exchange-rows-undercount-balance-reduction). |
+| 9 | Shared approval/pair/outcome evidence | Examined; [010](AUD-003-findings.md#aud-003-010--a-stalled-confirmation-fetch-defeats-the-public-timeout), [012](AUD-003-findings.md#aud-003-012--duplicate-exchange-rows-undercount-balance-reduction). |
+| 10 | Admin boot/wallet/network | Examined; current authority and switching paths traced. |
+| 11 | Admin authority/status/manual pause | Examined; [005](AUD-003-findings.md#aud-003-005--unknown-admin-pause-toggle-can-reverse-the-requested-state). |
+| 12 | Admin Treasury FA2 inventory/rescue | Examined; [003](AUD-003-findings.md#aud-003-003--ambiguous-treasury-outcomes-permit-repeat-withdrawal-or-rescue). |
+| 13 | Admin XTZ balance/Max/withdrawal | Examined; [003](AUD-003-findings.md#aud-003-003--ambiguous-treasury-outcomes-permit-repeat-withdrawal-or-rescue). |
+| 14 | Admin Drops pair create/edit/cleanup | Examined; exact mutation/serialization and direct contract effects traced. |
+| 15 | Admin Exchange pair management | Examined; dedicated escrow and locked terms traced. |
+| 16 | Admin drop snapshot/load/preview | Examined; [007](AUD-003-findings.md#aud-003-007--rounded-pair-status-can-declare-the-wrong-exact-token-fully-set), [008](AUD-003-findings.md#aud-003-008--local-writer-health-loss-retains-an-actionable-old-drops-snapshot), [009](AUD-003-findings.md#aud-003-009--malformed-admin-pair-pages-become-false-missing-status). |
+| 17 | Admin drop batch send | Examined; [006](AUD-003-findings.md#aud-003-006--admin-drops-send-can-hand-as-prepared-batch-to-wallet-b), [008](AUD-003-findings.md#aud-003-008--local-writer-health-loss-retains-an-actionable-old-drops-snapshot). |
+| 18 | Admin lifecycle/readiness/checklist | Examined; [007](AUD-003-findings.md#aud-003-007--rounded-pair-status-can-declare-the-wrong-exact-token-fully-set), [009](AUD-003-findings.md#aud-003-009--malformed-admin-pair-pages-become-false-missing-status). |
+| 19 | Admin Health/CMS/economics | Examined; [004](AUD-003-findings.md#aud-003-004--malformed-health-balances-can-be-counted-as-complete-circulation), [014](AUD-003-findings.md#aud-003-014--manual-health-refresh-can-reuse-stale-healthy-economics), [015](AUD-003-findings.md#aud-003-015--blank-canaan-acid-csv-value-can-pass-health). |
+| 20 | Admin labels/catalogs/presentation caches | Examined; presentation does not establish financial identity/authority. |
+| 21 | Local authoring UI/provider handoff | Examined; [008](AUD-003-findings.md#aud-003-008--local-writer-health-loss-retains-an-actionable-old-drops-snapshot), [018](AUD-003-findings.md#aud-003-018--pending-journal-can-be-published-as-ready). |
+| 22 | Loopback authoring API | Examined; [018](AUD-003-findings.md#aud-003-018--pending-journal-can-be-published-as-ready). |
+| 23 | Transactional config/archive/recovery | Examined; [016](AUD-003-findings.md#aud-003-016--falsy-generated-projections-can-receive-a-completed-journal), [017](AUD-003-findings.md#aud-003-017--automatic-recovery-can-overwrite-a-later-external-source-edit), [018](AUD-003-findings.md#aud-003-018--pending-journal-can-be-published-as-ready). |
+| 24 | Projection/mirror propagation | Examined; [016](AUD-003-findings.md#aud-003-016--falsy-generated-projections-can-receive-a-completed-journal), [017](AUD-003-findings.md#aud-003-017--automatic-recovery-can-overwrite-a-later-external-source-edit), [018](AUD-003-findings.md#aud-003-018--pending-journal-can-be-published-as-ready). |
+| 25 | Direct escrow trade/FA2 custody | Examined; no new direct-source defect; live FA2/protocol behavior unverified. |
+| 26 | Direct privileged pair mutation | Examined; no new direct-source defect; deployed ABI/state unverified. |
+| 27 | Direct pause/rescue/XTZ | Examined; direct authority and effects traced; [003](AUD-003-findings.md#aud-003-003--ambiguous-treasury-outcomes-permit-repeat-withdrawal-or-rescue), [005](AUD-003-findings.md#aud-003-005--unknown-admin-pause-toggle-can-reverse-the-requested-state) are UI outcome roots. |
+| 28 | Signer-backed Exchange provisioning | Examined; [010](AUD-003-findings.md#aud-003-010--a-stalled-confirmation-fetch-defeats-the-public-timeout) shares poller; live signer/RPC unverified. |
+| 29 | Contract provenance/origination | Examined; historical source/artifact/deployment identity reconciled, current live identity unverified. |
+| 30 | Thumbnail/site asset authoring | Examined; [020](AUD-003-findings.md#aud-003-020--standalone-thumbnail-generation-can-be-lost-by-input-rollback). |
+| 31 | Exported Webflow CMS/asset effects | Examined; [019](AUD-003-findings.md#aud-003-019--exported-cms-list-operations-silently-truncate-malformed-pages), presently unused exported path. |
+| 32 | Public delivery/build/Pages | Examined; no new current-source failure; live assembled/deployed artifacts unverified. |
+| 33 | Admin production/development/harness | Examined; source guards and inert isolation controls traced, compiled production output unverified. |
+
+Verification and exclusions: unchanged-revision Admin runtime suite 1,392 pass; copied configuration suites 31 plus 28+1 inner pass; tooling/loader/asset/CMS/provisioning suite 50 pass. Public suite 268 total, 257 pass and 11 fixture failures, separately diagnosed. Twenty-one inert candidate reproductions have valid controls; they resolve to 20 findings (two Health input variants share one). No operational build, live wallet/chain/FA2/indexer/Webflow/Pages test or legacy SmartPy compilation was performed. The [findings report](AUD-003-findings.md#verification-fixture-failures-and-boundaries) states exact gaps. No tracked production source or Admin source was changed by AUD-003.
+
+## Historical AUD-001 enumeration and context
+
+**Historical status: ENUMERATED — NOT YET AUDITED on 2026-11-02.** The following original context, discovery notes and behavioral map are preserved as AUD-001 evidence; their older revisions and “future examination” wording do not supersede the current AUD-003 result above. The 33-row map remains the starting scope for AUD-003, not a post-clean refresh.
 
 The authoritative [correctness-review method](../docs/correctness-review.md) is unchanged. Implementation facts below come from current source. Expected properties are future examination targets grounded in [project intent](../PROJECT_INTENT.md), [repository safeguards](../AGENTS.md), [contract guidance](../contracts/AGENTS.md), and the operating/interface contracts in the [developer guide](../docs/developer-guide.md), [operations guide](../docs/operations.md) and [network runbook](../docs/testnet-to-mainnet.md). They are not findings that the implementation satisfies those properties.
 
@@ -77,7 +130,7 @@ Paths are relative to Outer, including `admin-ui/` for the independent repositor
 - **Checkout observation, not a defect finding:** authored source, Outer JSON and Admin mirror parse to equal values. JSON is 519 bytes with LF; mirror is 550 bytes with CRLF. They match after newline normalization but not byte-for-byte. Since pipeline checks include semantic and byte equality, checkout normalization is material for subsequent examination. No generator/sync/service/recovery was run to change or diagnose behavior.
 - Grounded financial/authority/truthfulness properties above do not settle every exceptional provider-outcome requirement. [Known issues](../docs/known-issues.md) remain prior evidence to reassess during audit; none is resolved, newly confirmed or dismissed here. No new defect reproduction/remediation ticket was produced.
 
-## Current result and focused verification
+## Historical AUD-002 result and focused verification
 
 **AUD-002: COMPLETE — WITH FINDINGS — 2026-11-03.** This supersedes the enumeration-only status above and the November 2 partial result for the current investigation; AUD-001's map/context remains the historical baseline. Reviewed Outer `d0f2c293a2896174eb816677f0f32a017657398f` on `ticket-AUD-002-first-correctness-pass` and independent Admin `c831010483b3bd1e49f94c279045d1f008d6e5be` on `codex`. Revisions are unchanged at continuation; Outer contained only the expected prior coverage-result edit, and Admin remained clean/read-only. Only this result note and ignored working evidence change. No material source change or behavioral-map amendment was needed; the methodology is unchanged.
 
