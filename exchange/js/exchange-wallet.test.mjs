@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
-import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForConfirmation as reconcileConfirmation, pollForNFTUpdate } from '../../shared/public-trade-ops.js';
+import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, areTradedTokensRefreshed, pollForConfirmation as reconcileConfirmation, pollForNFTUpdate } from '../../shared/public-trade-ops.js';
 
 // Execute the complete page module with inert DOM, wallet and indexer boundaries.
 const source = readFileSync(process.env.EA_T013_SOURCE || new URL('./exchange.js', import.meta.url), 'utf8')
@@ -86,7 +86,7 @@ function fixture({ storage = new Map(), originType = 'extension', tokenIds = ['0
     poll: async opts => opts.fetchNFTs(opts.address), connectCalls: 0 };
   const context = vm.createContext({ document, window: {}, fetchFa2BalancePages,
     createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
-    classifyPublicTradeRequestRejection, showSubmittedTradeStatus,
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus, areTradedTokensRefreshed,
     cfg: { network: 'testnet', rpc: {}, tzkt: { testnet: 'https://inert.test' }, contracts: { testnet: {
       collections: { pane0: 'KT1419', pane1: 'KT1Canaan' }, escrow: 'KT1Escrow', redeemTokenContract: 'KT1Redeem' } } },
     createPublicLogger: () => ({ log() {}, debug() {} }),
@@ -123,6 +123,80 @@ function unavailable(h) {
     assert.deepEqual(dropdown.options.map(option => option.value), [''], 'Unknown balances must expose no quantities');
   }
   assert.equal(h.cartRows.children.length, 0); assert.equal(h.controls.live.style.display, 'none');
+}
+
+test('AUD-003-012: duplicate selections retain applied receipt through stale snapshots, reconnect and reload', async () => {
+  const storage = new Map(), h = fixture({ storage, tokenIds: ['0', '0'] });
+  await h.connect('wallet-A', [nft(5)]);
+  h.select('2'); h.select('1', 1);
+  assert.equal(h.cartRows.children.length, 2);
+  h.poll = opts => pollForNFTUpdate({ ...opts, timeout: 0 });
+  h.fetchRows = async () => [nft(3)];
+  await h.trade();
+  assert.equal(h.sent.length, 1);
+  assert.equal(h.sent[0].operationDetails[1].parameters.value.length, 3);
+  const retained = JSON.stringify(h.call('submittedTrades.get(submittedTradeScope())'));
+  assert.equal(JSON.parse(retained).status, 'applied');
+  assert.deepEqual(JSON.parse(retained).tradedTokens.map(t => t.quantity), [2, 1]);
+  unavailable(h);
+  assert.equal(h.polls.length, 1);
+  assert.match(h.modal.querySelector('.loading-modal-text-2').innerHTML, /RETRY BALANCES/);
+
+  for (const balance of [5, 4, 3]) {
+    h.fetchRows = async () => [nft(balance)];
+    await h.controls.connect.click(); unavailable(h);
+    h.context.window.receiveNFTs([nft(balance)]); await flush(); unavailable(h);
+    assert.equal(JSON.stringify(h.call('submittedTrades.get(submittedTradeScope())')), retained);
+  }
+  h.disconnect(); await h.connect('wallet-A', [nft(3)]); unavailable(h);
+  await h.connect('wallet-B', [nft(5)]);
+  assert.equal(h.dropdowns[0].disabled, false, 'Another account retains ordinary holdings behavior');
+  await h.connect('wallet-A', [nft(3)]); unavailable(h);
+  h.select(); await h.trade(); assert.equal(h.sent.length, 1);
+
+  const reload = fixture({ storage, tokenIds: ['0', '0'] });
+  reload.poll = opts => pollForNFTUpdate({ ...opts, timeout: 0 });
+  reload.fetchRows = async () => [nft(3)];
+  await reload.connect('wallet-A', [nft(3)]); unavailable(reload);
+  assert.equal(JSON.stringify(reload.call('submittedTrades.get(submittedTradeScope())')), retained);
+  await reload.trade(); assert.equal(reload.sent.length, 0);
+  reload.fetchRows = async () => [nft(2)];
+  await reload.controls.connect.click();
+  assert.equal(reload.call('submittedTrades.get(submittedTradeScope())'), null);
+  assert.equal(reload.call('confirmedExchangeTrades.has("wallet-A")'), false);
+  assert.equal(reload.call('walletBalancesVerified'), true);
+  for (const dropdown of reload.dropdowns.slice(0, 2)) {
+    assert.equal(dropdown.disabled, false);
+    assert.deepEqual(dropdown.options.map(option => option.value), ['', '1', '2']);
+  }
+  assert.equal(reload.sent.length, 0, 'Balance recovery never resends the trade');
+  assert.equal(h.intervals.size + reload.intervals.size, 0);
+});
+
+test('AUD-003-012: distinct contracts and token IDs require only their own reductions', async () => {
+  const h = fixture({ tokenIds: ['0', '1'] });
+  await h.connect('wallet-A', [nft(5), nft(5, 'KT1419', '1'), nft(5, 'KT1Canaan')]);
+  h.select('2'); h.select('1', 1); h.select('1', 2);
+  h.fetchRows = async () => [nft(3), nft(4, 'KT1419', '1'), nft(5, 'KT1Canaan')];
+  await h.trade(); unavailable(h);
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope()).status'), 'applied');
+  h.fetchRows = async () => [nft(3), nft(4, 'KT1419', '1'), nft(4, 'KT1Canaan')];
+  await h.controls.connect.click();
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+  assert.equal(h.call('walletBalancesVerified'), true);
+  assert.equal(h.sent.length, 1);
+});
+
+for (const remaining of [0, null]) {
+  test(`AUD-003-012: duplicate full depletion clears receipt with ${remaining === null ? 'absent' : 'zero'} holdings`, async () => {
+    const h = fixture({ tokenIds: ['0', '0'] });
+    await h.connect('wallet-A', [nft(3)]); h.select('2'); h.select('1', 1);
+    h.fetchRows = async () => remaining === null ? [] : [nft(remaining)];
+    await h.trade();
+    assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+    assert.equal(h.call('walletBalancesVerified'), true);
+    assert.equal(h.sent.length, 1);
+  });
 }
 
 test('TX-003: huge verified holdings have bounded options and retain full refresh balances; small controls are unchanged', async () => {

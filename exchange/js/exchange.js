@@ -8,6 +8,7 @@ import {
   classifyPublicTradeRequestRejection,
   createSubmittedTradeStore,
   showSubmittedTradeStatus,
+  areTradedTokensRefreshed,
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
   pollForConfirmation as pollForSharedConfirmation,
@@ -1207,12 +1208,7 @@ async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval
 }
 
 function assertTradedBalancesRefreshed(nfts, tradedTokens) {
-  if (!Array.isArray(nfts) || tradedTokens.some(token => {
-    const match = nfts.find(nft => nft.contractAddress === token.contractAddress &&
-      String(nft.tokenId) === String(token.tokenId));
-    return match && (!Number.isSafeInteger(Number(match.balance)) ||
-      Number(match.balance) > token.startingBalance - token.quantity);
-  })) {
+  if (!areTradedTokensRefreshed(nfts, tradedTokens)) {
     throw new Error('Confirmed trade balances are still updating. Retry balances.');
   }
 }

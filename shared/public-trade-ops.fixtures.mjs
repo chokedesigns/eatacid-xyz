@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   buildApprovalOps,
   pollForConfirmation,
+  pollForNFTUpdate,
   __areTradedTokensRefreshedForFixture,
   __getOperationConfirmationForFixture
 } from './public-trade-ops.js';
@@ -242,6 +243,76 @@ await run('legacy traded token identifier preserves depletion-only success behav
     ),
     true
   );
+});
+
+const duplicateTrade = [
+  { contractAddress: BURN_CONTRACT, tokenId: '7', startingBalance: 5, quantity: 2 },
+  { contractAddress: BURN_CONTRACT, tokenId: 7, startingBalance: 5, quantity: 1 }
+];
+const duplicateHoldings = balance => [{ contractAddress: BURN_CONTRACT, tokenId: '7', balance: String(balance) }];
+
+await run('duplicate identities require the summed reduction independent of selection order', () => {
+  for (const tokens of [duplicateTrade, [...duplicateTrade].reverse()]) {
+    for (const balance of [5, 4, 3, 2, 1, 0]) {
+      assert.equal(__areTradedTokensRefreshedForFixture(duplicateHoldings(balance), tokens), balance <= 2);
+    }
+    assert.equal(__areTradedTokensRefreshedForFixture([], tokens), true);
+  }
+  const depleted = duplicateTrade.map(token => ({ ...token, startingBalance: 3 }));
+  assert.equal(__areTradedTokensRefreshedForFixture(duplicateHoldings(1), depleted), false);
+  assert.equal(__areTradedTokensRefreshedForFixture(duplicateHoldings(0), depleted), true);
+});
+
+await run('distinct exact contracts and token IDs retain independent burn requirements', () => {
+  for (const identity of [
+    { contractAddress: OTHER_ADDRESS, tokenId: '7' },
+    { contractAddress: BURN_CONTRACT.toLowerCase(), tokenId: '7' },
+    { contractAddress: BURN_CONTRACT, tokenId: '8' },
+    { contractAddress: BURN_CONTRACT, tokenId: '9007199254740993' },
+    { contractAddress: BURN_CONTRACT, tokenId: '07' }
+  ]) {
+    const tokens = [duplicateTrade[0], { ...duplicateTrade[1], ...identity }];
+    const holdings = [...duplicateHoldings(3), { ...identity, balance: '4' }];
+    assert.equal(__areTradedTokensRefreshedForFixture(holdings, tokens), true);
+    holdings[1].balance = '5';
+    assert.equal(__areTradedTokensRefreshedForFixture(holdings, tokens), false);
+  }
+});
+
+await run('duplicated snapshots are not summed or relaxed and legacy rows remain depletion-only', () => {
+  const snapshots = [duplicateTrade[0], { ...duplicateTrade[1], startingBalance: 6 }];
+  for (const tokens of [snapshots, [...snapshots].reverse()]) {
+    assert.equal(__areTradedTokensRefreshedForFixture(duplicateHoldings(3), tokens), false);
+    assert.equal(__areTradedTokensRefreshedForFixture(duplicateHoldings(2), tokens), true);
+  }
+  const legacy = { contractAddress: BURN_CONTRACT, tokenId: '7' };
+  for (const tokens of [[legacy, ...duplicateTrade], [...duplicateTrade, legacy]]) {
+    assert.equal(__areTradedTokensRefreshedForFixture(duplicateHoldings(2), tokens), false);
+    assert.equal(__areTradedTokensRefreshedForFixture(duplicateHoldings(0), tokens), true);
+    assert.equal(__areTradedTokensRefreshedForFixture([], tokens), true);
+  }
+});
+
+await run('balance polling waits through stale partial duplicate reductions', async () => {
+  let reads = 0;
+  const observed = await pollForNFTUpdate({
+    fetchNFTs: async () => duplicateHoldings([5, 4, 3, 2][reads++]),
+    address: OWNER_ADDRESS, tradedTokens: duplicateTrade,
+    timeout: 1000, interval: 0, fetchBeforePolling: true, refetchOnTimeout: true
+  });
+  assert.equal(reads, 4);
+  assert.equal(observed[0].balance, '2');
+});
+
+await run('timeout refetch remains a snapshot requiring final consumer validation', async () => {
+  let reads = 0;
+  const observed = await pollForNFTUpdate({
+    fetchNFTs: async () => { reads++; return duplicateHoldings(3); },
+    address: OWNER_ADDRESS, tradedTokens: duplicateTrade,
+    timeout: 0, interval: 0, fetchBeforePolling: true, refetchOnTimeout: true
+  });
+  assert.equal(reads, 2);
+  assert.equal(__areTradedTokensRefreshedForFixture(observed, duplicateTrade), false);
 });
 
 await run('exact active operator approval omits approval op', async () => {

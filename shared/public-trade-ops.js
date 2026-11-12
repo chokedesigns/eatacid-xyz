@@ -698,12 +698,30 @@ export function __areTradedTokensRefreshedForFixture(nfts, tradedTokens) {
   return areTradedTokensRefreshed(nfts, tradedTokens);
 }
 
-function areTradedTokensRefreshed(nfts, tradedTokens) {
-  return tradedTokens.every(token => {
-    const tradedContractAddress = String(token.contractAddress).toLowerCase();
+export function areTradedTokensRefreshed(nfts, tradedTokens) {
+  if (!Array.isArray(nfts)) return false;
+  // CMS selections and retained receipts can contain several rows for one
+  // exact identity. They share a starting balance, but all quantities burn.
+  const identities = new Map();
+  for (const token of tradedTokens) {
+    const contractAddress = String(token.contractAddress);
+    const tokenId = String(token.tokenId);
+    const key = JSON.stringify([contractAddress, tokenId]);
+    const previous = identities.get(key);
+    identities.set(key, {
+      contractAddress,
+      tokenId,
+      // Never add duplicated snapshots or let a larger snapshot relax the gate.
+      startingBalance: previous
+        ? Math.min(previous.startingBalance, Number(token.startingBalance))
+        : Number(token.startingBalance),
+      quantity: (previous ? previous.quantity : 0) + Number(token.quantity)
+    });
+  }
+  return [...identities.values()].every(token => {
     const match = nfts.find(nft =>
-      String(nft.contractAddress).toLowerCase() === tradedContractAddress &&
-      String(nft.tokenId) === String(token.tokenId)
+      String(nft.contractAddress) === token.contractAddress &&
+      String(nft.tokenId) === token.tokenId
     );
 
     if (!match) {
@@ -711,6 +729,7 @@ function areTradedTokensRefreshed(nfts, tradedTokens) {
     }
 
     const currentBalance = Number(match.balance);
+    if (!Number.isSafeInteger(currentBalance) || currentBalance < 0) return false;
     if (currentBalance === 0) {
       return true;
     }

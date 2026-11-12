@@ -7,7 +7,7 @@ import test from 'node:test';
 const sourceRoot = process.env.EA_T004_SOURCE_ROOT
   ? pathToFileURL(`${process.env.EA_T004_SOURCE_ROOT}/`)
   : new URL('../', import.meta.url);
-const { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, fetchTokenPairId } = await import(new URL('shared/public-trade-ops.js', sourceRoot));
+const { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, areTradedTokensRefreshed, fetchTokenPairId } = await import(new URL('shared/public-trade-ops.js', sourceRoot));
 const intended = {
   tzktBase: 'https://inert.tzkt.test', escrowAddress: 'KT1Escrow',
   burnContractAddress: 'KT1Burn', burnTokenId: '0', burnAmount: 2,
@@ -146,7 +146,7 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
   const sent = []; const errors = []; const lookups = []; const storage = new Map();
   const context = vm.createContext({
     createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
-    classifyPublicTradeRequestRejection, showSubmittedTradeStatus,
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus, areTradedTokensRefreshed,
     TZKT_BASE: intended.tzktBase, BURN_REDEEM_CONTRACT_ADDRESS: intended.escrowAddress,
     BURN_REDEEM_CONTRACT: 'KT1ExchangeEscrow', REDEEM_CONTRACT_ADDRESS: 'KT1Redeem', REDEEM_TOKEN_CONTRACT: 'KT1ExchangeRedeem',
     redeemToken: { collection: 'REDEEM', tokenId: '29', redeemAmount },
