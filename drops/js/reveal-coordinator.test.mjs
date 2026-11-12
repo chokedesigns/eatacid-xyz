@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import { resolveBurnTokenRenderIdentities } from './token-rendering.js';
+import { createSubmittedTradeStore, showSubmittedTradeStatus } from '../../shared/public-trade-ops.js';
 
 import {
   createInitialRevealBarrier,
@@ -454,6 +455,13 @@ function createWalletTokenFixture() {
   const empty = { style: {}, textContent: 'NO TOKENS IN WALLET!' };
   const state = { selectedTokenId: null, cartItems: [] };
   const panes = new Map();
+  const storage = new Map();
+  const submittedTrades = createSubmittedTradeStore({
+    storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i],
+      getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value),
+      removeItem: key => storage.delete(key) }),
+    locks: () => ({ request: async (_name, options, run) => (run || options)({}) }),
+  });
 
   function row(tokenId, contractAddress) {
     const owned = { textContent: '' };
@@ -493,6 +501,8 @@ function createWalletTokenFixture() {
   const allRows = () => [...panes.values()].flatMap(pane => pane.rows);
   const context = {
     AppState: state,
+    submittedTrades, showSubmittedTradeStatus,
+    network: 'testnet', TZKT_BASE: 'https://inert.tzkt.test', BURN_REDEEM_CONTRACT_ADDRESS: 'escrow',
     burnTokens: [
       { collection: 'HEN', enabled: true, exclude: [], burnAmount: 1 },
       { collection: 'INTRODUCTIONS', enabled: false, exclude: [], burnAmount: 1 }
@@ -543,6 +553,7 @@ function createWalletTokenFixture() {
     }
   };
   const functions = [
+    'submittedTradeScope', 'restoreSubmittedTrade', 'showPendingTrade', 'retryTradeConfirmation',
     'getCollectionSlug', 'getBurnAmountForContract', 'computeBalances', 'resetEventsUI', 'refreshConnectedState',
     'renderBalances', 'updateOwnedTokenCounts', 'getWalletTokenPanes', 'clearWalletTokenRows',
     'setWalletTokenPanesVisible', 'setWalletTokenRegionPending', 'commitWalletTokenRegion',

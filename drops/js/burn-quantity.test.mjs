@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
-import { pollForNFTUpdate } from '../../shared/public-trade-ops.js';
+import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForConfirmation as reconcileConfirmation, pollForNFTUpdate } from '../../shared/public-trade-ops.js';
 
 // Execute the current page functions with inert DOM, wallet and indexer boundaries.
 const source = readFileSync(new URL('./events.js', import.meta.url), 'utf8').replace(/\r\n?/g, '\n');
@@ -13,29 +13,41 @@ function section(start, end) {
   assert.ok(finish > begin, `Missing source end: ${end}`);
   return source.slice(begin, finish);
 }
-function fixture({ amount = 2, balance = 5, redeemAmount = 3, enabled = true, fail = false, confirmFail = false } = {}) {
+function fixture({ amount = 2, balance = 5, redeemAmount = 3, enabled = true,
+  requestError, confirmationError, confirmation, storage = new Map() } = {}) {
   const approvals = []; const operations = []; const refreshes = []; const errors = [];
   const details = {};
+  const reservations = []; const confirmations = [];
   const config = [{ collection: 'HEN', enabled, exclude: [], burnAmount: amount }];
   const context = vm.createContext({
+    createSubmittedTradeStore: () => createSubmittedTradeStore({
+      storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i],
+        getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value),
+        removeItem: key => storage.delete(key) }),
+      locks: () => ({ request: async (_name, options, run) => (run || options)({}) }),
+    }),
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus, TZKT_BASE: 'https://inert.tzkt.test',
     burnTokens: config, collections: { HEN: 'burn-contract' },
     redeemToken: { collection: 'CANAAN', tokenId: '7', redeemAmount }, REDEEM_CONTRACT_ADDRESS: 'redeem-contract',
     BURN_REDEEM_CONTRACT_ADDRESS: 'escrow', network: 'testnet', networkConfigAvailable: true,
     AppState: { redeemSupply: 7 },
     normalizeString: value => String(value ?? '').trim().toLowerCase(),
     logger: { log() {} }, console: { error: (...args) => errors.push(args), warn() {} },
-    getVerifiedPublicActiveAccount: async () => ({ address: 'inert-wallet' }),
+    getVerifiedPublicActiveAccount: async () => ({ address: 'inert-wallet', senderId: 'wallet-sender', origin: { type: 'extension' } }),
     getSelectedEventTokenWithBalance: () => ({ contractAddress: 'burn-contract', tokenId: '4', oldBalance: balance }),
     buildApprovalOps: async (_, cart) => { approvals.push(structuredClone(cart)); return [{ kind: 'approval' }]; },
     fetchTokenPairId: async () => 10,
     window: { dAppClient: { requestOperation: async payload => {
-      operations.push(payload); if (fail) throw new Error('fixture contract rejection');
+      reservations.push(receipt());
+      operations.push(payload); if (requestError) throw requestError;
       return { transactionHash: 'inert-hash' };
     } } },
     showModal: (title, message) => { details.title = title; details.message = message; }, hideModal() {},
     document: { querySelector: selector => selector === '.loading-modal-div' ? { querySelector: () => null } : null },
-    setTimeout() {}, resetEventsUI() {}, pollForConfirmation: async () => {
-      if (confirmFail) throw new Error('fixture contract rejection at confirmation');
+    setTimeout() {}, resetEventsUI() {}, pollForConfirmation: async (hash, record) => {
+      confirmations.push({ hash, record, retained: receipt() });
+      if (confirmationError) throw confirmationError;
+      return confirmation?.(hash, record);
     },
     pollForNFTUpdate: async (_, tokens) => { refreshes.push(structuredClone(tokens)); return []; },
     walletRefreshGeneration: 1, synchronizedWalletAddress: 'inert-wallet',
@@ -47,8 +59,22 @@ function fixture({ amount = 2, balance = 5, redeemAmount = 3, enabled = true, fa
     ? section('function getBurnAmountForContract(', '/**\n * Returns the one selected') : '';
   vm.runInContext(helper + section('function assertDropsTradeBalances(', 'async function retryDropsBalances(') +
     section('let eventExchangeInFlight', '// UI STATE TOGGLING:'), context);
-  return { context, config, approvals, operations, refreshes, errors, details,
-    send: () => context.handleEventExchange() };
+  const receipt = () => vm.runInContext('submittedTrades.get(submittedTradeScope())', context);
+  return { context, config, approvals, operations, refreshes, errors, details, receipt,
+    send: async () => {
+      await context.handleEventExchange();
+      // Assert outside production catch paths so a broken fixture cannot masquerade as an unknown outcome.
+      for (const record of reservations) {
+        assert.equal(record?.status, 'submitting', 'Reservation is durable before opening the wallet');
+        assert.equal(record.hash, null);
+      }
+      for (const { hash, record, retained } of confirmations) {
+        assert.equal(hash, 'inert-hash');
+        assert.equal(record.id, retained?.id);
+        assert.equal(retained.hash, hash, 'Hash is durable before confirmation starts');
+        assert.equal(retained.status, 'submitted');
+      }
+    } };
 }
 function terms(f) {
   const ops = f.operations[0].operationDetails;
@@ -69,6 +95,9 @@ test('FIND-P2-003: authored burn2 matches exact pair terms and refresh delta', a
   assert.equal(f.refreshes[0][0].quantity, 2);
   assert.equal(f.refreshes[0][0].startingBalance, 5);
   assert.equal(f.errors.length, 0);
+  assert.equal(f.receipt().status, 'applied');
+  assert.equal(f.receipt().hash, 'inert-hash');
+  await f.send(); assert.equal(f.operations.length, 1, 'Applied trade blocks repeats until balances reconcile');
 });
 test('Public burn1 and burn5 retain one trade and the configured redeem amount', async () => {
   for (const amount of [1, 5]) {
@@ -145,13 +174,41 @@ test('Public confirmed refresh removes insufficient burn holdings and retains ow
   assert.equal(rows[2].removed, false, 'Owned metadata/redeem rows retain their previous behavior');
   assert.equal(eligibleCount, 1);
 });
-test('Public reports contract rejection, skips refresh and releases its send guard', async () => {
-  const f = fixture({ fail: true }); await f.send(); await f.send();
+test('Public matching wallet cancellation skips refresh and releases its reservation and send guard', async () => {
+  const requestError = { type: 'error', version: '2', id: 'wallet-request', senderId: 'wallet-sender', errorType: 'ABORTED_ERROR' };
+  const f = fixture({ requestError }); await f.send(); await f.send();
   assert.equal(f.operations.length, 2); assert.equal(f.refreshes.length, 0);
-  assert.match(f.details.message, /contract rejection/);
+  assert.equal(f.receipt(), null);
+  assert.equal(f.details.title, 'ERROR'); assert.match(f.details.message, /cancelled before submission/);
 });
-test('Public rejected confirmation does not claim success or refresh holdings', async () => {
-  const f = fixture({ confirmFail: true }); await f.send(); await f.send();
-  assert.equal(f.operations.length, 2); assert.equal(f.refreshes.length, 0);
-  assert.equal(f.details.title, 'ERROR'); assert.match(f.details.message, /rejection at confirmation/);
+test('Public verified terminal confirmation failure does not claim success or refresh holdings', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => ({ ok: true, json: async () => [{ id: 1, type: 'transaction',
+    hash: 'inert-hash', sender: { address: 'inert-wallet' }, target: { address: 'escrow' },
+    parameter: { entrypoint: 'initiate_trade' }, status: 'backtracked' }] });
+  try {
+    const f = fixture({ confirmation: (hash, record) => reconcileConfirmation({
+      tzktBase: record.tzktBase, opHash: hash, submittedTrade: record, timeout: 1000, interval: 0,
+    }) });
+    await f.send(); await f.send();
+    assert.equal(f.operations.length, 2); assert.equal(f.refreshes.length, 0);
+    assert.equal(f.receipt(), null);
+    assert.equal(f.details.title, 'ERROR'); assert.match(f.details.message, /backtracked/);
+  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('Public ambiguous request and confirmation failures retain receipts and block duplicate submissions after reload', async () => {
+  for (const failure of ['requestError', 'confirmationError']) {
+    const storage = new Map();
+    const f = fixture({ storage, [failure]: new Error('fixture outcome unknown') });
+    await f.send(); await f.send();
+    assert.equal(f.operations.length, 1); assert.equal(f.refreshes.length, 0);
+    assert.equal(f.details.title, 'CONFIRMATION UNKNOWN');
+    assert.equal(f.receipt().status, failure === 'requestError' ? 'submitting' : 'submitted');
+    assert.equal(f.receipt().hash, failure === 'requestError' ? null : 'inert-hash');
+    const reloaded = fixture({ storage }); await reloaded.send();
+    assert.equal(reloaded.operations.length, 0); assert.equal(reloaded.refreshes.length, 0);
+    assert.equal(reloaded.receipt().id, f.receipt().id);
+    assert.equal(reloaded.details.title, 'CONFIRMATION UNKNOWN');
+  }
 });

@@ -177,7 +177,9 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
     code += section(source, 'let eventExchangeInFlight', '// UI STATE TOGGLING:');
   } else {
     // Supply the page's current ownership guards as well as its trading functions.
-    code = section(source, 'const submittedTrades =', 'const EXCHANGE_WALLET_PENDING_CLASS');
+    code = section(source, 'const MAX_EXCHANGE_TOKEN_QUANTITY =', '/**\n * Exchange-specific state.');
+    code += section(source, 'function assertExchangeQuantityLimits(', 'function isCurrentExchangeWallet(');
+    code += section(source, 'const submittedTrades =', 'const EXCHANGE_WALLET_PENDING_CLASS');
     code += section(source, 'function isCurrentExchangeWallet(', 'function resetBurnCartDisplay(');
     // Exchange's helper ends at its next section heading, not the entire approval/polling region.
     code += section(source, 'async function fetchTokenPairId(', '// -----------------------------------------------------');
@@ -218,6 +220,39 @@ test('Exchange caller resolves unit burns with edition reward and configured red
   assert.equal(ops[1].parameters.value.length, 2, 'Quantity repeats unit trades');
   for (const trade of ops[1].parameters.value) {
     assert.deepEqual(tradeTerms(trade), ['KT1Burn', '0', '1', 'KT1ExchangeRedeem', '0', '10', '15']);
+  }
+});
+
+test('Exchange caller enforces real per-token, aggregate ownership and total-unit limits before wallet submission', async () => {
+  const item = (tokenId, quantity, startingBalance = 60) => ({
+    contractAddress: 'KT1Burn', tokenId, quantity, startingBalance, redeemAmount: 10,
+  });
+  const rows = ['0', '1', '2'].map((tokenId, i) => pair(String(15 + i), {
+    burn_token_id: tokenId, burn_amount: '1', redeem_contract_address: 'KT1ExchangeRedeem',
+    redeem_token_id: '0', redeem_amount: '10',
+  }));
+  for (const cart of [
+    [item('0', 20), item('1', 20), item('2', 10)],
+    [item('0', 10), item('0', 10)],
+    [item('0', 2, 5), item('0', 3, 5)],
+  ]) {
+    const f = consumer('exchange', { rows, cart }); await f.run();
+    assert.equal(f.errors.length, 0); assert.equal(f.sent.length, 1);
+    assert.equal(f.lookups.length, cart.length);
+    const trades = f.sent[0].operationDetails[1].parameters.value;
+    assert.equal(trades.length, cart.reduce((total, item) => total + item.quantity, 0));
+  }
+  for (const cart of [
+    [item('0', 21)],
+    [item('0', 10), item('0', 11)],
+    [item('0', 3, 5), item('0', 3, 5)],
+    [item('0', 20), item('1', 20), item('2', 11)],
+  ]) {
+    const f = consumer('exchange', { rows, cart }); await f.run(); await f.run();
+    assert.equal(f.sent.length, 0);
+    assert.equal(f.lookups.length, cart.length * 2, 'Both attempts reach the payload quantity guard');
+    assert.equal(f.errors.length, 2, 'Rejected carts release the in-flight guard');
+    for (const error of f.errors) assert.match(String(error[1]?.message), /at most 20 units per token and 50 units total/);
   }
 });
 
