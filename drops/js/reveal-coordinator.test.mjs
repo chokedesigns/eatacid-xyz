@@ -554,7 +554,7 @@ function createWalletTokenFixture() {
   };
   const functions = [
     'submittedTradeScope', 'restoreSubmittedTrade', 'showPendingTrade', 'retryTradeConfirmation',
-    'getCollectionSlug', 'getBurnAmountForContract', 'computeBalances', 'resetEventsUI', 'refreshConnectedState',
+    'getCollectionSlug', 'getBurnAmountForContract', 'parseDropsBalance', 'computeBalances', 'resetEventsUI', 'refreshConnectedState',
     'renderBalances', 'updateOwnedTokenCounts', 'getWalletTokenPanes', 'clearWalletTokenRows',
     'setWalletTokenPanesVisible', 'setWalletTokenRegionPending', 'commitWalletTokenRegion',
     'renderWalletTokenLoadingState', 'renderConnectedWalletTokenState',

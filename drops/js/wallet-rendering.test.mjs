@@ -174,6 +174,42 @@ function assertPending(h) {
   assert.equal(h.wallet['aria-busy'], 'true'); assert.equal(h.spinner.style.display, 'flex');
 }
 
+test('AUD-003-002: malformed and overflowing holdings retire actionable wallet rows', async () => {
+  const invalid = [undefined, null, '', ' ', '5junk', '5.5', '-1', 'NaN', 'Infinity',
+    '9007199254740993', Number.MAX_SAFE_INTEGER + 1, NaN, Infinity, -1, 5.5, true, {}];
+  const inventories = invalid.map(balance => [{ ...nft('0'), balance }]);
+  // Invalid rows cannot be hidden by a later valid duplicate or cancellation.
+  inventories.push([nft('0', 'HEN', Number.MAX_SAFE_INTEGER), nft('0', 'HEN', 1)],
+    [nft('0', 'HEN', -1), nft('0', 'HEN', 6)],
+    [nft('0', 'HEN', 'invalid'), nft('0', 'HEN', 5)]);
+  for (const holdings of inventories) {
+    const h = fixture();
+    h.connect('wallet-A', Promise.resolve([nft('0')])); await flush();
+    assert.deepEqual(h.ids('HEN'), ['0']);
+    h.disconnect(); h.connect('wallet-A', Promise.resolve(holdings)); await flush();
+    assert.deepEqual(h.ids('HEN'), []); assert.deepEqual(h.ids('INTRODUCTIONS'), []);
+    assert.match(h.heading.textContent, /BALANCES UNAVAILABLE/);
+    assert.equal(h.state.selectedTokenId, null);
+    assert.equal(h.errors.length, 1);
+    assert.match(String(h.errors[0][1]), /balance.*(invalid|safe integer limit)/);
+  }
+});
+
+test('AUD-003-002: zero, exact burn and aggregate safe limits render truthful ownership', async () => {
+  for (const [holdings, expected] of [
+    [[nft('0', 'HEN', '0')], null],
+    [[nft('0', 'HEN', '2')], '2'],
+    [[nft('0', 'HEN', String(Number.MAX_SAFE_INTEGER))], String(Number.MAX_SAFE_INTEGER)],
+    [[nft('0', 'HEN', Number.MAX_SAFE_INTEGER - 1), nft('0', 'HEN', 1)], String(Number.MAX_SAFE_INTEGER)],
+    [[nft('0', 'HEN', 1), nft('0', 'HEN', 1)], '2'],
+  ]) {
+    const h = fixture(); h.connect('wallet-A', Promise.resolve(holdings)); await flush();
+    assert.deepEqual(h.ids('HEN'), expected ? ['0'] : []);
+    if (expected) assert.equal(h.panes.HEN.querySelector('.collection-item-owned-text').textContent, expected);
+    assert.equal(h.errors.length, 0);
+  }
+});
+
 function pagedWallet(h, read) {
   Object.assign(h.context, { fetchFa2BalancePages, network: 'testnet',
     tzkt: { testnet: 'https://inert.invalid' }, fetch: read });

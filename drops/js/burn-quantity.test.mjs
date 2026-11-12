@@ -137,7 +137,8 @@ test('Public wallet eligibility requires the configured amount', async () => {
     getCollectionSlug: () => 'hen', resolveBurnTokenRenderIdentities: () => [], updateOwnedTokenCounts() {},
     renderConnectedWalletTokenState: value => { count = value; }, tokenMapping: { HEN: {} },
   });
-  vm.runInContext(section('async function updateTokensWithWalletData(', '// EVENT CART UPDATES'), f.context);
+  vm.runInContext(section('function computeBalances(', '// HELPERS: FA2') +
+    section('async function updateTokensWithWalletData(', '// EVENT CART UPDATES'), f.context);
   await f.context.updateTokensWithWalletData([1, 2, 3].map((balance, id) => ({
     contractAddress: 'burn-contract', tokenId: String(id), balance,
   })));

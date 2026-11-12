@@ -30,8 +30,9 @@ function fixture({ pause, approved = false, failure, inventory = false, storage 
   const checkbox = { checked: true }, listeners = new Set();
   const makeAccount = address => ({ address, senderId: 'wallet-sender', origin: { type: originType } });
   let account = makeAccount('wallet-A'), accountReads = 0;
+  const ownedText = { get textContent() { return String(row.balance); }, set textContent(value) { row.balance = value; } };
   const row = { dataset: { contractAddress: 'burn', tokenId: '4' },
-    querySelector: () => ({ textContent: String(row.balance) }), balance: 5 };
+    querySelector: () => ownedText, balance: 5 };
   checkbox.closest = () => row;
   const approval = { kind: 'transaction', destination: 'burn', amount: '0',
     parameters: { entrypoint: 'update_operators', value: [{ prim: 'Left', args: [{ prim: 'Pair',
@@ -67,7 +68,7 @@ function fixture({ pause, approved = false, failure, inventory = false, storage 
     document: {
       querySelector: selector => selector.includes(':checked') ? (checkbox.checked ? checkbox : null)
         : selector === '.loading-modal-div' ? { querySelector: () => null } : null,
-      querySelectorAll: () => [checkbox],
+      querySelectorAll: selector => selector === '.w-dyn-item[data-token-id]' ? [row] : [checkbox],
     },
     showModal: (...args) => modals.push(args), hideModal() {}, setTimeout() {}, clearInterval() {},
     renderWalletTokenLoadingState() {}, renderDisconnectedWalletTokenState() {},
@@ -82,6 +83,8 @@ function fixture({ pause, approved = false, failure, inventory = false, storage 
   });
   vm.runInContext([
     section('function getBurnAmountForContract(', '// HELPERS: REDEEM PANEL'),
+    section('function computeBalances(', '// HELPERS: FA2'),
+    section('function renderBalances(', '/**\n * Updates the "owned"'),
     section('let eventExchangeInFlight', '// UI STATE TOGGLING:'),
     section('let synchronizedWalletAddress', 'document.addEventListener(PUBLIC_WALLET_STATE_EVENT'),
   ].join('\n'), context);
@@ -499,4 +502,80 @@ test('TX-002: Drops captures rejection provenance before the wallet await and re
   const reload = fixture({ storage }); await reload.send(); assert.equal(reload.requests.length, 0);
   await reload.context.retryTradeConfirmation(); assert.deepEqual(reload.confirmations, ['returned-hash']);
   assert.equal(reload.requests.length, 0);
+});
+
+test('AUD-003-002: invalid selected balances never reserve a receipt or request the wallet', async () => {
+  for (const balance of ['', ' ', '5junk', '5.5', '5.0', '-1', 'NaN', 'Infinity',
+    '9007199254740993', Number.MAX_SAFE_INTEGER + 1, undefined, null, true, {}, NaN, Infinity, -1, 5.5]) {
+    const storage = new Map(), f = fixture({ storage });
+    f.row.balance = balance;
+    await f.send();
+    assert.equal(f.requests.length, 0, String(balance));
+    assert.equal(f.approvals.length, 0);
+    assert.equal(storage.size, 0);
+    assert.equal(f.pending(), false);
+    assert.equal(f.modals.at(-1)[0], 'ERROR');
+    assert.match(f.modals.at(-1)[1], /balance is invalid.*Retry balances/);
+  }
+  for (const balance of [0, '00', 1]) {
+    const storage = new Map(), f = fixture({ storage }); f.row.balance = balance;
+    await f.send();
+    assert.equal(f.requests.length, 0); assert.equal(storage.size, 0);
+    assert.match(f.modals.at(-1)[1], /Insufficient tokens/);
+  }
+});
+
+test('AUD-003-002: rendering rejects invalid counts instead of publishing apparent ownership', () => {
+  const f = fixture();
+  for (const value of [undefined, null, '', '5junk', 1.5, -1, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+    assert.throws(() => f.context.renderBalances({ 'burn:4': value }), /balance is invalid/);
+    assert.equal(f.row.balance, 5);
+  }
+  f.context.renderBalances({}); assert.equal(f.row.balance, '00');
+});
+
+test('AUD-003-002: invalid balance or quantity after each preflight await cannot reach the wallet', async () => {
+  for (const stage of ['initial-account', 'approval', 'mapping', 'final-account']) {
+    for (const value of ['5junk', '5.5', '-1', 'Infinity', '9007199254740993']) {
+      const storage = new Map(), f = fixture({ storage, pause: stage });
+      const run = f.send(); await f.waitAt(stage);
+      f.row.balance = value; f.gate.resolve(); await run;
+      assert.equal(f.requests.length, 0); assert.equal(storage.size, 0);
+      assert.equal(f.pending(), false); assert.match(f.modals.at(-1)[1], /balance is invalid/);
+    }
+    for (const value of [0, -1, 1.5, Infinity, Number.MAX_SAFE_INTEGER + 1, '2']) {
+      const storage = new Map(), f = fixture({ storage, pause: stage });
+      const run = f.send(); await f.waitAt(stage);
+      f.context.burnTokens[0].burnAmount = value; f.gate.resolve(); await run;
+      assert.equal(f.requests.length, 0); assert.equal(storage.size, 0);
+      assert.equal(f.pending(), false); assert.equal(f.modals.at(-1)[0], 'ERROR');
+    }
+  }
+});
+
+test('AUD-003-002: safe boundary balances keep exact terms and durable hashes through reload', async () => {
+  for (const balance of ['2', '5', String(Number.MAX_SAFE_INTEGER)]) {
+    const storage = new Map(), f = fixture({ storage, pause: 'confirmation' });
+    f.context.renderBalances(f.context.computeBalances([{ contractAddress: 'burn', tokenId: '4', balance }]));
+    assert.equal(f.row.balance, balance);
+    const run = f.send(); await f.waitAt('confirmation');
+    assert.equal(f.requests.length, 1);
+    const receipt = JSON.parse([...storage.values()][0]);
+    assert.equal(receipt.status, 'submitted'); assert.equal(receipt.hash, 'inert-operation-hash');
+    assert.equal(receipt.tradedTokens[0].startingBalance, Number(balance));
+    assert.equal(receipt.tradedTokens[0].quantity, 2);
+    assert.deepEqual(f.requests[0].operationDetails.slice(1), receipt.operations);
+    const [left, right] = receipt.operations[0].parameters.value[0].args;
+    assert.deepEqual(left.args[0].args, [{ int: '2' }, { string: 'burn' }]);
+    assert.deepEqual(left.args[1].args, [{ int: '4' }, { int: '3' }]);
+    assert.deepEqual(right.args[0].args, [{ string: 'redeem' }, { int: '7' }]);
+    assert.deepEqual(right.args[1].args, [{ int: '10' }, { string: 'wallet-A' }]);
+    const submittedReload = fixture({ storage }); await submittedReload.send();
+    assert.equal(submittedReload.requests.length, 0);
+    f.gate.resolve(); await run;
+    assert.equal(JSON.parse([...storage.values()][0]).status, 'applied');
+    const appliedReload = fixture({ storage }); await appliedReload.send();
+    assert.equal(appliedReload.requests.length, 0);
+    assert.equal(JSON.parse([...storage.values()][0]).hash, 'inert-operation-hash');
+  }
 });

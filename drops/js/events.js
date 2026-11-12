@@ -554,6 +554,15 @@ function getBurnAmountForContract(contractAddress) {
   return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
 }
 
+function parseDropsBalance(value) {
+  const count = typeof value === 'number' ? value
+    : typeof value === 'string' && /^\d+$/.test(value.trim()) ? Number(value.trim()) : NaN;
+  if (!Number.isSafeInteger(count) || count < 0) {
+    throw new Error('Token balance is invalid or exceeds the safe integer limit. Retry balances.');
+  }
+  return count;
+}
+
 /**
  * Returns the one selected burn‑token’s contractAddress, tokenId,
  * and the user’s current on‑screen balance (oldBalance).
@@ -571,11 +580,9 @@ function getSelectedEventTokenWithBalance() {
   const contractAddress = row.dataset.contractAddress;
   const tokenId         = row.dataset.tokenId;
 
-  // 4) read the owned count text & parse to number
+  // 4) Validate the complete owned count; never accept a numeric prefix.
   const ownedEl    = row.querySelector('.collection-item-owned-text');
-  const oldBalance = ownedEl 
-    ? parseInt(ownedEl.textContent.trim(), 10) || 0 
-    : 0;
+  const oldBalance = parseDropsBalance(ownedEl?.textContent);
 
   return { contractAddress, tokenId, oldBalance };
 }
@@ -739,8 +746,12 @@ async function fetchTokenPairId(burnContractAddress, burnTokenId, burnAmount) {
 function computeBalances(nfts) {
   return nfts.reduce((acc, nft) => {
     const key = `${nft.contractAddress}:${nft.tokenId}`;
-    const count = Number(nft.balance ?? 0);
-    acc[key] = (acc[key] || 0) + count;
+    const count = parseDropsBalance(nft.balance);
+    const previous = acc[key] ?? 0;
+    if (previous > Number.MAX_SAFE_INTEGER - count) {
+      throw new Error('Total token balance exceeds the safe integer limit. Retry balances.');
+    }
+    acc[key] = previous + count;
     return acc;
   }, {});
 }
@@ -1116,7 +1127,10 @@ async function handleEventExchange() {
     if (!Number.isSafeInteger(redeemToken.redeemAmount) || redeemToken.redeemAmount <= 0) {
       throw new Error('Redeem amount must be a positive safe integer.');
     }
-    if (!Number.isFinite(oldBalance) || oldBalance < burnAmount) {
+    if (!Number.isSafeInteger(oldBalance) || oldBalance < 0) {
+      throw new Error('Token balance is invalid or exceeds the safe integer limit. Retry balances.');
+    }
+    if (oldBalance < burnAmount) {
       throw new Error('Insufficient tokens for the configured burn amount.');
     }
     const burnCart = [{ contractAddress, tokenId, quantity: burnAmount, startingBalance: oldBalance }];
@@ -1771,7 +1785,7 @@ function renderBalances(balances) {
       if (!ownedEl) return;
       const { tokenId, contractAddress } = wrapper.dataset;
       const key = `${contractAddress}:${tokenId}`;
-      const count = balances[key] || 0;
+      const count = parseDropsBalance(key in balances ? balances[key] : 0);
       ownedEl.textContent = count > 0 ? String(count) : '00';
     });
 }
@@ -1909,6 +1923,7 @@ function renderConnectedWalletTokenFailureState() {
 async function updateTokensWithWalletData(nfts) {
   restoreSubmittedTrade(synchronizedWalletAddress);
   assertDropsTradeBalances(nfts);
+  const balances = computeBalances(nfts);
   logger.log("updateTokensWithWalletData called with NFTs:", nfts);
 
   const prevRow = document.querySelector('.w-checkbox-input.events_checkbox:checked')
@@ -1933,7 +1948,7 @@ async function updateTokensWithWalletData(nfts) {
       normalizeString(nft.contractAddress) === normalizeString(collections[t.collection]) &&
       !t.exclude.includes(nft.tokenId) &&
       Number.isSafeInteger(t.burnAmount) && t.burnAmount > 0 &&
-      Number(nft.balance) >= t.burnAmount
+      balances[`${nft.contractAddress}:${nft.tokenId}`] >= t.burnAmount
     );
     return Boolean(entry);
   });

@@ -1,7 +1,6 @@
 // Inert reproduction at the real Drops selection/send and browser receipt seams.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { runInContext } from 'node:vm';
 import { createSubmittedTradeStore } from '../../shared/public-trade-ops.js';
 
 // Reuse only checked-in DOM/SDK fixture definitions, without registering its tests.
@@ -13,13 +12,6 @@ definitions = definitions.slice(0, cutoff)
   .replaceAll('import.meta.url', JSON.stringify(fixtureUrl.href))
   .replace(/from '(\.[^']+)'/g, (_, relative) => `from '${new URL(relative, fixtureUrl).href}'`);
 const { fixture } = await import(`data:text/javascript;base64,${Buffer.from(definitions + '\nexport { fixture };').toString('base64')}`);
-const page = await readFile(new URL('../../drops/js/events.js', import.meta.url), 'utf8');
-function sourceFunction(name) {
-  const start = page.indexOf(`function ${name}(`);
-  const end = page.indexOf('\n}', start) + 2;
-  assert.ok(start >= 0 && end > start);
-  return page.slice(start, end);
-}
 const scope = { network: 'testnet', tzktBase: 'https://inert.test', escrowAddress: 'escrow', account: 'wallet-A' };
 const adapter = storage => ({
   get length() { return storage.size; }, key: i => [...storage.keys()][i],
@@ -27,32 +19,31 @@ const adapter = storage => ({
   removeItem: key => storage.delete(key),
 });
 
-for (const balance of ['5', '9007199254740993']) {
+for (const balance of ['5', '9007199254740993', String(Number.MAX_SAFE_INTEGER)]) {
   const storage = new Map();
   const f = fixture({ storage });
-  const ownedText = { textContent: '' };
-  f.row.querySelector = () => ownedText;
-  const selectAll = f.context.document.querySelectorAll;
-  f.context.document.querySelectorAll = selector => selector === '.w-dyn-item[data-token-id]'
-    ? [f.row] : selectAll(selector);
-  runInContext(sourceFunction('computeBalances') + '\n' + sourceFunction('renderBalances'), f.context);
-  f.context.renderBalances(f.context.computeBalances([
+  const render = () => f.context.renderBalances(f.context.computeBalances([
     { contractAddress: 'burn', tokenId: '4', balance },
   ]));
-  assert.equal(ownedText.textContent, String(Number(balance)), 'Real provider-to-DOM conversion');
-  await f.send();
-  assert.equal(f.requests.length, 1, 'The current handler reaches the inert wallet request');
   const reloaded = createSubmittedTradeStore({ storage: () => adapter(storage) });
-  if (balance === '5') {
+  if (balance !== '9007199254740993') {
+    render();
+    assert.equal(f.row.balance, balance, 'Safe provider-to-DOM conversion remains exact');
+    await f.send();
+    assert.equal(f.requests.length, 1);
     assert.equal(reloaded.get(scope).status, 'applied');
+    assert.equal(reloaded.get(scope).hash, 'inert-operation-hash');
     assert.equal(f.confirmations.length, 1);
   } else {
-    assert.equal(f.confirmations.length, 0, 'Receipt status update fails before confirmation');
-    assert.throws(() => reloaded.get(scope), /journal is invalid/);
-    assert.throws(() => reloaded.get({ ...scope, account: 'wallet-B' }), /journal is invalid/);
-    assert.equal(JSON.parse([...storage.values()][0]).status, 'submitting');
-    assert.equal(JSON.parse([...storage.values()][0]).hash, null);
-    assert.match(f.errors.map(args => args.map(String).join(' ')).join('\n'), /journal is invalid/);
+    assert.throws(render, /balance is invalid/);
+    // A stale or externally altered DOM count must also fail at selection/send.
+    f.row.balance = balance; await f.send();
+    assert.equal(f.requests.length, 0);
+    assert.equal(f.confirmations.length, 0);
+    assert.equal(storage.size, 0, 'No malformed reservation was persisted');
+    assert.equal(reloaded.get(scope), null);
+    assert.equal(reloaded.get({ ...scope, account: 'wallet-B' }), null);
+    assert.match(f.modals.at(-1)[1], /balance is invalid.*Retry balances/);
   }
 }
-console.log('AUD-003 receipt evidence: large Drops balance sends then leaves an unreadable journal across accounts; small-balance control confirms.');
+console.log('AUD-003-002 fixed: unsafe Drops balance cannot render, reserve or request the wallet; safe and maximum-safe controls retain applied hashes.');

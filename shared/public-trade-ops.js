@@ -29,32 +29,36 @@ export function classifyPublicTradeRequestRejection(error, { senderId, originTyp
 // never expire or get evicted. No wallet credentials or signing material are stored.
 export function createSubmittedTradeStore({ storage = () => globalThis.localStorage, locks = () => globalThis.navigator?.locks } = {}) {
   const key = 'ea.public-trades.v1.';
+  const maxStorageEntries = 10000;
   const emergency = new Map();
   const attempts = new Map();
   const scopeKey = scope => JSON.stringify([scope.network, scope.tzktBase, scope.escrowAddress, scope.account]);
   const copy = value => JSON.parse(JSON.stringify(value));
+  function validateRecord(row, entryKey) {
+    if (!row || !['network', 'tzktBase', 'escrowAddress', 'account', 'id'].every(k => typeof row[k] === 'string' && row[k]) ||
+        entryKey !== key + row.id ||
+        !['submitting', 'submitted', 'applied'].includes(row.status) ||
+        (row.hash !== null && (typeof row.hash !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(row.hash))) ||
+        !Array.isArray(row.operations) || !row.operations.length || row.operations.some(op =>
+          op?.destination !== row.escrowAddress || op?.parameters?.entrypoint !== 'initiate_trade' || !Array.isArray(op.parameters.value)) ||
+        !Array.isArray(row.tradedTokens) || !row.tradedTokens.length || row.tradedTokens.some(token =>
+          typeof token?.contractAddress !== 'string' || token.tokenId == null ||
+          !Number.isSafeInteger(token.quantity) || token.quantity <= 0 ||
+          !Number.isSafeInteger(token.startingBalance) || token.startingBalance < token.quantity)) {
+      throw new Error('Submitted trade journal is invalid. Trading remains blocked.');
+    }
+  }
   function read() {
     const store = storage();
     const rows = [];
-    if (store.length > 10000) throw new Error('Browser storage is too large to inspect safely. Trading remains blocked.');
+    if (store.length > maxStorageEntries) throw new Error('Browser storage is too large to inspect safely. Trading remains blocked.');
     for (let i = 0; i < store.length; i++) {
       const entryKey = store.key(i);
       if (!entryKey?.startsWith(key)) continue;
       const raw = store.getItem(entryKey);
       if (!raw || raw.length > 100000) throw new Error('Submitted trade receipt is invalid. Trading remains blocked.');
       const row = JSON.parse(raw);
-      if (!row || !['network', 'tzktBase', 'escrowAddress', 'account', 'id'].every(k => typeof row[k] === 'string' && row[k]) ||
-          entryKey !== key + row.id ||
-          !['submitting', 'submitted', 'applied'].includes(row.status) ||
-          (row.hash !== null && (typeof row.hash !== 'string' || !/^[a-zA-Z0-9_-]{1,128}$/.test(row.hash))) ||
-          !Array.isArray(row.operations) || !row.operations.length || row.operations.some(op =>
-            op?.destination !== row.escrowAddress || op?.parameters?.entrypoint !== 'initiate_trade' || !Array.isArray(op.parameters.value)) ||
-          !Array.isArray(row.tradedTokens) || !row.tradedTokens.length || row.tradedTokens.some(token =>
-            typeof token?.contractAddress !== 'string' || token.tokenId == null ||
-            !Number.isSafeInteger(token.quantity) || token.quantity <= 0 ||
-            !Number.isSafeInteger(token.startingBalance) || token.startingBalance < token.quantity)) {
-        throw new Error('Submitted trade journal is invalid. Trading remains blocked.');
-      }
+      validateRecord(row, entryKey);
       rows.push(row);
       if (rows.length > 32) throw new Error('Submitted trade journal is full. Trading remains blocked.');
     }
@@ -101,10 +105,16 @@ export function createSubmittedTradeStore({ storage = () => globalThis.localStor
       if (rows.length >= 32) throw new Error('Submitted trade journal is full. Reconcile retained operations first.');
       const record = copy({ ...scope, id: `${Date.now()}-${Math.random()}`, hash: null,
         status: 'submitting', operations, tradedTokens });
+      // New receipts must satisfy the same invariants as reload/status reads.
+      // Reject invalid intent before persistence and before any wallet request.
+      validateRecord(record, key + record.id);
       // Persist before opening the wallet; interrupted requests remain fail-closed.
       const encoded = JSON.stringify(record);
       if (encoded.length > 99800) throw new Error('Trade receipt exceeds browser retention capacity. No operation was sent.');
-      storage().setItem(key + record.id, encoded);
+      const store = storage();
+      // Leave room for the new key so status/reload reads can still inspect it.
+      if (store.length >= maxStorageEntries) throw new Error('Browser storage has no room to retain a trade receipt safely. No operation was sent.');
+      store.setItem(key + record.id, encoded);
       return record;
     },
     submitted(record, hash) {

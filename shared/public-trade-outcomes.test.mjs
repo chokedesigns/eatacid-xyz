@@ -102,6 +102,100 @@ test('TX-002: receipt scope, immutable intent, persistence and bounded fail-clos
   assert.throws(() => f.reserve(), /blocked storage/);
 });
 
+for (const existingKeys of [9999, 10000, 10001]) {
+  test(`AUD-003-002: ${existingKeys} existing storage keys respect the reservation/read boundary`, async () => {
+    const f = fixture();
+    for (let i = 0; i < existingKeys; i++) f.rows.set(`unrelated.${i}`, `retained-${i}`);
+    const original = [...f.rows];
+    // Cache the inert key list so exercising full-capacity reads stays bounded.
+    let keys = [...f.rows.keys()];
+    f.storage.key = i => {
+      if (keys.length !== f.rows.size) keys = [...f.rows.keys()];
+      return keys[i];
+    };
+    let writes = 0, walletRequests = 0;
+    const save = f.storage.setItem;
+    f.storage.setItem = (key, value) => { writes++; save(key, value); };
+    const requestWallet = async () => {
+      walletRequests++;
+      assert.equal(f.store().get(f.scope).status, 'submitting', 'Reservation precedes wallet access');
+      return { transactionHash: 'boundary-hash' };
+    };
+    const send = () => f.journal.withSubmissionLock(async () => {
+      const record = f.reserve();
+      const response = await requestWallet();
+      return f.journal.submitted(record, response.transactionHash);
+    });
+    if (existingKeys === 9999) {
+      const record = await send();
+      assert.equal(walletRequests, 1); assert.equal(writes, 2);
+      assert.equal(f.rows.size, 10000);
+      assert.equal(f.store().get(f.scope).status, 'submitted');
+      assert.equal(f.store().get(f.scope).hash, 'boundary-hash');
+      assert.throws(() => f.reserve(f.store()), /reconciled/);
+      await f.journal.reconcile(record, async hash => { assert.equal(hash, 'boundary-hash'); });
+      assert.equal(f.store().get(f.scope).status, 'applied');
+      f.journal.clearApplied(f.scope);
+      assert.deepEqual([...f.rows], original, 'Only the reconciled receipt is removed');
+    } else {
+      await assert.rejects(send(), existingKeys === 10000 ? /no room.*No operation was sent/ : /storage is too large/);
+      assert.equal(walletRequests, 0); assert.equal(writes, 0);
+      assert.deepEqual([...f.rows], original, 'Capacity rejection preserves every existing key');
+      if (existingKeys === 10000) assert.equal(f.store().get(f.scope), null);
+      else assert.throws(() => f.store().get(f.scope), /storage is too large/);
+    }
+  });
+}
+
+test('AUD-003-002: new reservations must satisfy every reload invariant before writing', () => {
+  for (const field of ['startingBalance', 'quantity']) {
+    for (const value of [undefined, null, '', '5', 'bad', true, {}, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1]) {
+      const f = fixture(); f.tokens[0][field] = value;
+      assert.throws(() => f.reserve(), /journal is invalid/, `${field}: ${String(value)}`);
+      assert.equal(f.rows.size, 0); assert.equal(f.store().get(f.scope), null);
+    }
+  }
+  for (const mutate of [
+    f => { f.tokens[0].startingBalance = 0; },
+    f => { f.tokens[0].quantity = 0; },
+    f => { f.tokens[0].quantity = 6; },
+    f => { f.tokens[0].contractAddress = null; },
+    f => { f.tokens[0].tokenId = null; },
+    f => { f.tokens.length = 0; },
+    f => { f.scope.account = ''; },
+    f => { f.operations.length = 0; },
+    f => { f.operations[0].destination = 'other'; },
+    f => { f.operations[0].parameters.entrypoint = 'other'; },
+    f => { f.operations[0].parameters.value = null; },
+  ]) {
+    const f = fixture(); mutate(f);
+    assert.throws(() => f.reserve(), /journal is invalid/); assert.equal(f.rows.size, 0);
+  }
+  // Shared Exchange callers can still reserve multiple unit-burn rows at the safe boundary.
+  const f = fixture(); f.tokens[0].startingBalance = Number.MAX_SAFE_INTEGER;
+  f.tokens.push({ ...f.tokens[0], tokenId: '5', quantity: 20 });
+  const record = f.submit();
+  assert.equal(f.store().get(f.scope).hash, 'returned-hash');
+  assert.deepEqual(record.tradedTokens, f.tokens);
+  assert.throws(() => f.reserve(f.store()), /reconciled/);
+  const boundary = fixture();
+  boundary.tokens[0].quantity = boundary.tokens[0].startingBalance = Number.MAX_SAFE_INTEGER;
+  assert.deepEqual(boundary.store().get(boundary.submit()).tradedTokens, boundary.tokens);
+});
+
+test('AUD-003-002: preexisting unsafe journals stay retained and block every account scope', () => {
+  const f = fixture(); f.reserve();
+  const key = [...f.rows.keys()][0], corrupt = JSON.parse(f.rows.get(key));
+  corrupt.tradedTokens[0].startingBalance = Number.MAX_SAFE_INTEGER + 1;
+  f.rows.set(key, JSON.stringify(corrupt));
+  const retained = f.rows.get(key);
+  for (const scope of [f.scope, { ...f.scope, account: 'wallet-B' }]) {
+    assert.throws(() => f.store().get(scope), /journal is invalid/);
+    assert.throws(() => f.reserve(f.store(), scope), /journal is invalid/);
+    assert.equal(f.rows.size, 1); assert.equal(f.rows.get(key), retained);
+  }
+});
+
 test('TX-002: real poller rejects unrelated, incomplete, malformed and contradictory evidence without deleting receipt', async () => {
   const f = fixture(), record = f.submit(), originalFetch = globalThis.fetch;
   const valid = f.evidence();
