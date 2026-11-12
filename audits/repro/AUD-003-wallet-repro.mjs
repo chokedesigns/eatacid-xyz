@@ -54,14 +54,10 @@ for (const staleNetwork of ['shadownet', 'mainnet']) {
   await f.listener(account('wallet-B'));
   assert.equal(wallet.getPublicWalletState().account.address, 'wallet-B');
   oldRead.resolve(account('wallet-A', staleNetwork));
-  await pending;
-  if (staleNetwork === 'mainnet') {
-    assert.equal(f.clears, 1, 'Observed failure: obsolete runtime read clears the newer account');
-    assert.equal(wallet.getPublicWalletState().status, 'unconnected');
-  } else {
-    assert.equal(f.clears, 0, 'Same-network stale control does not clear B');
-    assert.equal(wallet.getPublicWalletState().account.address, 'wallet-B');
-  }
+  assert.equal(await pending, null, 'Obsolete runtime reads cannot return A as current');
+  assert.equal(f.clears, 0, 'Obsolete runtime reads cannot start cleanup');
+  assert.equal(wallet.getPublicWalletState().status, 'connected');
+  assert.equal(wallet.getPublicWalletState().account.address, 'wallet-B');
 }
 {
   const { f, wallet } = await fixture();
@@ -69,4 +65,4 @@ for (const staleNetwork of ['shadownet', 'mainnet']) {
   assert.equal((await wallet.getVerifiedPublicActiveAccount()).address, 'wallet-A');
   assert.equal(f.clears, 0, 'Current valid read control succeeds without cleanup');
 }
-console.log('AUD-003 wallet evidence: stale runtime mismatch clears B; valid and stale same-network controls pass.');
+console.log('AUD-003 wallet regression: stale runtime reads retire without clearing B; current valid verification succeeds.');

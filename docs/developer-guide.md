@@ -138,13 +138,13 @@ The shared lifecycle:
 - presents a pending state while it reads the active Beacon account;
 - requests permissions through the shared client and deduplicates concurrent connect requests;
 - verifies that an active or newly emitted account matches the configured Beacon network;
-- retires boot observations superseded by account events before network validation, and suppresses disconnected publication if boot cleanup loses authority while clearing;
+- binds boot and runtime account reads to their initiating lifecycle generation, retires superseded observations before network validation, and suppresses disconnected publication if cleanup loses authority while clearing;
 - clears a current wrong-network active account and publishes disconnected state;
 - clears the active account on disconnect and dispatches the legacy `walletDisconnected` event;
 - publishes `{status, account, nftsPromise}` through `publicWalletStateChanged` and exposes the current state to late consumers;
 - reads FA2 balances from the active slot's TzKT endpoint without blocking the connected-address UI.
 
-A wallet lifecycle generation prevents an older startup result from overwriting a newer account event. Drops and Exchange maintain their own address/generation guards so late NFT results cannot commit after wallet authority changes. Page modules consume shared wallet state, then own their own row filtering, balances, selections, carts, and failure presentation.
+A wallet lifecycle generation prevents an older startup or runtime read from overwriting a newer account event. Exported verification helpers return `null` if their generation changes during verification, including for same-network accounts. The supplied-account helper binds authority at invocation; callers must still guard any earlier asynchronous observation and later use. Beacon's `clearActiveAccount()` has no conditional-clear or cancellation API: our guards prevent obsolete cleanup from starting and suppress its late application-side disconnected publication, but cannot undo an SDK clear already in progress. If that clear later emits a null-account event, the event remains authoritative. Drops and Exchange maintain their own address/generation guards so late NFT results cannot commit after wallet authority changes. Page modules consume shared wallet state, then own their own row filtering, balances, selections, carts, and failure presentation.
 
 Public FA2 reads use ascending balance-row IDs in 100-row pages through `shared/tzkt-fa2-balances.js`. A short valid page establishes completeness; request/body timeouts (15 seconds per page), malformed data, repeated/nonadvancing rows, and the 200-page safety cap reject the whole read. Token IDs and quantities remain unchanged. Only complete retrieval can establish absence for supply, holdings, or post-trade reconciliation; callers retain their existing unknown/retry handling and lifecycle guards across all pages.
 

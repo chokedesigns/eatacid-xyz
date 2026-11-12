@@ -421,6 +421,8 @@ logger.log('Clearing mismatched Beacon account:', {
   expectedNetwork: clientNetwork.type
 });
 
+// Beacon's clear has no conditional/cancellation API. Once started it may
+// still change SDK state and emit a null account after our generation changes.
 await dAppClient.clearActiveAccount();
 } catch (error) {
 console.error('Error clearing mismatched Beacon account:', error);
@@ -428,14 +430,14 @@ console.error('Error clearing mismatched Beacon account:', error);
 clearingMismatchedActiveAccount = false;
 }
 
-// A boot observation can lose authority while Beacon is clearing the account.
+// Any observation can lose authority while Beacon is clearing the account.
 if (isCurrent()) {
 syncDisconnectedWalletState();
 }
 }
 
-async function verifyPublicAccountObservation(account, isCurrent = () => true) {
-// Retire obsolete boot reads before verification can clear a newer account.
+async function verifyPublicAccountObservation(account, isCurrent) {
+// Retire obsolete reads before verification can clear a newer account.
 if (!isCurrent() || !account) {
 return null;
 }
@@ -449,7 +451,12 @@ return null;
 }
 
 export async function verifyPublicActiveAccount(account) {
-return verifyPublicAccountObservation(account);
+const generation = walletLifecycleGeneration;
+const verifiedAccount = await verifyPublicAccountObservation(
+account,
+() => generation === walletLifecycleGeneration
+);
+return generation === walletLifecycleGeneration ? verifiedAccount : null;
 }
 
 async function readVerifiedPublicActiveAccount(isCurrent) {
@@ -463,7 +470,11 @@ return null;
 }
 
 export async function getVerifiedPublicActiveAccount() {
-return readVerifiedPublicActiveAccount();
+const generation = walletLifecycleGeneration;
+const activeAccount = await readVerifiedPublicActiveAccount(
+() => generation === walletLifecycleGeneration
+);
+return generation === walletLifecycleGeneration ? activeAccount : null;
 }
 
 // ----------------------------------------------------------------------------
