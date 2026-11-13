@@ -48,7 +48,8 @@ import {
   journalPath,
   validateJournalRecord,
   readJournalRecord,
-  listJournalRecords
+  listJournalRecords,
+  isUnresolvedDropParamsOperation
 } from "./drop-params-recovery.mjs";
 export {
   DROP_PARAMS_WRITER_OPERATIONS,
@@ -815,7 +816,7 @@ export async function getDropParamsTransactionStatus() {
     const records = await listJournalRecords();
     return {
       sourceVersion: sha256SourceBytes(await readFile(DROP_PARAMS_PATHS.canonicalSource)),
-      blocked: records.some(record => record.status === DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED),
+      blocked: records.some(isUnresolvedDropParamsOperation),
       operations: records.map(publicRecord)
     };
   } finally {
@@ -827,7 +828,7 @@ export async function inspectDropParamsTransactionStatus() {
   const records = await listJournalRecords();
   return {
     sourceVersion: sha256SourceBytes(await readFile(DROP_PARAMS_PATHS.canonicalSource)),
-    blocked: records.some(record => record.status === DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED),
+    blocked: records.some(isUnresolvedDropParamsOperation),
     operations: records.map(publicRecord)
   };
 }
@@ -841,7 +842,7 @@ export async function reconcileDropParamsTransactions(options = {}) {
     });
     return {
       sourceVersion: sha256SourceBytes(await readFile(DROP_PARAMS_PATHS.canonicalSource)),
-      blocked: records.some(record => record.status === DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED),
+      blocked: records.some(isUnresolvedDropParamsOperation),
       operations: records.map(publicRecord)
     };
   } finally {

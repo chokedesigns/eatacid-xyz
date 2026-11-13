@@ -101,6 +101,8 @@ npm run dropparams:transaction -- reconcile
 
 The ignored `shared/drop-params/.drop-params.operations/` directory holds narrowly scoped local recovery journals and staging files. A failed rollback marks the writer `reconciliation_required` and blocks later mutations, generation, and mirroring. Inspect with `status`; after independently restoring or validating the recorded exact state, use `reconcile`. Do not delete an unresolved journal merely to bypass the block.
 
+Status also reports `blocked: true` for every `pending` operation. Matching source/projection/mirror files and a released or stale lock do not prove completion: the local provider remains non-READY and the service rejects authoring previews/apply until supported reconciliation resolves the journal. Use the same `status`/`reconcile` procedure after interruption; read-only health/status/preview requests never reconcile implicitly.
+
 For development-only Admin authoring, start from the nested Admin repository:
 
 ```text

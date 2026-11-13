@@ -48,24 +48,31 @@ try {
   } } }), /inert interruption/);
   const journal = await writer.inspectDropParamsTransactionStatus();
   assert.equal(journal.operations[0].status, 'pending');
-  assert.equal(journal.blocked, false, 'status omits pending from blocked');
+  assert.equal(journal.blocked, true, 'pending requires reconciliation even with matching files');
   const state = await api.getState();
   assert.equal(state.representations.equal, true);
   assert.equal(state.writer.busy, false);
-  assert.equal(state.writer.blocked, false);
-  assert.equal((await provider.refresh()).status, 'READY', 'provider incorrectly publishes unresolved snapshot');
-  assert.equal(provider.getSnapshot().params.dropName, candidate.dropName);
+  assert.equal(state.writer.blocked, true);
+  await assert.rejects(provider.refresh(), error => error.code === 'reconciliation_required');
+  assert.equal(provider.getSnapshot().status, 'RECONCILIATION REQUIRED');
+  assert.equal(provider.getSnapshot().params.dropName, original.dropName, 'pending candidate is never published');
+  const freshProvider = createServiceBackedDropParamsProvider({ load: api.getState });
+  await assert.rejects(freshProvider.refresh(), error => error.code === 'reconciliation_required');
+  assert.equal(freshProvider.getSnapshot().params, null);
   await assert.rejects(projector.projectDropParams(), error => error.code === 'reconciliation_required',
     'ordinary projection correctly rejects the same pending journal');
-  const nextPreview = await api.preview({ operation: 'EDIT',
+  const nextRequest = { operation: 'EDIT',
     expectedSourceVersion: await projector.getCurrentSourceVersion(),
     candidate: { ...candidate, dropName: `${candidate.dropName} NEXT` },
-  });
-  assert.equal(nextPreview.ok, true, 'service also authorizes a new preview during pending recovery');
+  };
+  await assert.rejects(api.preview(nextRequest), error => error.code === 'reconciliation_required',
+    'no actionable preview is issued during pending recovery');
   const reconciled = await writer.reconcileDropParamsTransactions();
   assert.equal(reconciled.operations[0].status, 'completed', 'explicit recovery establishes valid target control');
   assert.equal((await provider.refresh()).status, 'READY');
-  console.log('Pending: completed baseline is READY; interrupted all-file replacement remains pending yet service/provider publish READY; explicit reconcile completes it.');
+  assert.equal(provider.getSnapshot().params.dropName, candidate.dropName);
+  assert.equal((await api.preview(nextRequest)).ok, true, 'explicit reconciliation restores preview publication');
+  console.log('Pending: matching files remain blocked and non-READY without a preview; explicit reconciliation completes the journal and restores READY/preview.');
 } finally {
   const relative = path.relative(work, fixture);
   assert.ok(relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));

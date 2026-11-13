@@ -39,7 +39,7 @@ async function fixture(t) {
   const bytes = () => Promise.all(protectedKeys.map(key => readFile(projector.DROP_PARAMS_PATHS[key])));
   const journalBytes = async () => Promise.all((await readdir(journal)).filter(n => n.endsWith(".json"))
     .sort().map(n => readFile(path.join(journal, n))));
-  return { root, projector, writer, candidate, journal, bytes, journalBytes };
+  return { root, projector, writer, candidate, journal, bytes, journalBytes, load };
 }
 
 function cli(root, script, args = []) {
@@ -83,6 +83,91 @@ async function edit(f, id, hooks = {}) {
   return f.writer.editDropParams({ operationId: id,
     expectedSourceVersion: await f.projector.getCurrentSourceVersion(), candidate: f.candidate }, { testHooks: hooks });
 }
+
+test("AUD-003-018: unresolved journals prevent new provider READY snapshots and previews until explicit reconciliation", async t => {
+  const interrupt = () => {
+    const error = new Error("simulated process interruption");
+    error.simulateProcessInterruption = true;
+    throw error;
+  };
+  const scenarios = [
+    ["before-replacement", { beforeStageFile: interrupt }, "pending", true, "rolled_back"],
+    ["partial-replacement", { afterReplaceFile: ({ key }) => {
+      if (key === "canonicalSource") interrupt();
+    } }, "pending", false, "rolled_back"],
+    ["all-replaced", { afterReplaceFile: ({ key }) => {
+      if (key === "adminMirror") interrupt();
+    } }, "pending", true, "completed"],
+    ["before-final-verification", { beforeFinalVerification: interrupt }, "pending", true, "completed"],
+    ["failed-rollback-with-matching-files", {
+      beforeStageFile() { throw new Error("injected staging failure"); },
+      beforeRollbackFile: failingRollback
+    }, "reconciliation_required", true, "rolled_back"]
+  ];
+  for (const [name, hooks, status, equal, reconciledStatus] of scenarios) {
+    await t.test(name, async t => {
+      const f = await fixture(t);
+      const { createDropParamsAuthoringApi } = await f.load("drop-params-authoring-service.mjs");
+      const adminFeatures = "admin-ui/src/features/drops";
+      await mkdir(path.join(f.root, adminFeatures, "authoring"), { recursive: true });
+      for (const name of ["drop-params.provider.js", "authoring/drop-params.provider.dev.js", "authoring/authoring.client.js"])
+        await copyFile(path.join(repo, adminFeatures, name), path.join(f.root, adminFeatures, name));
+      const { createServiceBackedDropParamsProvider } = await import(pathToFileURL(
+        path.join(f.root, adminFeatures, "authoring/drop-params.provider.dev.js")).href);
+      const api = createDropParamsAuthoringApi();
+      const provider = createServiceBackedDropParamsProvider({ load: api.getState });
+      const baseline = await provider.refresh();
+      assert.equal(baseline.status, "READY");
+      const publications = [];
+      provider.subscribe(state => publications.push(state));
+
+      await assert.rejects(edit(f, name, hooks), error => status === "pending"
+        ? error.simulateProcessInterruption === true : error.code === "reconciliation_required");
+      const before = await f.bytes();
+      const journals = await f.journalBytes();
+      for (const inspect of [f.writer.inspectDropParamsTransactionStatus, f.writer.getDropParamsTransactionStatus]) {
+        const state = await inspect();
+        assert.equal(state.blocked, true);
+        assert.equal(state.operations[0].status, status);
+      }
+      const serviceState = await api.getState();
+      assert.equal(serviceState.representations.equal, equal);
+      assert.equal(serviceState.writer.busy, false, "lock release alone does not establish completion");
+      assert.equal(serviceState.writer.blocked, true);
+      const blockedCode = equal ? "reconciliation_required" : "representation_drift";
+      await assert.rejects(provider.refresh(), error => error.code === blockedCode);
+      assert.equal(provider.getSnapshot().status, "RECONCILIATION REQUIRED");
+      assert.ok(publications.every(state => state.status !== "READY"));
+      assert.equal(provider.getSnapshot().sourceVersion, baseline.sourceVersion,
+        "unresolved data cannot replace the prior snapshot (AUD-003-008 retention is separate)");
+      const fresh = createServiceBackedDropParamsProvider({ load: api.getState });
+      await assert.rejects(fresh.refresh(), error => error.code === blockedCode);
+      assert.equal(fresh.getSnapshot().params, null);
+      const previewRequest = async () => ({ operation: "EDIT",
+        expectedSourceVersion: await f.projector.getCurrentSourceVersion(),
+        candidate: { ...f.candidate, dropName: `${f.candidate.dropName} NEXT` } });
+      await assert.rejects(api.preview(await previewRequest()), error => error.code === blockedCode);
+      assert.deepEqual(await f.bytes(), before);
+      assert.deepEqual(await f.journalBytes(), journals, "status/provider/preview must leave recovery evidence untouched");
+
+      const reconciled = await f.writer.reconcileDropParamsTransactions();
+      assert.equal(reconciled.blocked, false);
+      assert.equal(reconciled.operations[0].status, reconciledStatus);
+      assert.equal((await provider.refresh()).status, "READY");
+      const request = await previewRequest();
+      const preview = await api.preview(request);
+      assert.equal(preview.ok, true);
+      assert.equal(preview.effects.writesPerformed, false);
+      const applied = await api.apply({ ...request, candidateHash: preview.candidateHash,
+        planHash: preview.planHash, previewToken: preview.previewToken });
+      assert.equal(applied.result.status, "completed");
+      const completed = await provider.refresh();
+      assert.equal(completed.status, "READY");
+      assert.equal(completed.params.dropName, request.candidate.dropName);
+      assert.equal((await f.writer.inspectDropParamsTransactionStatus()).blocked, false);
+    });
+  }
+});
 
 test("CFG-003: direct writers reject incompatible active candidates before journal or configuration publication", async t => {
   const f = await fixture(t);

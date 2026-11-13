@@ -18,6 +18,11 @@ export const DROP_PARAMS_OPERATION_STATUSES = Object.freeze({
   RECONCILIATION_REQUIRED: "reconciliation_required"
 });
 
+export function isUnresolvedDropParamsOperation(record) {
+  return record.status === DROP_PARAMS_OPERATION_STATUSES.PENDING ||
+    record.status === DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED;
+}
+
 export const JOURNAL_SCHEMA_VERSION = 1;
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 export const journalDirectory = path.join(moduleDirectory, ".drop-params.operations");
@@ -131,10 +136,7 @@ export async function assertDropParamsProjectionAllowed() {
       { cause: error }
     );
   }
-  const unresolved = records.filter(record =>
-    record.status === DROP_PARAMS_OPERATION_STATUSES.PENDING ||
-    record.status === DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED
-  );
+  const unresolved = records.filter(isUnresolvedDropParamsOperation);
   if (unresolved.length > 0) {
     throw new DropParamsTransactionError(
       "reconciliation_required",

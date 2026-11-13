@@ -176,6 +176,37 @@ test("service validation rejects an active candidate without burn tokens before 
   assert.equal(executeCalls, 0);
 });
 
+test("AUD-003-018: writer recovery blocks preview issuance and application of an earlier preview", async () => {
+  for (const status of ["pending", "reconciliation_required"]) {
+    const base = snapshot();
+    let currentWriter = writer();
+    let executeCalls = 0;
+    const api = createDropParamsAuthoringApi({
+      readSnapshot: async () => structuredClone(base),
+      readWriterState: async () => structuredClone(currentWriter),
+      execute: async () => { executeCalls += 1; return { status: "completed" }; }
+    });
+    const request = { operation: "CREATE", expectedSourceVersion: base.sourceVersion, candidate: activeFixture() };
+    const preview = await api.preview(request);
+    currentWriter = writer({ blocked: true, operations: [{ operationId: "unresolved", status }] });
+    const state = await api.getState();
+    assert.equal(state.representations.equal, true);
+    assert.equal(state.writer.busy, false);
+    assert.equal(state.writer.blocked, true);
+    assert.equal(state.writer.operations[0].status, status);
+    const rejects = error => error.code === "reconciliation_required" && error.statusCode === 409;
+    await assert.rejects(api.preview(request), rejects);
+    await assert.rejects(api.apply({ ...request, candidateHash: preview.candidateHash,
+      planHash: preview.planHash, previewToken: preview.previewToken }), rejects);
+    assert.equal(executeCalls, 0);
+    currentWriter = writer({ operations: [{ operationId: "unresolved", status: "completed" }] });
+    const fresh = await api.preview(request);
+    assert.equal((await api.apply({ ...request, candidateHash: fresh.candidateHash,
+      planHash: fresh.planHash, previewToken: fresh.previewToken })).ok, true);
+    assert.equal(executeCalls, 1);
+  }
+});
+
 test("EA-XYZ-P3-T004: service rejects same-contract validate/preview/apply before writer execution", async () => {
   let executeCalls = 0;
   let snapshotReads = 0;
