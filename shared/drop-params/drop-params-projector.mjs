@@ -554,24 +554,26 @@ export async function verifyDropParamsEquality(options = {}) {
   try {
     outerBytes = await readFile(DROP_PARAMS_PATHS.outerJson);
     outerParams = JSON.parse(outerBytes.toString("utf8"));
+    assertValidDropParams(outerParams);
   } catch (error) {
-    errors.push(`outer JSON could not be read and parsed: ${error.message}`);
+    errors.push(`outer JSON could not be read, parsed and validated: ${error.message}`);
   }
 
   try {
     mirrorBytes = await readFile(DROP_PARAMS_PATHS.adminMirror);
     mirrorParams = JSON.parse(mirrorBytes.toString("utf8"));
+    assertValidDropParams(mirrorParams);
   } catch (error) {
-    errors.push(`Admin mirror could not be read and parsed: ${error.message}`);
+    errors.push(`Admin mirror could not be read, parsed and validated: ${error.message}`);
   }
 
   if (canonical && options.expectedParams && !isDeepStrictEqual(canonical, options.expectedParams)) {
     errors.push("canonical JS does not equal the expected params");
   }
-  if (canonical && outerParams && !isDeepStrictEqual(outerParams, canonical)) {
+  if (canonical && !isDeepStrictEqual(outerParams, canonical)) {
     errors.push("outer JSON does not semantically equal canonical JS");
   }
-  if (canonical && mirrorParams && !isDeepStrictEqual(mirrorParams, canonical)) {
+  if (canonical && !isDeepStrictEqual(mirrorParams, canonical)) {
     errors.push("Admin mirror does not semantically equal canonical JS");
   }
   if (outerBytes && mirrorBytes && !outerBytes.equals(mirrorBytes)) {

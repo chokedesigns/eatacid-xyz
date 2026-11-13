@@ -38,21 +38,25 @@ try {
   };
   const outerJson = projector.DROP_PARAMS_PATHS.outerJson;
   const mirror = projector.DROP_PARAMS_PATHS.adminMirror;
-  const result = await writer.editDropParams(request, {
+  const paths = [projector.DROP_PARAMS_PATHS.canonicalSource, outerJson, mirror];
+  const before = await Promise.all(paths.map(file => readFile(file)));
+  await assert.rejects(writer.editDropParams(request, {
     testHooks: { async beforeFinalVerification() {
       await writeFile(outerJson, 'null\n');
       await writeFile(mirror, 'null\n');
+      assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, false,
+        'shared verifier rejects falsy projections');
     } },
-  });
-  assert.equal(result.status, 'completed', 'writer incorrectly reports completed');
-  assert.equal((await readFile(outerJson, 'utf8')), 'null\n');
-  assert.equal((await readFile(mirror, 'utf8')), 'null\n');
-  assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, true,
-    'shared verifier incorrectly accepts two falsy projections');
-  await assert.rejects(writer.editDropParams({ ...request, operationId: 'aud003-falsy-next',
-    expectedSourceVersion: await projector.getCurrentSourceVersion() }),
-    error => error.code === 'representation_drift', 'strict next writer detects invalid projections');
-  console.log('Projection: valid copied control passes; null projections are falsely verified and journaled completed; next writer rejects drift.');
+  }), error => error.code === 'transaction_rolled_back' && /equality verification failed/.test(error.message));
+  assert.deepEqual(await Promise.all(paths.map(file => readFile(file))), before, 'exact prior files restored');
+  const status = await writer.getDropParamsTransactionStatus();
+  assert.equal(status.blocked, false);
+  assert.equal(status.operations[0].status, 'rolled_back');
+  assert.equal(status.operations[0].result, null);
+  const result = await writer.editDropParams(request);
+  assert.equal(result.status, 'completed', 'valid retry completes');
+  assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, true);
+  console.log('Projection: valid control passes; null projections fail verification and roll back exact bytes; valid retry completes.');
 } finally {
   const relative = path.relative(work, fixture);
   assert.ok(relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));

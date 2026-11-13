@@ -84,6 +84,167 @@ async function edit(f, id, hooks = {}) {
     expectedSourceVersion: await f.projector.getCurrentSourceVersion(), candidate: f.candidate }, { testHooks: hooks });
 }
 
+test("AUD-003-016: every projection must validate and equal canonical params", async t => {
+  const f = await fixture(t);
+  const p = f.projector;
+  const valid = await readFile(p.DROP_PARAMS_PATHS.outerJson);
+  const invalid = ["null\n", "false\n", "0\n", '""\n', "{}\n", "[]\n", "{", ""];
+  const different = p.serializeDropParamsJson(f.candidate);
+  for (const text of [...invalid, different]) {
+    for (const keys of [["outerJson"], ["adminMirror"], ["outerJson", "adminMirror"]]) {
+      for (const key of ["outerJson", "adminMirror"])
+        await writeFile(p.DROP_PARAMS_PATHS[key], keys.includes(key) ? text : valid);
+      const result = await p.verifyDropParamsEquality();
+      assert.equal(result.ok, false, `${keys}: ${JSON.stringify(text)}`);
+      assert.ok(result.errors.length > 0);
+      await assert.rejects(p.assertDropParamsEquality(), /equality verification failed/);
+    }
+  }
+  for (const key of ["outerJson", "adminMirror"]) {
+    await writeFile(p.DROP_PARAMS_PATHS.outerJson, valid);
+    await writeFile(p.DROP_PARAMS_PATHS.adminMirror, valid);
+    await rm(p.DROP_PARAMS_PATHS[key]);
+    assert.equal((await p.verifyDropParamsEquality()).ok, false, `missing ${key}`);
+  }
+  await p.projectDropParams();
+  assert.equal((await p.assertDropParamsEquality()).ok, true);
+});
+
+test("AUD-003-016: invalid final projections roll back CREATE, EDIT and DEACTIVATE", async t => {
+  for (const operation of ["CREATE", "EDIT", "DEACTIVATE"]) {
+    await t.test(operation, async t => {
+      const f = await fixture(t);
+      const p = f.projector;
+      if (operation === "CREATE") {
+        const a = await f.load("drop-params-authoring.mjs");
+        await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, a.serializeDropParamsSource(a.INACTIVE_DROP_PARAMS));
+        await p.projectDropParams();
+      }
+      const before = await f.bytes();
+      const request = { operation, operationId: `invalid-${operation}`,
+        expectedSourceVersion: await p.getCurrentSourceVersion(),
+        ...(operation === "DEACTIVATE" ? {} : { candidate: f.candidate }) };
+      await assert.rejects(f.writer.executeDropParamsOperation(request, { testHooks: {
+        async beforeFinalVerification() {
+          await writeFile(p.DROP_PARAMS_PATHS.outerJson, "null\n");
+          await writeFile(p.DROP_PARAMS_PATHS.adminMirror, "null\n");
+        }
+      } }), error => error.code === "transaction_rolled_back" && /equality verification failed/.test(error.message));
+      assert.deepEqual(await f.bytes(), before);
+      const status = await f.writer.inspectDropParamsTransactionStatus();
+      assert.equal(status.blocked, false);
+      assert.equal(status.operations[0].status, "rolled_back");
+      assert.equal(status.operations[0].result, null);
+      const completed = await f.writer.executeDropParamsOperation(request);
+      assert.equal(completed.status, "completed");
+      assert.equal((await p.assertDropParamsEquality()).ok, true);
+      assert.equal((await f.writer.executeDropParamsOperation(request)).idempotent, true);
+    });
+  }
+});
+
+test("AUD-003-016: partial generation/replacement never advances to final verification or completion", async t => {
+  const scenarios = [
+    ["partial-stage", { beforeStageFile({ key }) {
+      if (key === "outerJson") throw new Error("injected projection generation failure");
+    } }],
+    ["invalid-stage", { async beforeStageFile({ key, path: stagedPath }) {
+      if (key === "adminMirror") await writeFile(path.join(path.dirname(stagedPath), "outer.json"), "null\n");
+    } }],
+    ["partial-replacement", { beforeReplaceFile: failingReplace }]
+  ];
+  for (const [name, hooks] of scenarios) {
+    await t.test(name, async t => {
+      const f = await fixture(t);
+      const before = await f.bytes();
+      let verified = false;
+      await assert.rejects(edit(f, name, { ...hooks,
+        beforeFinalVerification() { verified = true; }
+      }), error => error.code === "transaction_rolled_back");
+      assert.equal(verified, false);
+      assert.deepEqual(await f.bytes(), before);
+      assert.equal((await f.writer.inspectDropParamsTransactionStatus()).operations[0].status, "rolled_back");
+    });
+  }
+});
+
+test("AUD-003-016: unusable final projections preserve failed-rollback and pending recovery gates", async t => {
+  for (const interrupted of [false, true]) {
+    await t.test(interrupted ? "pending" : "failed rollback", async t => {
+      const f = await fixture(t);
+      const p = f.projector;
+      const before = await f.bytes();
+      await assert.rejects(edit(f, "invalid-recovery", {
+        async beforeFinalVerification() {
+          await writeFile(p.DROP_PARAMS_PATHS.outerJson, "false\n");
+          await writeFile(p.DROP_PARAMS_PATHS.adminMirror, "false\n");
+          if (interrupted) throw Object.assign(new Error("interrupted invalid projection"),
+            { simulateProcessInterruption: true });
+        },
+        ...(interrupted ? {} : { beforeRollbackFile: failingRollback })
+      }), error => interrupted ? error.simulateProcessInterruption === true : error.code === "reconciliation_required");
+      const status = await f.writer.inspectDropParamsTransactionStatus();
+      assert.equal(status.blocked, true);
+      assert.equal(status.operations[0].status, interrupted ? "pending" : "reconciliation_required");
+      assert.equal(status.operations[0].result, null);
+      assert.equal((await p.verifyDropParamsEquality()).ok, false);
+      const journals = await f.journalBytes();
+      await assertAllBlocked(f);
+      const { createDropParamsAuthoringApi } = await f.load("drop-params-authoring-service.mjs");
+      const api = createDropParamsAuthoringApi();
+      assert.equal((await api.getState()).writer.blocked, true);
+      await assert.rejects(api.preview({ operation: "EDIT",
+        expectedSourceVersion: await p.getCurrentSourceVersion(), candidate: f.candidate }),
+      error => error.code === "representation_drift");
+      assert.deepEqual(await f.journalBytes(), journals);
+      const recovered = await f.writer.reconcileDropParamsTransactions();
+      assert.equal(recovered.blocked, false);
+      assert.equal(recovered.operations[0].status, "rolled_back");
+      assert.deepEqual(await f.bytes(), before);
+      assert.equal((await edit(f, "valid-after-recovery")).status, "completed");
+    });
+  }
+});
+
+test("AUD-003-016: authoring apply reports invalid projection rollback and permits a fresh valid preview", async t => {
+  const f = await fixture(t);
+  const before = await f.bytes();
+  const { createDropParamsAuthoringApi } = await f.load("drop-params-authoring-service.mjs");
+  let corrupt = true;
+  const api = createDropParamsAuthoringApi({ execute: (request, options) =>
+    f.writer.executeDropParamsOperation(request, { ...options, testHooks: {
+      async beforeFinalVerification() {
+        if (corrupt) {
+          await writeFile(f.projector.DROP_PARAMS_PATHS.outerJson, "0\n");
+          await writeFile(f.projector.DROP_PARAMS_PATHS.adminMirror, "0\n");
+        }
+      }
+    } }) });
+  const request = { operation: "EDIT", expectedSourceVersion: await f.projector.getCurrentSourceVersion(),
+    candidate: f.candidate };
+  const apply = async () => {
+    const preview = await api.preview(request);
+    assert.equal(preview.effects.writesPerformed, false);
+    return api.apply({ ...request, candidateHash: preview.candidateHash,
+      planHash: preview.planHash, previewToken: preview.previewToken });
+  };
+  const failed = await apply();
+  assert.equal(failed.ok, false);
+  assert.equal(failed.result, null);
+  assert.equal(failed.failure.code, "transaction_rolled_back");
+  assert.deepEqual(failed.rollback, { verified: true, status: "rolled_back" });
+  assert.equal(failed.reconciliationRequired, false);
+  assert.deepEqual(await f.bytes(), before);
+  corrupt = false;
+  const success = await apply();
+  assert.equal(success.ok, true);
+  assert.equal(success.result.status, "completed");
+  const state = await api.getState();
+  assert.equal(state.writer.blocked, false);
+  assert.equal(state.representations.equal, true);
+  assert.deepEqual(state.params, f.candidate);
+});
+
 test("AUD-003-018: unresolved journals prevent new provider READY snapshots and previews until explicit reconciliation", async t => {
   const interrupt = () => {
     const error = new Error("simulated process interruption");
@@ -138,8 +299,10 @@ test("AUD-003-018: unresolved journals prevent new provider READY snapshots and 
       await assert.rejects(provider.refresh(), error => error.code === blockedCode);
       assert.equal(provider.getSnapshot().status, "RECONCILIATION REQUIRED");
       assert.ok(publications.every(state => state.status !== "READY"));
-      assert.equal(provider.getSnapshot().sourceVersion, baseline.sourceVersion,
-        "unresolved data cannot replace the prior snapshot (AUD-003-008 retention is separate)");
+      assert.equal(provider.getSnapshot().sourceVersion, null, "blocked provider retires action authority");
+      assert.equal(provider.getSnapshot().params, null);
+      assert.equal(provider.getSnapshot().metadata.serviceSnapshot.sourceVersion, baseline.sourceVersion,
+        "prior snapshot remains diagnostic only; unresolved data cannot replace it");
       const fresh = createServiceBackedDropParamsProvider({ load: api.getState });
       await assert.rejects(fresh.refresh(), error => error.code === blockedCode);
       assert.equal(fresh.getSnapshot().params, null);
