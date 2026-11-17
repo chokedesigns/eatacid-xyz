@@ -115,6 +115,8 @@ For implementation history and evidence, see [early Home first paint](performanc
 
 Projection APIs acquire the transaction lock before checking recovery state and writing outputs. Calls within `withDropParamsLock` reuse that call chain's active ownership; `lock: false` requires that scope and cannot bypass recovery checks. The writer retains its explicit reconciliation and rollback write paths.
 
+Writer rollback and reconciliation validate recorded recovery snapshots and require each current file to match its exact recorded base or target state before destructive recovery. Rollback rechecks that ownership immediately before replacement and skips files already at base. Divergence preserves current content and unresolved journal/staging evidence as `reconciliation_required`; even explicit reconciliation cannot overwrite an unrecognized external edit. Resolved records alone release staging evidence and permit later writers. Canonical authority, the shared lock, archive-first deactivation, and strict final representation equality remain enforced.
+
 Writer status uses the same unresolved-journal rule as projection: both `pending` and `reconciliation_required` set `blocked`, even when every file matches and no writer owns the lock. The authoring service passes that state to the local provider and rejects preview/apply while blocked; only resolved journals permit a new READY provider snapshot. `service.status` describes service availability, while `writer.blocked` independently gates authoring readiness.
 
 `shared/drop-time.js` centralizes validation and conversion of configured drop date/time values. `shared/public-logger.js` provides explicitly gated public diagnostics. They are supporting shared concerns rather than configuration authorities.

@@ -220,8 +220,52 @@ async function filesMatch(fileState) {
   return true;
 }
 
-async function restoreSnapshot(snapshot, options = {}) {
+function validateRecoveryFiles(baseFiles, targetFiles) {
+  for (const [key, definition] of Object.entries(fileDefinitions)) {
+    const base = baseFiles?.[key];
+    const target = targetFiles?.[key];
+    if (!base || base.path !== definition.relativePath ||
+        typeof base.exists !== "boolean" ||
+        (base.exists ? typeof base.bytesBase64 !== "string" ||
+          !SHA256_PATTERN.test(base.sha256) ||
+          sha256SourceBytes(Buffer.from(base.bytesBase64, "base64")) !== base.sha256
+          : base.sha256 !== null || base.bytesBase64 !== null) ||
+        (targetFiles !== null && (!target || target.path !== definition.relativePath ||
+          target.exists !== true || !SHA256_PATTERN.test(target.sha256)))) {
+      throw new DropParamsTransactionError("journal_invalid", `Invalid recovery state for ${key}`);
+    }
+  }
+}
+
+function bytesMatch(bytes, expected) {
+  return expected?.exists === false ? bytes === null
+    : bytes !== null && sha256SourceBytes(bytes) === expected?.sha256;
+}
+
+async function assertRecoveryFilesOwned(baseFiles, targetFiles) {
+  const conflicts = [];
+  for (const [key, definition] of Object.entries(fileDefinitions)) {
+    const bytes = await readIfExists(definition.path);
+    if (!bytesMatch(bytes, baseFiles[key]) &&
+        !(targetFiles && bytesMatch(bytes, targetFiles[key]))) conflicts.push(key);
+  }
+  if (conflicts.length) {
+    throw new DropParamsTransactionError("recovery_state_diverged",
+      `Recovery preserves files outside recorded base/target state: ${conflicts.join(", ")}. Preserve external edits and resolve the recorded state before explicit reconciliation.`);
+  }
+}
+
+async function restoreSnapshot(snapshot, targetFiles, options = {}) {
   const failures = [];
+  let code = "rollback_verification_failed";
+  // Inspect every representation before touching any of them. A partial writer
+  // may leave any mixture of exact base/target bytes, but owns no other state.
+  try {
+    validateRecoveryFiles(snapshot, targetFiles);
+    await assertRecoveryFilesOwned(snapshot, targetFiles);
+  } catch (error) {
+    return { ok: false, code: error.code || code, errors: [error.message] };
+  }
   for (const [key, definition] of Object.entries(fileDefinitions)) {
     const saved = snapshot?.[key];
     try {
@@ -231,24 +275,33 @@ async function restoreSnapshot(snapshot, options = {}) {
       if (typeof options.testHooks?.beforeRollbackFile === "function") {
         await options.testHooks.beforeRollbackFile({ key, path: definition.path });
       }
+      await assertRecoveryFilesOwned(snapshot, targetFiles);
+      if (bytesMatch(await readIfExists(definition.path), saved)) continue;
       if (saved.exists) {
         const bytes = Buffer.from(saved.bytesBase64, "base64");
         if (sha256SourceBytes(bytes) !== saved.sha256) {
           throw new Error(`recovery bytes for ${key} do not match their recorded hash`);
         }
-        await replaceDropParamsFileAtomic(definition.path, bytes);
+        await replaceDropParamsFileAtomic(definition.path, bytes, {
+          beforeReplace: () => assertRecoveryFilesOwned(snapshot, targetFiles)
+        });
       } else {
+        await assertRecoveryFilesOwned(snapshot, targetFiles);
         await unlink(definition.path).catch(error => {
           if (error?.code !== "ENOENT") throw error;
         });
       }
     } catch (error) {
       failures.push(`${key}: ${error.message}`);
+      if (error.code === "recovery_state_diverged") {
+        code = error.code;
+        break;
+      }
     }
   }
   const verified = await filesMatch(snapshot).catch(() => false);
   if (!verified) failures.push("restored files do not match the exact prior snapshot");
-  return { ok: failures.length === 0, errors: failures };
+  return { ok: failures.length === 0, code, errors: failures };
 }
 
 async function writeJournalRecord(record) {
@@ -330,6 +383,7 @@ async function reconcileRecord(record, options = {}) {
       `Operation ${record.operationId} lacks recovery data`
     );
   }
+  validateRecoveryFiles(recovery.baseFiles, recovery.targetFiles);
 
   if (recovery.targetFiles &&
       await filesMatch(recovery.targetFiles) &&
@@ -349,7 +403,7 @@ async function reconcileRecord(record, options = {}) {
     return next;
   }
 
-  const rollback = await restoreSnapshot(recovery.baseFiles, options);
+  const rollback = await restoreSnapshot(recovery.baseFiles, recovery.targetFiles, options);
   if (rollback.ok) {
     const next = rolledBackRecord(record, nowIso(options), {
       message: "interrupted partial operation restored to its exact prior files",
@@ -365,7 +419,7 @@ async function reconcileRecord(record, options = {}) {
     status: DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED,
     updatedAt: nowIso(options),
     failure: {
-      code: "rollback_verification_failed",
+      code: rollback.code,
       message: rollback.errors.join("; ")
     }
   };
@@ -529,7 +583,12 @@ async function executeLocked(request, options) {
   }
   const planHash = getDropParamsRequestPlanHash(operation, expectedSourceVersion, candidate);
 
-  await reconcilePendingOperations(options);
+  const reconciled = await reconcilePendingOperations(options);
+  const unresolved = reconciled.filter(isUnresolvedDropParamsOperation);
+  if (unresolved.length) {
+    throw new DropParamsTransactionError("reconciliation_required",
+      `Drop Params writes are blocked by operation(s): ${unresolved.map(record => record.operationId).join(", ")}`);
+  }
   let existing = await readJournalRecord(operationId);
   if (existing) {
     assertExistingOperationMatches(existing, operation, planHash);
@@ -750,12 +809,13 @@ async function executeLocked(request, options) {
         "Final Drop Params sourceVersion differs from the planned result"
       );
     }
-    record = completedRecord({ ...record, archive, result }, nowIso(options));
-    await writeJournalRecord(record);
+    const completed = completedRecord({ ...record, archive, result }, nowIso(options));
+    await writeJournalRecord(completed);
+    record = completed;
     return result;
   } catch (error) {
     if (error?.simulateProcessInterruption === true) throw error;
-    const rollback = await restoreSnapshot(baseFiles, options);
+    const rollback = await restoreSnapshot(baseFiles, record.recovery.targetFiles, options);
     if (!rollback.ok) {
       record = {
         ...record,
@@ -763,7 +823,7 @@ async function executeLocked(request, options) {
         status: DROP_PARAMS_OPERATION_STATUSES.RECONCILIATION_REQUIRED,
         updatedAt: nowIso(options),
         failure: {
-          code: "rollback_verification_failed",
+          code: rollback.code,
           message: `${error.message}; rollback: ${rollback.errors.join("; ")}`
         }
       };
@@ -782,7 +842,9 @@ async function executeLocked(request, options) {
       { cause: error, operationId, status: record.status }
     );
   } finally {
-    await rm(stageDirectory(operationId), { recursive: true, force: true });
+    if (!isUnresolvedDropParamsOperation(record)) {
+      await rm(stageDirectory(operationId), { recursive: true, force: true });
+    }
   }
 }
 

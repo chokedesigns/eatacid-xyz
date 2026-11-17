@@ -47,16 +47,19 @@ try {
       assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, false,
         'shared verifier rejects falsy projections');
     } },
-  }), error => error.code === 'transaction_rolled_back' && /equality verification failed/.test(error.message));
-  assert.deepEqual(await Promise.all(paths.map(file => readFile(file))), before, 'exact prior files restored');
+  }), error => error.code === 'reconciliation_required' && /equality verification failed/.test(error.cause.message));
+  assert.equal(await readFile(outerJson, 'utf8'), 'null\n', 'external projection preserved');
+  assert.equal(await readFile(mirror, 'utf8'), 'null\n', 'external mirror preserved');
   const status = await writer.getDropParamsTransactionStatus();
-  assert.equal(status.blocked, false);
-  assert.equal(status.operations[0].status, 'rolled_back');
+  assert.equal(status.blocked, true);
+  assert.equal(status.operations[0].status, 'reconciliation_required');
   assert.equal(status.operations[0].result, null);
+  for (const [index, file] of paths.entries()) await writeFile(file, before[index]);
+  assert.equal((await writer.reconcileDropParamsTransactions()).blocked, false);
   const result = await writer.editDropParams(request);
   assert.equal(result.status, 'completed', 'valid retry completes');
   assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, true);
-  console.log('Projection: valid control passes; null projections fail verification and roll back exact bytes; valid retry completes.');
+  console.log('Projection: valid control passes; null projections fail verification and remain blocked and preserved; retry completes after exact-state resolution.');
 } finally {
   const relative = path.relative(work, fixture);
   assert.ok(relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));

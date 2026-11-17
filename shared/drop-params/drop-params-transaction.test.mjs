@@ -364,7 +364,7 @@ test("an interrupted DEACTIVATE after archive verification reuses the archive on
   assert.equal((await assertDropParamsEquality({ expectedParams: INACTIVE_DROP_PARAMS })).ok, true);
 });
 
-test("post-archive reset, projection, mirror, and final verification faults restore exact bytes", async () => {
+test("post-archive faults restore exact bytes; external final edits require resolution", async () => {
   const scenarios = [
     ["generator", { beforeInactiveSerialization() { throw new Error("injected generator failure"); } }],
     ["reset", { beforeReplaceFile({ key }) { if (key === "canonicalSource") throw new Error("injected reset failure"); } }],
@@ -385,7 +385,12 @@ test("post-archive reset, projection, mirror, and final verification faults rest
     await expectCode(deactivateDropParams({
       operationId,
       expectedSourceVersion: await getCurrentSourceVersion()
-    }, { testHooks }), "transaction_rolled_back");
+    }, { testHooks }), name === "equality" ? "reconciliation_required" : "transaction_rolled_back");
+    if (name === "equality") {
+      assert.equal(await readFile(DROP_PARAMS_PATHS.adminMirror, "utf8"), "{}\n");
+      await setCurrent(active);
+      assert.equal((await reconcileDropParamsTransactions()).blocked, false);
+    }
     assertByteMapsEqual(await exactCurrentBytes(), before);
     assert.equal((await readdir(DROP_PARAMS_ARCHIVE_DIRECTORY)).some(filename =>
       filename.includes(operationId)

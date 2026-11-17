@@ -110,7 +110,7 @@ test("AUD-003-016: every projection must validate and equal canonical params", a
   assert.equal((await p.assertDropParamsEquality()).ok, true);
 });
 
-test("AUD-003-016: invalid final projections roll back CREATE, EDIT and DEACTIVATE", async t => {
+test("AUD-003-016/017: invalid external final projections block CREATE, EDIT and DEACTIVATE", async t => {
   for (const operation of ["CREATE", "EDIT", "DEACTIVATE"]) {
     await t.test(operation, async t => {
       const f = await fixture(t);
@@ -129,12 +129,15 @@ test("AUD-003-016: invalid final projections roll back CREATE, EDIT and DEACTIVA
           await writeFile(p.DROP_PARAMS_PATHS.outerJson, "null\n");
           await writeFile(p.DROP_PARAMS_PATHS.adminMirror, "null\n");
         }
-      } }), error => error.code === "transaction_rolled_back" && /equality verification failed/.test(error.message));
-      assert.deepEqual(await f.bytes(), before);
+      } }), error => error.code === "reconciliation_required" && /equality verification failed/.test(error.cause.message));
+      assert.equal(await readFile(p.DROP_PARAMS_PATHS.outerJson, "utf8"), "null\n");
+      assert.equal(await readFile(p.DROP_PARAMS_PATHS.adminMirror, "utf8"), "null\n");
       const status = await f.writer.inspectDropParamsTransactionStatus();
-      assert.equal(status.blocked, false);
-      assert.equal(status.operations[0].status, "rolled_back");
+      assert.equal(status.blocked, true);
+      assert.equal(status.operations[0].status, "reconciliation_required");
       assert.equal(status.operations[0].result, null);
+      for (const [index, key] of protectedKeys.entries()) await writeFile(p.DROP_PARAMS_PATHS[key], before[index]);
+      assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, false);
       const completed = await f.writer.executeDropParamsOperation(request);
       assert.equal(completed.status, "completed");
       assert.equal((await p.assertDropParamsEquality()).ok, true);
@@ -197,6 +200,8 @@ test("AUD-003-016: unusable final projections preserve failed-rollback and pendi
         expectedSourceVersion: await p.getCurrentSourceVersion(), candidate: f.candidate }),
       error => error.code === "representation_drift");
       assert.deepEqual(await f.journalBytes(), journals);
+      assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, true);
+      for (const [index, key] of protectedKeys.entries()) await writeFile(p.DROP_PARAMS_PATHS[key], before[index]);
       const recovered = await f.writer.reconcileDropParamsTransactions();
       assert.equal(recovered.blocked, false);
       assert.equal(recovered.operations[0].status, "rolled_back");
@@ -206,7 +211,7 @@ test("AUD-003-016: unusable final projections preserve failed-rollback and pendi
   }
 });
 
-test("AUD-003-016: authoring apply reports invalid projection rollback and permits a fresh valid preview", async t => {
+test("AUD-003-016/017: authoring apply reports external projection conflict and recovers after resolution", async t => {
   const f = await fixture(t);
   const before = await f.bytes();
   const { createDropParamsAuthoringApi } = await f.load("drop-params-authoring-service.mjs");
@@ -231,10 +236,13 @@ test("AUD-003-016: authoring apply reports invalid projection rollback and permi
   const failed = await apply();
   assert.equal(failed.ok, false);
   assert.equal(failed.result, null);
-  assert.equal(failed.failure.code, "transaction_rolled_back");
-  assert.deepEqual(failed.rollback, { verified: true, status: "rolled_back" });
-  assert.equal(failed.reconciliationRequired, false);
-  assert.deepEqual(await f.bytes(), before);
+  assert.equal(failed.failure.code, "reconciliation_required");
+  assert.deepEqual(failed.rollback, { verified: false, status: "reconciliation_required" });
+  assert.equal(failed.reconciliationRequired, true);
+  assert.equal(await readFile(f.projector.DROP_PARAMS_PATHS.outerJson, "utf8"), "0\n");
+  assert.equal((await api.getState()).writer.blocked, true);
+  for (const [index, key] of protectedKeys.entries()) await writeFile(f.projector.DROP_PARAMS_PATHS[key], before[index]);
+  assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, false);
   corrupt = false;
   const success = await apply();
   assert.equal(success.ok, true);
@@ -243,6 +251,155 @@ test("AUD-003-016: authoring apply reports invalid projection rollback and permi
   assert.equal(state.writer.blocked, false);
   assert.equal(state.representations.equal, true);
   assert.deepEqual(state.params, f.candidate);
+});
+
+function interruptRecoveryTest() {
+  throw Object.assign(new Error("simulated recovery interruption"), { simulateProcessInterruption: true });
+}
+
+test("AUD-003-017: external edits at interrupted write boundaries preserve files and recovery evidence", async t => {
+  for (const boundary of ["before-replacement", ...protectedKeys]) {
+    for (const conflict of [...protectedKeys, "missing-projection", "matching-external-projections"]) {
+      await t.test(`${boundary}/${conflict}`, async t => {
+        const f = await fixture(t);
+        const p = f.projector;
+        const before = await f.bytes();
+        const request = { operationId: "interrupted", candidate: f.candidate,
+          expectedSourceVersion: await p.getCurrentSourceVersion() };
+        await assert.rejects(f.writer.editDropParams(request, { testHooks: boundary === "before-replacement"
+          ? { beforeStageFile: interruptRecoveryTest }
+          : { afterReplaceFile: ({ key }) => { if (key === boundary) interruptRecoveryTest(); } }
+        }), error => error.simulateProcessInterruption === true);
+        const journalPath = path.join(f.journal, "interrupted.json");
+        const originalRecord = JSON.parse(await readFile(journalPath));
+        const stage = path.join(f.journal, "stage-interrupted");
+        const stageNames = await readdir(stage);
+        const stageBytes = await Promise.all(stageNames.map(n => readFile(path.join(stage, n))));
+        if (conflict === "missing-projection") await rm(p.DROP_PARAMS_PATHS.outerJson);
+        else if (conflict === "matching-external-projections") {
+          const a = await f.load("drop-params-authoring.mjs");
+          const external = { ...f.candidate, dropName: "EXTERNAL CONSISTENT EDIT" };
+          await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, a.serializeDropParamsSource(external));
+          for (const key of ["outerJson", "adminMirror"])
+            await writeFile(p.DROP_PARAMS_PATHS[key], p.serializeDropParamsJson(external));
+          assert.equal((await p.verifyDropParamsEquality()).ok, true);
+        } else {
+          // Even whitespace-only edits are outside the recorded exact-byte state.
+          await writeFile(p.DROP_PARAMS_PATHS[conflict], Buffer.concat([
+            await readFile(p.DROP_PARAMS_PATHS[conflict]), Buffer.from("\n ")
+          ]));
+        }
+        const currentBytes = () => Promise.all(protectedKeys.map(key =>
+          readFile(p.DROP_PARAMS_PATHS[key]).catch(error => {
+            if (error.code === "ENOENT") return null;
+            throw error;
+          })));
+        const externalBytes = await currentBytes();
+        // A different operation must be blocked too, even with a current version.
+        await assert.rejects(edit(f, "later"), error => error.code === "reconciliation_required");
+        await assert.rejects(f.writer.editDropParams(request), error => error.code === "reconciliation_required");
+        const status = await f.writer.reconcileDropParamsTransactions();
+        assert.equal(status.blocked, true);
+        assert.equal(status.operations.length, 1, "no later writer journal is created");
+        assert.equal(status.operations[0].failure.code, "recovery_state_diverged");
+        assert.deepEqual(await currentBytes(), externalBytes, "no destructive recovery on divergence");
+        const unresolvedRecord = JSON.parse(await readFile(journalPath));
+        assert.deepEqual(unresolvedRecord.recovery, originalRecord.recovery);
+        assert.deepEqual(await readdir(stage), stageNames);
+        assert.deepEqual(await Promise.all(stageNames.map(n => readFile(path.join(stage, n)))), stageBytes);
+        await assert.rejects(p.projectDropParams(), blocked);
+        // Independent resolution restores reviewed exact base bytes in this fixture.
+        for (const [index, key] of protectedKeys.entries()) await writeFile(p.DROP_PARAMS_PATHS[key], before[index]);
+        assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, false);
+        await assert.rejects(readdir(stage), error => error.code === "ENOENT");
+        assert.equal((await f.writer.editDropParams(request)).status, "completed");
+        assert.equal((await p.assertDropParamsEquality({ expectedParams: f.candidate })).ok, true);
+      });
+    }
+  }
+});
+
+test("AUD-003-017: recorded base/target mixtures recover normally and permit retry", async t => {
+  for (const boundary of ["before-replacement", ...protectedKeys]) {
+    await t.test(boundary, async t => {
+      const f = await fixture(t);
+      const before = await f.bytes();
+      const request = { operationId: "unchanged", candidate: f.candidate,
+        expectedSourceVersion: await f.projector.getCurrentSourceVersion() };
+      await assert.rejects(f.writer.editDropParams(request, { testHooks: boundary === "before-replacement"
+        ? { beforeStageFile: interruptRecoveryTest }
+        : { afterReplaceFile: ({ key }) => { if (key === boundary) interruptRecoveryTest(); } }
+      }), error => error.simulateProcessInterruption === true);
+      const recovered = await f.writer.reconcileDropParamsTransactions();
+      assert.equal(recovered.blocked, false);
+      assert.equal(recovered.operations[0].status, boundary === "adminMirror" ? "completed" : "rolled_back");
+      if (boundary !== "adminMirror") assert.deepEqual(await f.bytes(), before);
+      const result = await f.writer.editDropParams(request);
+      assert.equal(result.status, "completed");
+      assert.equal(result.idempotent === true, boundary === "adminMirror");
+    });
+  }
+});
+
+test("AUD-003-017: rollback rechecks ownership after staging bytes for atomic replacement", async t => {
+  const f = await fixture(t);
+  const p = f.projector;
+  await assert.rejects(edit(f, "boundary-race", { afterReplaceFile: ({ key }) => {
+    if (key === "canonicalSource") interruptRecoveryTest();
+  } }), error => error.simulateProcessInterruption === true);
+  const partial = await f.bytes();
+  const external = Buffer.concat([partial[0], Buffer.from("\n// external edit during recovery staging\n")]);
+  const originalOpen = fs.open;
+  let injected = false;
+  fs.open = async (target, ...args) => {
+    const handle = await originalOpen(target, ...args);
+    if (path.basename(String(target)).startsWith(".drop-params.js.") && args[0] === "wx") {
+      const sync = handle.sync.bind(handle);
+      handle.sync = async () => {
+        await sync();
+        await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, external);
+        injected = true;
+      };
+    }
+    return handle;
+  };
+  syncBuiltinESMExports();
+  try {
+    const status = await f.writer.reconcileDropParamsTransactions();
+    assert.equal(injected, true, "inject after recovery temporary-file staging");
+    assert.equal(status.blocked, true);
+    assert.equal(status.operations[0].failure.code, "recovery_state_diverged");
+  } finally {
+    fs.open = originalOpen;
+    syncBuiltinESMExports();
+  }
+  assert.deepEqual(await f.bytes(), [external, ...partial.slice(1)]);
+  assert.ok((await readdir(f.journal)).includes("stage-boundary-race"));
+});
+
+test("AUD-003-017: deactivation without recorded targets preserves external edits and verified archive", async t => {
+  const f = await fixture(t);
+  const p = f.projector;
+  const before = await f.bytes();
+  const request = { operationId: "archive-interrupted", expectedSourceVersion: await p.getCurrentSourceVersion() };
+  await assert.rejects(f.writer.deactivateDropParams(request, { testHooks: {
+    beforeInactiveSerialization: interruptRecoveryTest
+  } }), error => error.simulateProcessInterruption === true);
+  const record = JSON.parse(await readFile(path.join(f.journal, "archive-interrupted.json")));
+  assert.equal(record.recovery.targetFiles, null);
+  const archivePath = path.join(f.root, record.archive.relativePath);
+  const archiveBytes = await readFile(archivePath);
+  const external = Buffer.concat([before[0], Buffer.from("\n// external edit after archive\n")]);
+  await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, external);
+  assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, true);
+  assert.deepEqual(await f.bytes(), [external, ...before.slice(1)]);
+  assert.deepEqual(await readFile(archivePath), archiveBytes);
+  await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, before[0]);
+  assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, false);
+  const result = await f.writer.deactivateDropParams(request);
+  assert.equal(result.archiveReused, true);
+  assert.equal(result.status, "completed");
+  assert.deepEqual(await readFile(archivePath), archiveBytes);
 });
 
 test("AUD-003-018: unresolved journals prevent new provider READY snapshots and previews until explicit reconciliation", async t => {
@@ -507,13 +664,20 @@ test("lock:false requires current async ownership and cannot reuse a released lo
   await assert.rejects(delayed, /requires withDropParamsLock ownership/);
 });
 
-test("existing writer, service and watcher suites pass only against a disposable repository", { timeout: 60_000 }, async t => {
+test("existing authoring, writer, service and watcher suites pass only against a disposable repository", { timeout: 60_000 }, async t => {
   const f = await fixture(t);
   await mkdir(path.join(f.root, "scripts"));
   await copyFile(path.join(repo, "scripts/drop-params-transaction.mjs"), path.join(f.root, "scripts/drop-params-transaction.mjs"));
-  for (const name of ["drop-params-transaction.test.mjs", "drop-params-authoring-service.test.mjs", "watch-drop-params-json.test.mjs"])
+  for (const name of ["admin-ui/src/features/drops/drops.data.js", "admin-ui/src/features/drops/utils/token-id.js",
+    "admin-ui/src/network.js", "admin-ui/src/utils/io.js", "admin-ui/src/utils/live-cfg.js",
+    "admin-ui/src/utils/report-error.js", "admin-ui/src/utils/log.js", "admin-ui/src/utils/debug.js",
+    "shared/drop-params/fixtures/delete-pending-claim.ps1", "drops/js/events.js"]) {
+    await mkdir(path.dirname(path.join(f.root, name)), { recursive: true });
+    await copyFile(path.join(repo, name), path.join(f.root, name));
+  }
+  for (const name of ["drop-params-authoring.test.mjs", "drop-params-transaction.test.mjs", "drop-params-authoring-service.test.mjs", "watch-drop-params-json.test.mjs"])
     await copyFile(path.join(repo, "shared/drop-params", name), path.join(f.root, "shared/drop-params", name));
-  for (const names of [["drop-params-transaction.test.mjs", "drop-params-authoring-service.test.mjs"], ["watch-drop-params-json.test.mjs"]]) {
+  for (const names of [["drop-params-authoring.test.mjs", "drop-params-transaction.test.mjs", "drop-params-authoring-service.test.mjs"], ["watch-drop-params-json.test.mjs"]]) {
     const result = await cli(f.root, "--test", ["--experimental-test-isolation=none", ...names.map(n => `shared/drop-params/${n}`)]);
     assert.equal(result.code, 0, result.output);
     t.diagnostic(result.output.match(/# tests \d+[\s\S]*$/)?.[0] || result.output);

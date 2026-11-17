@@ -55,7 +55,7 @@ async function readIfExists(filePath) {
   }
 }
 
-export async function replaceDropParamsFileAtomic(filePath, contents) {
+export async function replaceDropParamsFileAtomic(filePath, contents, options = {}) {
   assertAllowedWritablePath(filePath);
   const bytes = Buffer.isBuffer(contents) ? contents : Buffer.from(contents);
   const temporaryPath = path.join(
@@ -70,6 +70,8 @@ export async function replaceDropParamsFileAtomic(filePath, contents) {
     await handle.sync();
     await handle.close();
     handle = null;
+    // Recovery rechecks ownership after staging, immediately before replacement.
+    if (options.beforeReplace) await options.beforeReplace();
     await rename(temporaryPath, filePath);
   } catch (error) {
     if (handle) await handle.close().catch(() => {});

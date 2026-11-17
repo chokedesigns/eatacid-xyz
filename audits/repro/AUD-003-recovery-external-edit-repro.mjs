@@ -49,9 +49,16 @@ try {
   const later = { ...original, dropName: `${original.dropName} LATER` };
   await assert.rejects(writer.editDropParams({
     operationId: 'aud003-later', expectedSourceVersion: await projector.getCurrentSourceVersion(), candidate: later,
-  }), error => error.code === 'stale_source_version');
-  assert.deepEqual(await readFile(projector.DROP_PARAMS_PATHS.canonicalSource), baseBytes,
-    'automatic recovery overwrote the unrelated canonical edit');
+  }), error => error.code === 'reconciliation_required');
+  assert.equal(await readFile(projector.DROP_PARAMS_PATHS.canonicalSource, 'utf8'), manualBytes,
+    'automatic recovery preserves the unrelated canonical edit');
+  assert.equal((await writer.inspectDropParamsTransactionStatus()).operations[0].status, 'reconciliation_required');
+  assert.equal((await writer.reconcileDropParamsTransactions()).blocked, true,
+    'explicit reconciliation cannot authorize overwriting external edits');
+  assert.equal(await readFile(projector.DROP_PARAMS_PATHS.canonicalSource, 'utf8'), manualBytes);
+  // Model independent operator resolution only in this disposable fixture.
+  await writeFile(projector.DROP_PARAMS_PATHS.canonicalSource, baseBytes);
+  assert.equal((await writer.reconcileDropParamsTransactions()).blocked, false);
   assert.equal((await writer.inspectDropParamsTransactionStatus()).operations[0].status, 'rolled_back');
   const control = { ...request, operationId: 'aud003-control-interrupted' };
   await assert.rejects(writer.editDropParams(control, { testHooks: {
@@ -65,7 +72,7 @@ try {
   const recovered = await writer.editDropParams(control);
   assert.equal(recovered.status, 'completed', 'unchanged interrupted source can recover and retry');
   assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, true);
-  console.log('Recovery: valid copied state; pending interruption plus external source edit is silently rolled back by a later writer, which then rejects stale version.');
+  console.log('Recovery: external edits remain intact and block automatic/explicit recovery; exact-state resolution and unchanged partial-write retry succeed.');
 } finally {
   const relative = path.relative(work, fixture);
   assert.ok(relative && relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative));
