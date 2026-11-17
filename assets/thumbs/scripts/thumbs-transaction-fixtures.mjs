@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
-import { buildManifestModel, checkManifest } from '../../../admin-ui/scripts/gen-thumbs-manifest.mjs';
+import { run as generateManifest, checkManifest } from '../../../admin-ui/scripts/gen-thumbs-manifest.mjs';
 import { processInputCollection } from './thumbs.mjs';
 
 export async function manifestFixture(root) {
@@ -19,7 +19,7 @@ export async function manifestFixture(root) {
     await fs.mkdir(path.join(paths.mastersRoot, collection), { recursive: true });
     await fs.writeFile(path.join(paths.mastersRoot, collection, collection === 'undefined' ? 'undefined.jpg' : '0.jpg'), jpeg);
   }
-  // Exercise generateManifest()'s real npm subprocess path without targeting Admin.
+  // Exercise standalone npm generation without targeting Admin.
   const generatorUrl = new URL('../../../admin-ui/scripts/gen-thumbs-manifest.mjs', import.meta.url).href;
   await fs.writeFile(path.join(root, 'generate.mjs'),
     `import { run } from ${JSON.stringify(generatorUrl)};\nawait run(${JSON.stringify({ thumbsRoot: paths.mastersRoot, outFile: paths.manifestPath })});\n`);
@@ -28,8 +28,8 @@ export async function manifestFixture(root) {
   return paths;
 }
 
-export async function regenerate(paths) {
-  await fs.writeFile(paths.manifestPath, buildManifestModel({ thumbsRoot: paths.mastersRoot }).content);
+export async function regenerate(paths, options = {}) {
+  return generateManifest({ log: () => {}, ...options, thumbsRoot: paths.mastersRoot, outFile: paths.manifestPath });
 }
 
 export function check(paths) {
@@ -70,28 +70,28 @@ export async function concurrentRollback(paths, successFirst) {
   await pendingImage(paths, 'canaan');
   const held = gate();
   const ready = gate();
-  const fail = async () => {
-    await regenerate(paths); // Failure after an actual manifest write.
+  const fail = async (_adminRoot, options) => {
+    await regenerate(paths, options); // Failure after an actual manifest write.
     throw new Error('inert manifest regeneration failure');
   };
   const firstCollection = successFirst ? 'the_419_script' : 'canaan';
   const first = processInputCollection(firstCollection, paths, {
     beforeWrite: async () => { ready.resolve(); await held.promise; },
-    manifestRunner: successFirst ? () => regenerate(paths) : fail,
+    manifestRunner: successFirst ? (_adminRoot, options) => regenerate(paths, options) : fail,
   });
   await Promise.race([
     ready.promise,
     first.then((result) => { throw new Error(`Owner did not reach the hold point: ${JSON.stringify(result)}`); }),
   ]);
   const second = processInputCollection(successFirst ? 'canaan' : 'the_419_script', paths, {
-    manifestRunner: successFirst ? fail : () => regenerate(paths),
+    manifestRunner: successFirst ? fail : (_adminRoot, options) => regenerate(paths, options),
   });
   let blocked;
   try {
     // Keep the owner held until a third concurrent call proves bounded contention.
     // This also makes the regression reject the original uncoordinated writer.
     blocked = await processInputCollection('the_419_script', paths, {
-      lockTimeoutMs: 100, manifestRunner: () => regenerate(paths),
+      lockTimeoutMs: 100, manifestRunner: (_adminRoot, options) => regenerate(paths, options),
     });
   } finally {
     held.resolve();
@@ -109,8 +109,68 @@ export async function concurrentRollback(paths, successFirst) {
   await assert.rejects(fs.access(lockPath(paths)), { code: 'ENOENT' });
 }
 
-export function inputWorker(paths, collection, { hold = false, failure = false, lockTimeoutMs = 5_000, holdAfterGenerate = false } = {}) {
-  const child = fork(fileURLToPath(import.meta.url), ['--worker', JSON.stringify({ paths, collection, hold, failure, lockTimeoutMs, holdAfterGenerate })], {
+export async function concurrentGeneratorRollback(paths, { independent = false, generatorFirst = false, failure = true } = {}) {
+  const sourceBytes = await pendingImage(paths, 'canaan');
+  const addedMaster = path.join(paths.mastersRoot, 'the_419_script', '1.jpg');
+  const held = gate();
+  const ready = gate();
+  const addMaster = () => fs.copyFile(path.join(paths.mastersRoot, 'the_419_script', '0.jpg'), addedMaster);
+  if (generatorFirst) {
+    await addMaster();
+    if (independent) assert.equal((await inputWorker(paths, null, { generator: true }).done).status, 'generated');
+    else await regenerate(paths);
+  }
+  const before = await fs.readFile(paths.manifestPath);
+  const input = processInputCollection('canaan', paths, {
+    beforeWrite: async () => { ready.resolve(); await held.promise; },
+    manifestRunner: async (_adminRoot, options) => {
+      await regenerate(paths, options);
+      if (failure) throw new Error('inert input failure after generation');
+    },
+  });
+  let direct;
+  let worker;
+  try {
+    await Promise.race([ready.promise, input.then((result) => { throw new Error(JSON.stringify(result)); })]);
+    if (!generatorFirst) await addMaster();
+    // Prove bounded contention before allowing the import to finish.
+    if (independent) {
+      const blocked = await inputWorker(paths, null, { generator: true, lockTimeoutMs: 100 }).done;
+      assert.equal(blocked.status, 'failed');
+      assert.match(blocked.errors.join(' '), /lock is busy/);
+      worker = inputWorker(paths, null, { generator: true });
+      await worker.started;
+      direct = worker.done;
+    } else {
+      await assert.rejects(regenerate(paths, { lockTimeoutMs: 100 }), /lock is busy/);
+      direct = regenerate(paths);
+    }
+    assert.deepEqual(await fs.readFile(paths.manifestPath), before);
+  } finally {
+    held.resolve();
+  }
+  try {
+    const [result, generated] = await Promise.all([input, direct]);
+    if (independent) assert.equal(generated.status, 'generated', JSON.stringify(generated));
+    if (failure) {
+      assert.equal(result.status, 'failed');
+      assert.match(result.errors.join(' '), /manifest restored/);
+      await fs.access(path.join(paths.inputRoot, 'canaan', 'new.png'));
+      assert.deepEqual(await fs.readdir(path.join(paths.mastersRoot, 'canaan')), ['0.jpg']);
+    } else {
+      await assertCommitted(paths, 'canaan', result, sourceBytes);
+    }
+    await fs.access(addedMaster);
+    assert.match(await fs.readFile(paths.manifestPath, 'utf8'), /the_419_script\/1\.jpg/);
+    await check(paths);
+    await assert.rejects(fs.access(lockPath(paths)), { code: 'ENOENT' });
+  } finally {
+    await worker?.stop();
+  }
+}
+
+export function inputWorker(paths, collection, { hold = false, failure = false, lockTimeoutMs = 5_000, holdAfterGenerate = false, generator = false } = {}) {
+  const child = fork(fileURLToPath(import.meta.url), ['--worker', JSON.stringify({ paths, collection, hold, failure, lockTimeoutMs, holdAfterGenerate, generator })], {
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   });
   let output = '';
@@ -143,15 +203,30 @@ export function inputWorker(paths, collection, { hold = false, failure = false, 
 }
 
 if (process.argv[2] === '--worker') {
-  const { paths, collection, hold, failure, lockTimeoutMs, holdAfterGenerate } = JSON.parse(process.argv[3]);
+  const { paths, collection, hold, failure, lockTimeoutMs, holdAfterGenerate, generator } = JSON.parse(process.argv[3]);
   const released = gate();
   process.on('message', (message) => { if (message === 'release') released.resolve(); });
   const wait = async () => { process.send({ ready: true }); await released.promise; };
-  const transaction = processInputCollection(collection, paths, {
+  // Test-only pause after the real standalone writer acquires its lock. No
+  // production bypass or ownership delegation is involved in this hold point.
+  if (generator && hold) {
+    const readFile = fs.readFile;
+    fs.readFile = async (file, ...args) => {
+      if (file === path.join(lockPath(paths), 'owner.json')) {
+        fs.readFile = readFile;
+        await wait();
+      }
+      return readFile(file, ...args);
+    };
+  }
+  const transaction = generator ? regenerate(paths, { lockTimeoutMs }).then(
+    () => ({ status: 'generated' }),
+    (error) => ({ status: 'failed', errors: [error.message] })
+  ) : processInputCollection(collection, paths, {
     lockTimeoutMs,
     beforeWrite: hold && !holdAfterGenerate ? wait : undefined,
-    manifestRunner: async () => {
-      await regenerate(paths);
+    manifestRunner: async (_adminRoot, options) => {
+      await regenerate(paths, options);
       if (holdAfterGenerate) await wait();
       if (failure) throw new Error('inert worker manifest failure');
     },

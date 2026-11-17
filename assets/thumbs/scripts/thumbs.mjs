@@ -1,12 +1,12 @@
 import { spawn } from 'node:child_process';
 import { constants as fsConstants } from 'node:fs';
-import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import sharp from 'sharp';
+import { acquireManifestLock } from '../../../admin-ui/scripts/thumbs-manifest-lock.mjs';
+import { run as runManifestGenerator } from '../../../admin-ui/scripts/gen-thumbs-manifest.mjs';
 
 // Canonical output: 300px wide, auto height, sRGB, metadata-free, progressive JPEG at quality 84.
 export const JPEG_QUALITY = 84;
@@ -109,58 +109,6 @@ export async function convertThumbnail(sourcePath, { warn = () => {} } = {}) {
 
 async function ensureDirectory(directory) {
   await fs.mkdir(directory, { recursive: true });
-}
-
-// All collections share one manifest. Never reclaim a lock based on age or PID:
-// an interrupted owner (or its generator child) may have left uncommitted files.
-async function acquireInputLock(manifestPath, timeoutMs) {
-  if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 0 || timeoutMs > 60_000) {
-    throw new Error('lockTimeoutMs must be an integer between 0 and 60000.');
-  }
-  const directory = await fs.realpath(path.dirname(manifestPath));
-  const lockPath = path.join(directory, `.${path.basename(manifestPath)}.input.lock`);
-  const started = performance.now();
-  while (true) {
-    try {
-      await fs.mkdir(lockPath);
-      break;
-    } catch (error) {
-      if (error?.code !== 'EEXIST') throw error;
-      if (performance.now() - started >= timeoutMs) {
-        throw new Error(
-          `Thumbnail input lock is busy: ${lockPath}. Retry after the owner completes; ` +
-            'an interrupted transaction requires manual review (docs/operations.md).'
-        );
-      }
-      await delay(Math.min(50, timeoutMs - (performance.now() - started)));
-    }
-  }
-
-  const ownerPath = path.join(lockPath, 'owner.json');
-  const owner = JSON.stringify({ token: randomUUID(), pid: process.pid, startedAt: new Date().toISOString() });
-  // If initialization fails, leave the directory in place: ownership is uncertain.
-  try {
-    await fs.writeFile(ownerPath, owner, { flag: 'wx' });
-  } catch (error) {
-    throw new Error(`Thumbnail input lock initialization failed; retained for manual review: ${lockPath}. ${error.message}`);
-  }
-  const identity = await fs.lstat(lockPath);
-  async function assertOwned() {
-    const current = await fs.lstat(lockPath);
-    if (!current.isDirectory() || current.dev !== identity.dev || current.ino !== identity.ino ||
-        await fs.readFile(ownerPath, 'utf8') !== owner) {
-      throw new Error(`Thumbnail input lock ownership is uncertain: ${lockPath}. Manual review required.`);
-    }
-  }
-  return {
-    lockPath,
-    assertOwned,
-    async release() {
-      await assertOwned();
-      await fs.unlink(ownerPath);
-      await fs.rmdir(lockPath);
-    },
-  };
 }
 
 function uncertainCleanup(error, cleanupError) {
@@ -273,7 +221,10 @@ function runCommand(command, args, options) {
   });
 }
 
-export async function generateManifest(adminRoot) {
+export async function generateManifest(adminRoot, options = {}) {
+  // Reuse the transaction capability in this process; never bypass the lock in
+  // a generator child via an environment flag or a readable owner token.
+  if (options.manifestLock) return runManifestGenerator({ ...options, log: () => {} });
   return runCommand('npm', ['run', 'gen:thumbs'], { cwd: adminRoot });
 }
 
@@ -311,7 +262,7 @@ export async function processInputCollection(
   let recoveryRequired = false;
 
   try {
-    lock = await acquireInputLock(paths.manifestPath, lockTimeoutMs);
+    lock = await acquireManifestLock(paths.manifestPath, lockTimeoutMs);
     await Promise.all([ensureDirectory(inputDirectory), ensureDirectory(processedDirectory)]);
     const pending = await supportedFiles(inputDirectory);
     if (!pending.length) {
@@ -357,7 +308,9 @@ export async function processInputCollection(
     await writeNewFile(outputPath, converted.data);
     try {
       await lock.assertOwned();
-      await manifestRunner(paths.adminRoot);
+      await manifestRunner(paths.adminRoot, {
+        manifestLock: lock, thumbsRoot: paths.mastersRoot, outFile: paths.manifestPath,
+      });
       await lock.assertOwned();
       await moveFileExclusive(sourcePath, archivePath);
     } catch (error) {
