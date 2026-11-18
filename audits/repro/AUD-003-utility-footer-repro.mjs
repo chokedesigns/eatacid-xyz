@@ -11,7 +11,11 @@ for (const page of ['index.html', 'drops/index.html', 'exchange/index.html', 'co
   const utility = anchors.filter(anchor => anchor.label === 'COLLECTION UTILITY');
   assert.equal(utility.find(anchor => anchor.classes.includes('nav-link'))?.href, '/collection-utility',
     `${page}: working header navigation control`);
-  assert.equal(utility.find(anchor => anchor.classes.includes('footer-link'))?.href, '#',
-    `${page}: footer points to the same page fragment instead of Utility`);
+  const footer = utility.filter(anchor => anchor.classes.split(/\s+/).includes('footer-link'));
+  assert.equal(footer.length, 1, `${page}: one Utility footer link`);
+  assert.equal(footer[0].href, '/collection-utility',
+    `${page}: footer uses the same public route as the header`);
+  assert.equal(new URL(footer[0].href, `https://example.org/${page}`).href,
+    'https://example.org/collection-utility', `${page}: footer escapes the current shell path`);
 }
-console.log('All four shells: Utility header links to the route; Utility footer remains a same-page # link.');
+console.log('All four shells: Utility header and footer navigate to /collection-utility.');

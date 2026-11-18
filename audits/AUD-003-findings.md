@@ -73,6 +73,8 @@ Severity expresses plausible consequence *and* reachability under the stated pre
 
 ### AUD-003-013 — Collection Utility footer link does not navigate in local shells
 
+**Remediated in AUD-003-013 (local shells and regressions).** The four tracked Utility footer anchors now use `/collection-utility`, matching the existing header route. The adapted reproduction verifies the corrected destination from every shell; `scripts/public-navigation.test.mjs` covers public/local and nested-path resolution plus unchanged header, other footer, external and wallet-action destinations. Only the four footer href values changed in the page shells. Live Webflow markup/runtime was not inspected or modified. Original evidence follows.
+
 **Low; current checked-in presentation, deployed markup unverified.** A visible Utility navigation link should open Utility. Each of `index.html:93`, `drops/index.html:66`, `exchange/index.html:66` and `collection-utility/index.html:700` has a Utility footer `href="#"` with no authored click handler; the header links correctly use `/collection-utility`. The inert DOM control shows the header navigating and the footer staying on the same document. [Footer reproduction](repro/AUD-003-utility-footer-repro.mjs): `node audits/repro/AUD-003-utility-footer-repro.mjs`. Live Webflow markup/runtime could differ and was not inspected; this is a local-shell finding, not proof of a deployed failure.
 
 ### AUD-003-014 — Manual Health refresh can reuse stale healthy economics
