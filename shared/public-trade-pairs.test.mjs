@@ -160,7 +160,8 @@ function consumer(surface, { rows, cart, selected = 'KT1Burn', burnAmount = 2, r
     buildApprovalOps: async () => [{ kind: 'approval' }],
     window: { dAppClient: { requestOperation: async payload => { sent.push(payload); return { transactionHash: 'inert-hash' }; } } },
     networkConfigAvailable: true, network: 'testnet', EXPLORER_BASE: 'https://inert.explorer.test',
-    AppState: { redeemSupply: 7 },
+    // Pair/payload controls must enter the real handler with verified LIVE state.
+    AppState: { redeemSupply: 7, countdownPhase: 'live', contractPaused: false },
     exchangeInFlight: false, logger: { log() {} }, console: { error: (...args) => errors.push(args), warn() {} },
     showModal() {}, hideModal() {}, setTimeout() {}, clearInterval() {},
     document: { querySelector: selector => selector === '.loading-modal-div' ? { querySelector: () => null } : null },

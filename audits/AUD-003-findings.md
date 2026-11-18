@@ -15,6 +15,59 @@ The available local environment was Windows, Node `v22.16.0`, npm `10.4.0`, inst
 
 The [ignored checkpoint](work/AUD-003-checkpoint.md) retains batch-by-batch source closure, command evidence and exact limitations. Each reproduction below invokes current production functions with inert wallet, DOM, indexer or disposable filesystem boundaries; all recorded commands passed with distinguishing valid controls on these unchanged revisions. Where a conclusion is source-only beyond the exercised seam, that limit is stated. No live signing, transaction, Webflow mutation, operational generation, deployment or real-path authoring write occurred.
 
+## Post-remediation reconciliation — 2026-11-17
+
+POST-AUD-003-001 adds this cumulative source/test disposition without changing
+the original findings or their severity, triggers, controls and live limits.
+The examination and environment claims above describe the original audit
+revisions. The current verification baseline is Outer `aa634a3` and Admin
+`57400fe`, plus this ticket's evidence/fixture changes. All twenty findings
+have source remediations and passing affected deterministic coverage; this is
+not a new audit, deployed verification, contract certification or release approval.
+
+| Finding | Checklist | Traceable remediation (repository / commit / ticket suffix) | Current exercised evidence |
+| --- | --- | --- | --- |
+| 001 | 1.2 | Outer `1432fe2` / `AUD-003-001-public-wallet-generation` | Wallet reproduction; shared Beacon stale/current controls. |
+| 002 | 1.1 | Outer `d235930` / `AUD-003-002-drops-receipt-validation` | Receipt reproduction; unsafe/capacity journal and Drops send controls. |
+| 003 | 1.5 | Admin `2f16388` / `AUD-003-003-treasury-ambiguous-recovery` | Treasury recovery, all four action/surface paths, reload and no-resubmission controls. |
+| 004 | 2.4 | Admin `f461a37` / `AUD-003-004-health-balance-evidence` | Complete/malformed pages and holder identity through economics/CMS/checklist. |
+| 005 | 1.6 | Admin `74f2f91` / `AUD-003-005-pause-ambiguous-recovery` | Both pause surfaces; unknown blocks repeats, attributed recovery and applied controls. |
+| 006 | 1.3 | Outer `c381815`, Admin `50d2fe5` / `AUD-003-006-admin-drops-account-binding` | Authority reproduction and Send invalidation suite. |
+| 007 | 2.2 | Admin `d8cd053` / `AUD-003-007-exact-pair-status-ids` | Exact large-ID status, checklist/pill/lock and safe mismatch controls. |
+| 008 | 3.2 | Admin `73c28d5` / `AUD-003-008-local-drops-health-invalidation` | Provider/subscriber/controller health loss revokes cached and pending Send; verified recovery. |
+| 009 | 2.3 | Admin `a4113f5` / `AUD-003-009-malformed-pair-pages` | Complete page/fallback controls; malformed evidence reaches verification-required and Send gate. |
+| 010 | 1.4 | Outer `7d9f792` / `AUD-003-010-public-confirmation-deadline` | Stalled fetch/body deadline reproduction; unknown receipt retention and terminal controls. |
+| 011 | 2.1 | Outer `2737dc1` / `AUD-003-011-public-live-pause-refresh` | Later pause/unavailable retires LIVE; fresh recovery and final pre-wallet gates. |
+| 012 | 1.7 | Outer `47bc82a` / `AUD-003-012-exchange-balance-aggregation` | Duplicate-identity reproduction; aggregate balance publication/receipt controls. |
+| 013 | 5.1 | Outer `aa634a3` / `AUD-003-013-collection-footer-links` | Four-shell footer reproduction and navigation regressions. |
+| 014 | 2.5 | Admin `c3d081b` / `AUD-003-014-health-manual-refresh` | Forced refresh, failed/late/stale evidence and ordinary-cache controls. |
+| 015 | 2.6 | Admin `bb6c3c7` / **`AUD-003-008-canaan-acid-csv-validation` (ticket alias)** | CANAAN raw/normalized validation, upload/restore and B2 controls. |
+| 016 | 3.3 | Outer `62156f8` / `AUD-003-016-falsy-projection-validation` | Falsy final-projection reproduction and transactional completion guards. |
+| 017 | 3.4 | Outer `52c47a2` / `AUD-003-017-external-edit-recovery` | External-edit preservation and ordinary interrupted-recovery controls. |
+| 018 | 3.1 | Outer `29fd7d0` / `AUD-003-018-pending-writer-readiness` | Pending matching files remain non-READY/no-preview; explicit recovery; params revoked after 008. |
+| 019 | 4.2 | Outer `865073f` / `AUD-003-019-webflow-pagination-integrity` | CMS staged-item/asset pagination reproduction and malformed/complete controls. |
+| 020 | 4.1 | Outer `6480646`, Admin `57400fe` / `AUD-003-020-thumbnail-generator-coordination` | Disposable concurrent rollback/generator regression and manifest freshness. |
+
+Checklist 0.1 was implemented by Outer `d19b71e`
+(`TEST-001-public-fixture-coverage`). This ticket supplies the later LIVE/unpaused
+preconditions missing from its Drops pair fixture; the three current caller
+failures disappear without changing their assertions. Public outcomes passes
+with installed Beacon 4.8.1; the extracted-ZIP dependency failure is not a current
+application failure. Historical audit failures remain recorded below.
+
+The 008 alias is intentionally retained: Checklist 2.6/finding **015** shipped
+under `AUD-003-008-canaan-acid-csv-validation`; Checklist 3.2/finding **008**
+shipped separately under `AUD-003-008-local-drops-health-invalidation`. Admin
+Health regression labels now name canonical 015 and preserve ticket alias 008.
+No finding has been renumbered. CHR-20261029-006 was already corrected by
+Admin `2764a96` (`HEALTH-001`), verified by current invalid/zero/five controls.
+
+The [reproduction map](repro/README.md) explicitly distinguishes frozen historical
+defect scripts from current executable replacements. The [ticket evidence](POST-AUD-003-001-evidence.md)
+records commands/counts, environmental retries and outstanding live checks.
+Original source findings below remain historical evidence, not current defect
+claims; no coverage refresh or audit-history rewrite is implied.
+
 ## Findings
 
 Severity expresses plausible consequence *and* reachability under the stated preconditions. “Conditional” means a specified unusual input, timing or external behavior is required; it does not mean the source failure is unconfirmed. No simulated wallet or provider success is claimed as live chain application.

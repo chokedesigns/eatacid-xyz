@@ -2,8 +2,9 @@
 
 These seven defects were demonstrated on 2026-10-29 against Outer
 `e4f4f1eef1d377664b94f7506f953d4d89bdefdb` and Admin
-`10af957d3cc29a6defaaf955b0d697a0ae74a420`. Six are remediated as annotated below;
-only CHR-20261029-006 remains unresolved. Demonstrations
+`10af957d3cc29a6defaaf955b0d697a0ae74a420`. All seven original paths are
+remediated as annotated below. Subsequent AUD-003 findings and their current
+source/test dispositions are tracked in the [AUD-003 ledger](../audits/AUD-003-findings.md#post-remediation-reconciliation--2026-11-17). Demonstrations
 used inert SDK, network, DOM, or serializer boundaries; no live wallet or chain
 transaction was performed. IDs below preserve the original evidence references.
 
@@ -65,6 +66,13 @@ transaction was performed. IDs below preserve the original evidence references.
   the valid control; no live provider incident was established.
 
 - **CHR-20261029-006 — Health converts unknown chain editions to zero.**
+  **Remediated — HEALTH-001** (Admin `2764a96`). Current
+  `getEditionsForToken` returns null unless the stored value is a safe
+  nonnegative integer. Admin `tests/runtime/health-cms.test.mjs` verifies
+  malformed/negative/missing balances remain unknown through economics and
+  Health CMS, with distinct valid zero/five controls; the installed-environment
+  runtime suite passed on 2026-11-17. This is source/inert regression evidence,
+  not live provider verification. Original demonstration:
   Admin `src/utils/token-econ.js`; consumer `src/features/health/health.cms.js`.
   A parsed balance of `not-a-nat` or `-1` intentionally produces a null edition
   value, but `getEditionsForToken` applies `Number(null)` and returns zero.

@@ -55,7 +55,9 @@ try {
   assert.equal(state.writer.blocked, true);
   await assert.rejects(provider.refresh(), error => error.code === 'reconciliation_required');
   assert.equal(provider.getSnapshot().status, 'RECONCILIATION REQUIRED');
-  assert.equal(provider.getSnapshot().params.dropName, original.dropName, 'pending candidate is never published');
+  // AUD-003-008 now revokes the previous READY snapshot as well as the candidate.
+  assert.equal(provider.getSnapshot().params, null, 'pending health retires all actionable params');
+  assert.equal(provider.getSnapshot().sourceVersion, null);
   const freshProvider = createServiceBackedDropParamsProvider({ load: api.getState });
   await assert.rejects(freshProvider.refresh(), error => error.code === 'reconciliation_required');
   assert.equal(freshProvider.getSnapshot().params, null);

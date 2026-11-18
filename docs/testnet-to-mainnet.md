@@ -10,7 +10,7 @@ This runbook does not authorize contract deployment or administration, asset fun
 >
 > Never continue with an unknown, placeholder, source-only, or merely plausible mainnet value. Every blocking value must have an approved source of truth and an independent live verification result.
 
-The current public frontend has no read-only/write-disable mode. A publicly reachable staging build targeting mainnet can construct real mainnet `update_operators` and `initiate_trade` requests. Keep both mainnet escrow contracts paused throughout readiness and production read-only verification unless a separately approved containment mechanism exists. The contract pause is the real containment layer: Exchange has no pause-state UI gate, and Drops' pause-derived presentation does not remove its live click action.
+The current public frontend has no read-only/write-disable mode. A publicly reachable staging build targeting mainnet can construct real mainnet `update_operators` and `initiate_trade` requests. Keep both mainnet escrow contracts paused throughout readiness and production read-only verification unless a separately approved containment mechanism exists. The contract pause is the real containment layer: Exchange has no pause-state UI gate. Drops requires LIVE and verified unpaused state in both its button and action handler, including immediately before wallet submission; its continuing pause poll retires LIVE on later pause or unavailable status. These client gates do not replace contract containment or prove deployed behavior.
 
 ## 2. Current deployment and network model
 
@@ -578,7 +578,7 @@ No cutover-specific Webflow custom-code URL or DNS change is required. Confirm t
 
 ### Drops
 
-Drops reads wallet NFTs/inventory, checks escrow FA2 operator approvals, builds missing `update_operators`, scans active `token_mapping` for a burn pair, constructs `initiate_trade` to resolved Drops escrow with configured redeem token, submits the Beacon batch, verifies destination/entrypoint confirmation, polls balances, refreshes UI. Pause influences presentation but does not remove live click action; paused contract must reject trade.
+Drops reads wallet NFTs/inventory, checks escrow FA2 operator approvals, builds missing `update_operators`, scans active `token_mapping` for a burn pair, constructs `initiate_trade` to resolved Drops escrow with configured redeem token, submits the Beacon batch, verifies destination/entrypoint confirmation, polls balances, refreshes UI. Current source requires LIVE and `contractPaused === false` at action entry and immediately before the wallet request; the button uses the same state requirements. The owned pause poll continues through LIVE and retires eligibility on pause, failed/invalid reads or deadlines. Recovery requires verified unpause, wallet refresh and a fresh pause read. A paused contract must still reject trade: client observations can lag external state, and local regression evidence does not verify the deployed runtime. Source/inert controls: `drops/js/countdown-lifecycle.test.mjs`, `drops/js/trade-lifecycle.test.mjs` and `audits/repro/AUD-003-public-stale-live-repro.mjs` (AUD-003-011).
 
 ### Exchange
 
