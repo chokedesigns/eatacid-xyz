@@ -36,6 +36,195 @@ function unreadableResponse(status, error) {
   }), { status });
 }
 
+const listings = [
+  { key: 'items', state: 'staged', endpoint: '/collections/collection/items' },
+  { key: 'items', state: 'live', endpoint: '/collections/collection/items/live' },
+  { key: 'assets', endpoint: '/sites/site/assets' },
+];
+
+function list(client, { key, state }) {
+  return key === 'items' ? client.listItems('collection', state) : client.listAssets();
+}
+
+function listPage(key, rows, total, offset = 0, limit = 100) {
+  return { [key]: rows, pagination: { total, offset, limit } };
+}
+
+function assertListing(result, key, rows) {
+  assert.deepEqual(result, key === 'items'
+    ? { items: rows, pagination: { total: rows.length, limit: 100, offset: 0 } }
+    : rows);
+}
+
+for (const listing of listings) {
+  const { key, state, endpoint } = listing;
+  const label = state ?? key;
+  test(`${label} listings preserve empty, single-page, full and short multipage completion`, async () => {
+    const rows = Array.from({ length: 201 }, (_, index) => ({
+      id: `id-${index}`, cmsLocaleId: 'locale', fieldData: { slug: `item-${index}` },
+    }));
+    // Localized variants share an item ID but remain separate enumeration identities.
+    if (key === 'items') rows[100] = { ...rows[0], cmsLocaleId: 'other-locale' };
+    for (const [count, pageSize, pageLimit = 100] of [[0, 100], [1, 100], [100, 100], [101, 100], [201, 100], [5, 2], [5, 2, 2]]) {
+      const requests = [];
+      const expected = rows.slice(0, count);
+      const client = new WebflowCmsClient({
+        token: 'inert', siteId: 'site',
+        fetchImpl: async (url, options) => {
+          const offset = Number(new URL(url).searchParams.get('offset'));
+          requests.push(url);
+          assert.equal(options.method, 'GET');
+          return jsonResponse(listPage(key, expected.slice(offset, offset + pageSize), count, offset, pageLimit));
+        },
+      });
+      assertListing(await list(client, listing), key, expected);
+      assert.deepEqual(requests, Array.from({ length: Math.max(1, Math.ceil(count / pageSize)) }, (_, index) =>
+        `https://api.webflow.com/v2${endpoint}?limit=100&offset=${index * pageSize}`));
+    }
+  });
+
+  test(`${label} listings reject missing and malformed pagination on every page`, async () => {
+    const badPagination = (expectedOffset) => [
+      undefined, null, [], {},
+      ...[undefined, null, '2', -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, true, {}, []]
+        .map((total) => ({ total, offset: expectedOffset, limit: 100 })),
+      ...[undefined, null, '0', -1, 0.5, Number.MAX_SAFE_INTEGER + 1, expectedOffset + 1, expectedOffset - 1]
+        .map((offset) => ({ total: 2, offset, limit: 100 })),
+      ...[undefined, null, '100', -1, 0, 1.5, 101]
+        .map((limit) => ({ total: 2, offset: expectedOffset, limit })),
+    ];
+    for (const continuation of [false, true]) {
+      for (const pagination of badPagination(continuation ? 1 : 0)) {
+        let calls = 0;
+        const client = new WebflowCmsClient({
+          token: 'inert', siteId: 'site',
+          fetchImpl: async () => {
+            calls += 1;
+            if (continuation && calls === 1) return jsonResponse(listPage(key, [{ id: 'first' }], 2));
+            return jsonResponse({ [key]: [{ id: 'last' }], pagination });
+          },
+          onRetry: () => assert.fail('invalid success bodies must not retry'),
+        });
+        await assert.rejects(list(client, listing), (error) => {
+          assert.ok(error instanceof WebflowCmsError);
+          assert.equal(error.code, 'BLOCKED');
+          assert.equal(error.writeOutcome, 'not-attempted');
+          assert.match(error.message, /pagination/);
+          return true;
+        });
+        assert.equal(calls, continuation ? 2 : 1);
+      }
+    }
+  });
+
+  test(`${label} listings reject premature empties, changing totals, overruns and nonprogress`, async () => {
+    const first = listPage(key, [{ id: 'first' }], 2);
+    const cases = [
+      [[listPage(key, [], 1)], /Incomplete/],
+      [[first, listPage(key, [], 2, 1)], /Incomplete/],
+      [[first, listPage(key, [{ id: 'last' }], 1, 1)], /Inconsistent/],
+      [[first, listPage(key, [{ id: 'last' }], 3, 1)], /Inconsistent/],
+      [[listPage(key, [{ id: 'first' }], 0)], /page size/],
+      [[first, listPage(key, [{ id: 'last' }, { id: 'extra' }], 2, 1)], /page size/],
+      [[listPage(key, [{ id: 'first' }, { id: 'last' }], 2, 0, 1)], /page size/],
+      [[first, first], /pagination/],
+      [[first, listPage(key, [{ id: 'first' }], 2, 1)], /Nonadvancing/],
+      [[listPage(key, [{ id: 'first' }, { id: 'first' }], 2)], /Nonadvancing/],
+      [[listPage(key, [null], 1)], /row identity/],
+      [[listPage(key, [{}], 1)], /row identity/],
+      [[listPage(key, [{ id: '' }], 1)], /row identity/],
+      [[{ [key]: null, pagination: { total: 0, limit: 100, offset: 0 } }], /response/],
+    ];
+    for (const [pages, message] of cases) {
+      let calls = 0;
+      const client = new WebflowCmsClient({
+        token: 'inert', siteId: 'site',
+        fetchImpl: async () => {
+          assert.ok(calls < pages.length, 'malformed pages must fail without another request');
+          return jsonResponse(pages[calls++]);
+        },
+      });
+      await assert.rejects(list(client, listing), (error) => {
+        assert.ok(error instanceof WebflowCmsError);
+        assert.equal(error.writeOutcome, 'not-attempted');
+        assert.match(error.message, message);
+        return true;
+      });
+      assert.equal(calls, pages.length);
+    }
+  });
+
+  test(`${label} listings restart cleanly after pagination, transport, HTTP and body errors`, async () => {
+    const transportError = new Error('connection lost');
+    const bodyError = new Error('body lost');
+    const failures = [
+      () => jsonResponse({ [key]: [{ id: 'last' }] }),
+      () => jsonResponse(listPage(key, [], 2, 1)),
+      () => jsonResponse(listPage(key, [{ id: 'first' }], 2, 1)),
+      () => { throw transportError; },
+      () => jsonResponse({ message: 'unavailable' }, { status: 503 }),
+      () => unreadableResponse(200, bodyError),
+    ];
+    for (const [index, fail] of failures.entries()) {
+      const offsets = [];
+      let recovered = false;
+      const expected = [{ id: 'first' }, { id: 'last' }];
+      const client = new WebflowCmsClient({
+        token: 'inert', siteId: 'site', maxGetAttempts: 1,
+        fetchImpl: async (url) => {
+          const offset = Number(new URL(url).searchParams.get('offset'));
+          offsets.push(offset);
+          if (offset === 1 && !recovered) return fail();
+          return jsonResponse(listPage(key, [expected[offset]], 2, offset));
+        },
+      });
+      await assert.rejects(list(client, listing), (error) => {
+        if (index === 3) assert.equal(error, transportError);
+        else if (index === 5) assert.equal(error, bodyError);
+        else {
+          assert.ok(error instanceof WebflowCmsError);
+          assert.equal(error.code, index === 4 ? 'HTTP_ERROR' : 'BLOCKED');
+          assert.equal(error.status, index === 4 ? 503 : undefined);
+          assert.equal(error.writeOutcome, 'not-attempted');
+        }
+        return true;
+      });
+      recovered = true;
+      assertListing(await list(client, listing), key, expected);
+      assert.deepEqual(offsets, [0, 1, 0, 1]);
+    }
+  });
+
+  test(`${label} listings retry only the failed GET page without duplicating rows`, async () => {
+    const offsets = [];
+    const retries = [];
+    const expected = [{ id: 'first' }, { id: 'last' }];
+    const client = new WebflowCmsClient({
+      token: 'inert', siteId: 'site',
+      fetchImpl: async (url) => {
+        const offset = Number(new URL(url).searchParams.get('offset'));
+        offsets.push(offset);
+        if (offsets.length === 2) throw new Error('transient read error');
+        if (offsets.length === 3) return jsonResponse({}, { status: 429, headers: { 'retry-after': '0' } });
+        return jsonResponse(listPage(key, [expected[offset]], 2, offset));
+      },
+      sleep: async () => {},
+      onRetry: (retry) => retries.push(retry),
+    });
+    assertListing(await list(client, listing), key, expected);
+    assert.deepEqual(offsets, [0, 1, 1, 1]);
+    assert.deepEqual(retries.map(({ attempt }) => attempt), [1, 2]);
+  });
+}
+
+test('unsupported item-list states still reject before requesting', async () => {
+  const client = new WebflowCmsClient({
+    token: 'inert', siteId: 'site',
+    fetchImpl: async () => assert.fail('unsupported state must not fetch'),
+  });
+  await assert.rejects(client.listItems('collection', 'unknown'), /Unsupported CMS item state/);
+});
+
 test('client bounds GET retries and reports retry attempts', async () => {
   let calls = 0;
   const retries = [];

@@ -100,6 +100,50 @@ function isDefinitiveWriteRejection(status) {
   return status >= 400 && status < 500 && status !== 408 && status !== 429;
 }
 
+async function listCmsPages(client, endpoint, key, label) {
+  const rows = [];
+  const identities = new Set();
+  let total;
+  do {
+    const offset = rows.length;
+    const page = await client.request('GET', `${endpoint}?limit=100&offset=${offset}`);
+    if (!Array.isArray(page?.[key])) {
+      throw new WebflowCmsError(`Invalid ${label} response.`);
+    }
+    const pagination = page.pagination;
+    if (
+      !Number.isSafeInteger(pagination?.total) || pagination.total < 0 ||
+      !Number.isSafeInteger(pagination.offset) || pagination.offset !== offset ||
+      !Number.isSafeInteger(pagination.limit) || pagination.limit < 1 || pagination.limit > 100
+    ) {
+      throw new WebflowCmsError(`Invalid ${label} pagination at offset ${offset}.`);
+    }
+    if (total !== undefined && pagination.total !== total) {
+      throw new WebflowCmsError(`Inconsistent ${label} total at offset ${offset}.`);
+    }
+    total = pagination.total;
+    const pageRows = page[key];
+    if (pageRows.length > pagination.limit || offset + pageRows.length > total) {
+      throw new WebflowCmsError(`Invalid ${label} page size at offset ${offset}.`);
+    }
+    if (pageRows.length === 0 && offset < total) {
+      throw new WebflowCmsError(`Incomplete ${label}: empty page at offset ${offset} before total ${total}.`);
+    }
+    for (const row of pageRows) {
+      if (typeof row?.id !== 'string' || row.id.length === 0) {
+        throw new WebflowCmsError(`Invalid ${label} row identity at offset ${offset}.`);
+      }
+      const identity = key === 'items' ? JSON.stringify([row.id, row.cmsLocaleId ?? null]) : row.id;
+      if (identities.has(identity)) {
+        throw new WebflowCmsError(`Nonadvancing ${label}: duplicate row at offset ${offset}.`);
+      }
+      identities.add(identity);
+    }
+    rows.push(...pageRows);
+  } while (rows.length < total);
+  return { rows, total };
+}
+
 export class WebflowCmsClient {
   constructor({
     token,
@@ -219,37 +263,15 @@ export class WebflowCmsClient {
     if (!['staged', 'live'].includes(state)) {
       throw new WebflowCmsError(`Unsupported CMS item state: ${state}.`);
     }
-    const items = [];
     const suffix = state === 'live' ? '/live' : '';
-    let total = Infinity;
-    while (items.length < total) {
-      const page = await this.request(
-        'GET',
-        `/collections/${collectionId}/items${suffix}?limit=100&offset=${items.length}`
-      );
-      if (!Array.isArray(page?.items)) {
-        throw new WebflowCmsError(`Invalid ${state} item-list response.`);
-      }
-      items.push(...page.items);
-      total = page.pagination?.total ?? items.length;
-      if (page.items.length === 0) break;
-    }
+    const { rows: items, total } = await listCmsPages(
+      this, `/collections/${collectionId}/items${suffix}`, 'items', `${state} item-list`
+    );
     return { items, pagination: { total, limit: 100, offset: 0 } };
   }
 
   async listAssets() {
-    const assets = [];
-    let total = Infinity;
-    while (assets.length < total) {
-      const page = await this.request(
-        'GET',
-        `/sites/${this.siteId}/assets?limit=100&offset=${assets.length}`
-      );
-      if (!Array.isArray(page?.assets)) throw new WebflowCmsError('Invalid asset-list response.');
-      assets.push(...page.assets);
-      total = page.pagination?.total ?? assets.length;
-      if (page.assets.length === 0) break;
-    }
+    const { rows: assets } = await listCmsPages(this, `/sites/${this.siteId}/assets`, 'assets', 'asset-list');
     return assets;
   }
 
