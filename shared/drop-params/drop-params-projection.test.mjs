@@ -42,9 +42,10 @@ async function fixture(t) {
   return { root, projector, writer, candidate, journal, bytes, journalBytes, load };
 }
 
-function cli(root, script, args = []) {
+function cli(root, script, args = [], input = null) {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [script, ...args], { cwd: root, windowsHide: true });
+    if (input !== null) child.stdin.end(input);
     let output = "";
     child.stdout.on("data", data => { output += data; });
     child.stderr.on("data", data => { output += data; });
@@ -866,6 +867,54 @@ test("writer/projector contention checks recovery after acquiring the lock in bo
   });
   assert.equal((await queuedWriter).status, "completed");
   assert.equal((await p.verifyDropParamsEquality()).ok, true);
+});
+
+test("AUD-005-001 supported service, transaction CLI and projector share source ownership", { timeout: 30_000 }, async t => {
+  const f = await fixture(t);
+  await mkdir(path.join(f.root, "scripts"));
+  await copyFile(path.join(repo, "scripts/drop-params-transaction.mjs"), path.join(f.root, "scripts/drop-params-transaction.mjs"));
+  const { createDropParamsAuthoringApi } = await f.load("drop-params-authoring-service.mjs");
+  const api = createDropParamsAuthoringApi(); // Actual repository reader/executor, no execution override.
+  const expectedSourceVersion = await f.projector.getCurrentSourceVersion();
+  const servicePlan = { operation: "EDIT", expectedSourceVersion, candidate: f.candidate };
+  const preview = await api.preview(servicePlan);
+  const cliCandidate = { ...f.candidate, dropName: "SUPPORTED CLI EDIT" };
+  const before = await f.bytes();
+  // Direct acquisition avoids giving the projector this async chain's reusable
+  // projection scope. CLI/projection must queue; the service rejects a busy writer.
+  const lock = await f.projector.acquireDropParamsLock();
+  let settled;
+  try {
+    const applied = api.apply({ ...servicePlan, candidateHash: preview.candidateHash,
+      planHash: preview.planHash, previewToken: preview.previewToken });
+    const cliResult = cli(f.root, "scripts/drop-params-transaction.mjs", ["edit"], JSON.stringify({
+      operationId: "supported-cli", expectedSourceVersion, candidate: cliCandidate
+    }));
+    settled = Promise.allSettled([applied, cliResult, f.projector.projectDropParams()]);
+    await waitForClaim(f.projector, 3);
+    await assert.rejects(applied, { code: "writer_busy" });
+    assert.deepEqual(await f.bytes(), before, "supported paths cannot write while another owner holds the lock");
+  } finally {
+    await lock.release();
+    if (settled) await settled;
+  }
+  const results = await settled;
+  assert.equal(results[0].status, "rejected");
+  assert.equal(results[0].reason.code, "writer_busy");
+  for (const result of results.slice(1)) assert.equal(result.status, "fulfilled", result.reason?.stack);
+  const command = results[1].value;
+  assert.equal(command.code, 0, command.output);
+  assert.equal((await f.projector.assertDropParamsEquality({ expectedParams: cliCandidate })).ok, true);
+  assert.notEqual(await f.projector.getCurrentSourceVersion(), expectedSourceVersion);
+  await assert.rejects(api.preview(servicePlan), { code: "stale_source_version" });
+  const freshPlan = { ...servicePlan, expectedSourceVersion: await f.projector.getCurrentSourceVersion() };
+  const freshPreview = await api.preview(freshPlan);
+  const service = await api.apply({ ...freshPlan, candidateHash: freshPreview.candidateHash,
+    planHash: freshPreview.planHash, previewToken: freshPreview.previewToken });
+  assert.equal(service.ok, true);
+  assert.equal(service.result.status, "completed");
+  assert.equal((await f.projector.assertDropParamsEquality({ expectedParams: f.candidate })).ok, true);
+  assert.equal((await f.writer.getDropParamsTransactionStatus()).blocked, false);
 });
 
 test("lock:false requires current async ownership and cannot reuse a released lock", async t => {

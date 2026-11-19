@@ -77,7 +77,7 @@ admin-ui/src/drop-params.mirror.json
 -> generated mirror in the independent Admin repository
 ```
 
-After deliberately changing `drop-params.js`, regenerate the outer projection:
+Direct manual editing of `drop-params.js` is supported outside Admin authoring and transaction/recovery activity. Do not overlap editor saves, Git source replacement or custom file writers with those operations; use the Admin controls or transaction CLI while authoring. After a deliberate manual source change, regenerate the outer projection:
 
 ```text
 npm run dropparams:json
@@ -101,9 +101,11 @@ npm run dropparams:transaction -- reconcile
 
 The ignored `shared/drop-params/.drop-params.operations/` directory holds narrowly scoped local recovery journals and staging files. A failed rollback marks the writer `reconciliation_required` and blocks later mutations, generation, and mirroring. Inspect with `status`; after independently restoring or validating the recorded exact state, use `reconcile`. Do not delete an unresolved journal merely to bypass the block.
 
-Normal apply also checks exact file ownership before each replacement and completion. An intervening external save reports `apply_state_diverged` in the unresolved journal and requires explicit reconciliation without automatically rolling back over that save. Preserve the external content and follow the same status/resolution/reconcile procedure below; a fresh preview alone cannot clear this block. Exact-byte re-saves remain allowed. These checks preserve edits observed at write boundaries, but do not guarantee filesystem compare-and-swap against an editor racing the final check and rename.
+Normal apply also checks exact file ownership before each replacement and completion. An external save observed outside the expected write state reports `apply_state_diverged` in the unresolved journal and requires explicit reconciliation without automatically rolling back over that save. Preserve the external content and follow the same status/resolution/reconcile procedure below; a fresh preview alone cannot clear this block. Exact-byte re-saves remain allowed. These checks preserve edits observed at write boundaries, but do not guarantee filesystem compare-and-swap against an editor racing the final check and rename.
 
 Recovery checks every current representation against its recorded exact base or target bytes before rollback, then rechecks ownership at each file replacement. An external edit or missing file outside those states reports `recovery_state_diverged`, preserves the current files and unresolved journal/staging evidence, and blocks later writers. Explicit `reconcile` applies the same checks; it does not force an overwrite. Preserve the external content separately, independently resolve the files to a reviewed recorded state, then reconcile and inspect status before retrying with a fresh source version/preview. Matching all recorded target files permits completion (with archive verification); matching all base files permits rollback, and an unchanged partial base/target mixture can be restored normally.
+
+AUD-005-001 records a confirmed unsupported external-concurrency limitation: an independent save during the final ownership read or before rename can still be lost in apply or recovery. Supported service/CLI mutations, projection, watching, mirroring and reconciliation participate in the existing lock/recovery safeguards. The owner excludes concurrent direct editing from the supported authoring workflow, so this finding is not a supported-path launch blocker; no code fix or OS-enforced exclusion is claimed. See [the ownership reconciliation](../audits/AUD-005-001-source-ownership.md). Never delete unresolved journals, locks or staging to bypass recovery.
 
 Status also reports `blocked: true` for every `pending` operation. Matching source/projection/mirror files and a released or stale lock do not prove completion: the local provider remains non-READY and the service rejects authoring previews/apply until supported reconciliation resolves the journal. Use the same `status`/`reconcile` procedure after interruption; read-only health/status/preview requests never reconcile implicitly.
 
@@ -166,6 +168,8 @@ Run the tests that match the changed contract. These commands do not intentional
 | `npm run test:thumbs` | Thumbnail conversion, input/backfill workflow, or Windows launchers | Image normalization, safe archival/rollback, backfill reporting, and launcher behavior remain deterministic. |
 
 `npm run test:home-first-paint` is a compatibility alias for `test:loader-architecture`, not a separate validation layer.
+
+AUD-005-001's unsupported external-save demonstrations are opt-in historical evidence, outside normal test discovery and verification gates: `npm run evidence:drop-params:external-concurrency` runs the preserved assertions in disposable fixtures and currently exits 1 with nine passing controls and six failing preservation assertions. Those failures remain failures; they are not passing regressions or evidence of a code fix. The supported-path service/CLI contention check remains in `shared/drop-params/drop-params-projection.test.mjs` alongside projection/recovery regressions.
 
 ### Thumbnail input coordination and recovery
 
