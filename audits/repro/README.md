@@ -1,3 +1,42 @@
+# AUD-004 evidence (2026-11-17)
+
+The [AUD-004 findings](../AUD-004-findings.md) describe five current failures and
+their valid/unchanged controls. These scripts deliberately assert observed bad
+behavior; success is reproduction evidence, **not** a remediation gate. Run from
+the indicated repository with the reviewed Windows/Node 22.16.0 environment and
+installed dependencies:
+
+```text
+# Outer: actual writer and asset tools, disposable workspace copies only
+node audits/repro/AUD-004-writer-cas-repro.mjs
+node audits/repro/AUD-004-thumb-filename-repro.mjs
+
+# Admin: real controllers/helpers, inert DOM/wallet/indexer boundaries
+node tests/repro/AUD-004-withdraw-input-repro.mjs
+node tests/repro/AUD-004-pair-authority-repro.mjs
+node tests/repro/AUD-004-checklist-supply-repro.mjs
+
+# Outer: supporting ABI/identity checks and isolated config suites
+node audits/repro/AUD-004-contract-abi-check.mjs
+node audits/repro/AUD-004-contract-provenance-check.mjs
+node audits/repro/AUD-004-config-suite.mjs
+```
+
+The pair reproduction includes an actual Set Pair listener held at its
+availability lookup with immediately resolved SDK account reads; separate helper
+cases use a controlled older account read. Neither establishes real signing or
+on-chain authority. ABI decoding is not Michelson execution/typechecking or
+legacy SmartPy compilation. Provenance assertions target recorded Windows
+checkout byte hashes and normalize LF for frozen/promoted comparison.
+
+Asset/configuration runners require native dependencies/child-process access.
+They validate fixture paths and remove only their own disposable subdirectories
+of ignored `audits/work/`. No script recovers/deletes a real journal, edits
+operational configuration or makes a live wallet/chain/CMS request. The config
+runner executes unchanged tests in separate processes; do not replace it with
+real-tree transaction tests that intentionally write source/projection paths.
+Both repositories must be present for cross-repository evidence.
+
 # AUD-003 reproduction status
 
 Reconciled by POST-AUD-003-001 on 2026-11-17. The original findings, defect
