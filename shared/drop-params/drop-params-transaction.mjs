@@ -220,6 +220,13 @@ async function filesMatch(fileState) {
   return true;
 }
 
+async function assertApplyFilesOwned(expectedFiles) {
+  if (!await filesMatch(expectedFiles)) {
+    throw new DropParamsTransactionError("apply_state_diverged",
+      "Drop Params apply preserves files outside the expected exact write state. Preserve external edits and use explicit reconciliation before retrying.");
+  }
+}
+
 function validateRecoveryFiles(baseFiles, targetFiles) {
   for (const [key, definition] of Object.entries(fileDefinitions)) {
     const base = baseFiles?.[key];
@@ -523,13 +530,18 @@ async function stageAndVerifyTargets(operationId, targets, validationOperation, 
   return staged;
 }
 
-async function replaceTargets(staged, options = {}) {
+async function replaceTargets(staged, expectedFiles, targetFiles, options = {}) {
   let index = 0;
   for (const [key, definition] of Object.entries(fileDefinitions)) {
     if (typeof options.testHooks?.beforeReplaceFile === "function") {
       await options.testHooks.beforeReplaceFile({ key, index, path: definition.path });
     }
+    // Check every representation, including earlier replacements. Only our own
+    // successful rename advances the expected state; base/target membership
+    // alone does not establish ownership during a normal apply.
+    await assertApplyFilesOwned(expectedFiles);
     await rename(staged[key], definition.path);
+    expectedFiles[key] = targetFiles[key];
     if (typeof options.testHooks?.afterReplaceFile === "function") {
       await options.testHooks.afterReplaceFile({ key, index, path: definition.path });
     }
@@ -737,6 +749,7 @@ async function executeLocked(request, options) {
   };
   await writeJournalRecord(record);
 
+  const expectedFiles = { ...baseFiles };
   try {
     if (operation === DROP_PARAMS_WRITER_OPERATIONS.DEACTIVATE) {
       const published = await publishDeactivationArchive(archive.payload, {
@@ -791,7 +804,7 @@ async function executeLocked(request, options) {
         : VALIDATION_OPERATIONS.ACTIVE,
       options
     );
-    await replaceTargets(staged, options);
+    await replaceTargets(staged, expectedFiles, record.recovery.targetFiles, options);
     if (typeof options.testHooks?.beforeFinalVerification === "function") {
       await options.testHooks.beforeFinalVerification();
     }
@@ -809,13 +822,24 @@ async function executeLocked(request, options) {
         "Final Drop Params sourceVersion differs from the planned result"
       );
     }
+    await assertApplyFilesOwned(expectedFiles);
     const completed = completedRecord({ ...record, archive, result }, nowIso(options));
     await writeJournalRecord(completed);
     record = completed;
     return result;
   } catch (error) {
     if (error?.simulateProcessInterruption === true) throw error;
-    const rollback = await restoreSnapshot(baseFiles, record.recovery.targetFiles, options);
+    let rollback;
+    try {
+      // A failed hook/read/rename may coincide with an external save too. Do
+      // not let recovery's broader base/target allowance erase that save.
+      if (error.code === "apply_state_diverged") throw error;
+      await assertApplyFilesOwned(expectedFiles);
+      rollback = await restoreSnapshot(baseFiles, record.recovery.targetFiles, options);
+    } catch (ownershipError) {
+      rollback = { ok: false, code: ownershipError.code || "rollback_verification_failed",
+        errors: [ownershipError.message] };
+    }
     if (!rollback.ok) {
       record = {
         ...record,

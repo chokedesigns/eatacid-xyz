@@ -84,6 +84,225 @@ async function edit(f, id, hooks = {}) {
     expectedSourceVersion: await f.projector.getCurrentSourceVersion(), candidate: f.candidate }, { testHooks: hooks });
 }
 
+test("AUD-004-003: normal apply preserves intervening edits at staging and every replacement boundary", async t => {
+  for (const boundary of ["staging", ...protectedKeys, "final"]) {
+    for (const conflict of protectedKeys) {
+      await t.test(`${boundary}/${conflict}`, async t => {
+        const f = await fixture(t);
+        const p = f.projector;
+        const a = await f.load("drop-params-authoring.mjs");
+        const base = await f.bytes();
+        const expectedSourceVersion = await p.getCurrentSourceVersion();
+        const external = { ...f.candidate, dropName: "LATER INDEPENDENT SAVE" };
+        const externalBytes = conflict === "canonicalSource"
+          ? a.serializeDropParamsSource(external)
+          // Semantically unchanged JSON is still an independent exact-byte edit.
+          : Buffer.concat([base[protectedKeys.indexOf(conflict)], Buffer.from("\n ")]);
+        let saved;
+        let rollbackCalled = false;
+        const save = async () => {
+          await writeFile(p.DROP_PARAMS_PATHS[conflict], externalBytes);
+          saved = await f.bytes();
+        };
+        const hooks = {
+          beforeRollbackFile() { rollbackCalled = true; },
+          ...(boundary === "staging" ? {
+            beforeStageFile: async ({ key }) => { if (key === "adminMirror") await save(); }
+          } : boundary === "final" ? { beforeFinalVerification: save } : {
+            beforeReplaceFile: async ({ key }) => { if (key === boundary) await save(); }
+          })
+        };
+        await assert.rejects(f.writer.editDropParams({ operationId: "apply-conflict",
+          expectedSourceVersion, candidate: f.candidate }, { testHooks: hooks }),
+        error => error.code === "reconciliation_required");
+        assert.ok(saved, "external save reached the real writer boundary");
+        assert.deepEqual(await f.bytes(), saved, "no replacement or rollback may erase the save");
+        assert.equal(rollbackCalled, false);
+        const journalPath = path.join(f.journal, "apply-conflict.json");
+        const record = JSON.parse(await readFile(journalPath));
+        assert.equal(record.status, "reconciliation_required");
+        assert.equal(record.failure.code, "apply_state_diverged");
+        assert.equal(record.result, null);
+        assert.equal(record.baseSourceVersion, expectedSourceVersion);
+        for (const [index, key] of protectedKeys.entries())
+          assert.equal(record.recovery.baseFiles[key].bytesBase64, base[index].toString("base64"));
+        const stage = path.join(f.journal, "stage-apply-conflict");
+        const names = await readdir(stage);
+        const staged = await Promise.all(names.map(name => readFile(path.join(stage, name))));
+        const journals = await f.journalBytes();
+        assert.equal((await f.writer.getDropParamsTransactionStatus()).blocked, true);
+        await assert.rejects(edit(f, "later"), error => error.code === "reconciliation_required");
+        await assertAllBlocked(f);
+        assert.deepEqual(await f.journalBytes(), journals, "ordinary writes never reconcile the conflict");
+        assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, true);
+        assert.deepEqual(await f.bytes(), saved);
+        assert.deepEqual(JSON.parse(await readFile(journalPath)).recovery, record.recovery);
+        assert.deepEqual(await readdir(stage), names);
+        assert.deepEqual(await Promise.all(names.map(name => readFile(path.join(stage, name)))), staged);
+        for (const [index, key] of protectedKeys.entries()) await writeFile(p.DROP_PARAMS_PATHS[key], base[index]);
+        assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, false);
+        assert.equal((await edit(f, "resolved")).status, "completed");
+      });
+    }
+  }
+});
+
+test("AUD-004-003: CREATE/EDIT/DEACTIVATE protect ownership and preserve successful unchanged controls", async t => {
+  for (const operation of ["CREATE", "EDIT", "DEACTIVATE"]) {
+    for (const externalEdit of [false, true]) {
+      await t.test(`${operation}/${externalEdit ? "external source" : "unchanged bytes"}`, async t => {
+        const f = await fixture(t);
+        const p = f.projector;
+        const a = await f.load("drop-params-authoring.mjs");
+        if (operation === "CREATE") {
+          await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, a.serializeDropParamsSource(a.INACTIVE_DROP_PARAMS));
+          await p.projectDropParams();
+        }
+        const base = await f.bytes();
+        const request = { operation, operationId: "apply-control",
+          expectedSourceVersion: await p.getCurrentSourceVersion(),
+          ...(operation === "DEACTIVATE" ? {} : { candidate: f.candidate }) };
+        let saved;
+        const run = f.writer.executeDropParamsOperation(request, { testHooks: {
+          async beforeReplaceFile({ key, index }) {
+            if (externalEdit && index === 0) {
+              await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, Buffer.concat([base[0], Buffer.from("\n ")]));
+              saved = await f.bytes();
+            } else if (!externalEdit) {
+              // Re-saving exact expected bytes does not revoke byte ownership.
+              await writeFile(p.DROP_PARAMS_PATHS[key], base[index]);
+            }
+          }
+        } });
+        if (externalEdit) {
+          await assert.rejects(run, error => error.code === "reconciliation_required" && error.cause.code === "apply_state_diverged");
+          assert.deepEqual(await f.bytes(), saved);
+        } else {
+          const result = await run;
+          assert.equal(result.status, "completed");
+          assert.equal(result.baseSourceVersion, request.expectedSourceVersion);
+          assert.equal(result.sourceVersion, await p.getCurrentSourceVersion());
+          assert.equal((await p.assertDropParamsEquality({ expectedParams:
+            operation === "DEACTIVATE" ? a.INACTIVE_DROP_PARAMS : f.candidate })).ok, true);
+          assert.equal((await f.writer.executeDropParamsOperation(request)).idempotent, true);
+        }
+        const record = JSON.parse(await readFile(path.join(f.journal, "apply-control.json")));
+        assert.equal((await f.writer.inspectDropParamsTransactionStatus()).blocked, externalEdit);
+        if (operation === "DEACTIVATE") {
+          const archive = await readFile(path.join(f.root, record.archive.relativePath));
+          const { verifyDeactivationArchive } = await f.load("drop-params-archive.mjs");
+          assert.equal((await verifyDeactivationArchive(path.join(f.root, record.archive.relativePath))).sha256,
+            record.archive.sha256);
+          if (externalEdit) {
+            assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, true);
+            assert.deepEqual(await readFile(path.join(f.root, record.archive.relativePath)), archive);
+          }
+        }
+      });
+    }
+  }
+});
+
+test("AUD-004-003: expected phase rejects external base/target bytes, even alongside a partial failure", async t => {
+  for (const boundary of ["canonicalSource", "outerJson", "adminMirror"]) {
+    for (const fail of [false, true]) {
+      await t.test(`${boundary}/${fail ? "write failure" : "continue"}`, async t => {
+        const f = await fixture(t);
+        const a = await f.load("drop-params-authoring.mjs");
+        const base = await f.bytes();
+        let saved;
+        await assert.rejects(edit(f, "phase-conflict", {
+          async beforeReplaceFile({ key }) {
+            if (key !== boundary) return;
+            // An external save can equal a recorded target before our rename,
+            // or revert an already replaced file to its recorded base.
+            const changedKey = boundary === "adminMirror" ? "outerJson" : "canonicalSource";
+            const bytes = boundary === "canonicalSource" ? a.serializeDropParamsSource(f.candidate)
+              : base[protectedKeys.indexOf(changedKey)];
+            await writeFile(f.projector.DROP_PARAMS_PATHS[changedKey], bytes);
+            saved = await f.bytes();
+            if (fail) throw new Error("injected replacement failure after external save");
+          }
+        }), error => error.code === "reconciliation_required");
+        assert.deepEqual(await f.bytes(), saved, "base/target membership must not authorize automatic rollback");
+        const journals = await f.journalBytes();
+        await assert.rejects(edit(f, "later"), error => error.code === "reconciliation_required");
+        assert.deepEqual(await f.journalBytes(), journals);
+        // Only explicit recovery may resolve this recorded base/target mixture.
+        assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, false);
+        assert.deepEqual(await f.bytes(), base);
+      });
+    }
+  }
+});
+
+test("AUD-004-003: an interrupted partial apply preserves an intervening save through interrupted recovery", async t => {
+  const f = await fixture(t);
+  const base = await f.bytes();
+  await assert.rejects(edit(f, "interrupted-apply", { afterReplaceFile({ key }) {
+    if (key === "canonicalSource") interruptRecoveryTest();
+  } }), error => error.simulateProcessInterruption === true);
+  // Recovery itself may be interrupted after restoring one owned file.
+  const interrupted = await cli(f.root, "--input-type=module", ["-e", `
+    import { readFile, writeFile } from "node:fs/promises";
+    import { DROP_PARAMS_PATHS } from "./shared/drop-params/drop-params-projector.mjs";
+    import { reconcileDropParamsTransactions } from "./shared/drop-params/drop-params-transaction.mjs";
+    await reconcileDropParamsTransactions({ testHooks: {
+      async beforeRollbackFile({ key }) {
+        if (key === "outerJson") {
+          const file = DROP_PARAMS_PATHS.canonicalSource;
+          await writeFile(file, Buffer.concat([await readFile(file), Buffer.from("\\n ")]));
+          process.exit(77);
+        }
+      }
+    } });
+  `]);
+  assert.equal(interrupted.code, 77, interrupted.output);
+  const saved = await f.bytes();
+  assert.deepEqual(saved[0], Buffer.concat([base[0], Buffer.from("\n ")]));
+  assert.equal((await f.writer.inspectDropParamsTransactionStatus()).operations[0].status, "pending");
+  assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, true);
+  assert.deepEqual(await f.bytes(), saved);
+  assert.equal((await f.writer.inspectDropParamsTransactionStatus()).operations[0].result, null);
+  await assertAllBlocked(f);
+});
+
+test("AUD-004-003: missing files and consistent external projections cannot be replaced during apply", async t => {
+  for (const conflict of [...protectedKeys, "consistent-save"]) {
+    await t.test(conflict, async t => {
+      const f = await fixture(t);
+      const p = f.projector;
+      const a = await f.load("drop-params-authoring.mjs");
+      const bytes = () => Promise.all(protectedKeys.map(key => readFile(p.DROP_PARAMS_PATHS[key]).catch(error => {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      })));
+      let saved;
+      await assert.rejects(edit(f, "external-state", { async beforeReplaceFile({ key }) {
+        if (key !== "outerJson") return;
+        if (conflict === "consistent-save") {
+          const external = { ...f.candidate, dropName: "EXTERNALLY CONSISTENT SAVE" };
+          await writeFile(p.DROP_PARAMS_PATHS.canonicalSource, a.serializeDropParamsSource(external));
+          for (const projection of ["outerJson", "adminMirror"])
+            await writeFile(p.DROP_PARAMS_PATHS[projection], p.serializeDropParamsJson(external));
+          assert.equal((await p.assertDropParamsEquality()).ok, true);
+        } else await rm(p.DROP_PARAMS_PATHS[conflict]);
+        saved = await bytes();
+      } }), error => error.code === "reconciliation_required" && error.cause.code === "apply_state_diverged");
+      assert.deepEqual(await bytes(), saved);
+      if (conflict === "canonicalSource") {
+        // Reconciliation records the block, but status cannot hash a deleted source.
+        await assert.rejects(f.writer.reconcileDropParamsTransactions(), error => error.code === "ENOENT");
+      } else assert.equal((await f.writer.reconcileDropParamsTransactions()).blocked, true);
+      assert.deepEqual(await bytes(), saved);
+      const record = JSON.parse(await readFile(path.join(f.journal, "external-state.json")));
+      assert.equal(record.status, "reconciliation_required");
+      assert.equal(record.result, null);
+      assert.ok(record.recovery);
+    });
+  }
+});
+
 test("AUD-003-016: every projection must validate and equal canonical params", async t => {
   const f = await fixture(t);
   const p = f.projector;

@@ -3,7 +3,7 @@ import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-// Investigation evidence: asserts the current lost-edit failure in disposable
+// Maintained regression for the recorded lost-edit failure in disposable
 // copies. Production writer/projector run unchanged. The hook models an editor
 // saving the authoritative JS while an ordinary operation is staging its files.
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -31,7 +31,7 @@ for (const externalEdit of [false, true]) {
     const later = { ...current, dropName: 'LATER OPERATOR EDIT' };
     const expectedSourceVersion = await projector.getCurrentSourceVersion();
     let injected = false;
-    const result = await writer.editDropParams({ operationId: 'aud004-cas', expectedSourceVersion, candidate }, {
+    const apply = writer.editDropParams({ operationId: 'aud004-cas', expectedSourceVersion, candidate }, {
       testHooks: { async beforeReplaceFile({ index }) {
         if (externalEdit && index === 0) {
           const bytes = schema.serializeDropParamsSource(later);
@@ -41,12 +41,25 @@ for (const externalEdit of [false, true]) {
         }
       } },
     });
+    if (externalEdit) {
+      await assert.rejects(apply, error => error.code === 'reconciliation_required' && error.cause.code === 'apply_state_diverged');
+      assert.equal(await readFile(projector.DROP_PARAMS_PATHS.canonicalSource, 'utf8'), schema.serializeDropParamsSource(later));
+      const status = await writer.inspectDropParamsTransactionStatus();
+      assert.equal(status.blocked, true);
+      assert.equal(status.operations[0].result, null);
+      assert.equal(status.operations[0].failure.code, 'apply_state_diverged');
+      assert.equal((await writer.reconcileDropParamsTransactions()).blocked, true);
+      assert.equal(await readFile(projector.DROP_PARAMS_PATHS.canonicalSource, 'utf8'), schema.serializeDropParamsSource(later));
+      console.log('Late external edit preserved: reconciliation required, no completed result');
+    } else {
+      const result = await apply;
+      assert.equal(result.status, 'completed');
+      assert.equal(await readFile(projector.DROP_PARAMS_PATHS.canonicalSource, 'utf8'), schema.serializeDropParamsSource(candidate));
+      assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, true);
+      assert.equal((await writer.inspectDropParamsTransactionStatus()).blocked, false);
+      console.log('Unchanged-source control: completed, equal projections, writer unblocked');
+    }
     assert.equal(injected, externalEdit);
-    assert.equal(result.status, 'completed');
-    assert.equal(await readFile(projector.DROP_PARAMS_PATHS.canonicalSource, 'utf8'), schema.serializeDropParamsSource(candidate));
-    assert.equal((await projector.verifyDropParamsEquality({ expectedParams: candidate })).ok, true);
-    assert.equal((await writer.inspectDropParamsTransactionStatus()).blocked, false);
-    console.log(`${externalEdit ? 'Late external edit overwritten' : 'Unchanged-source control'}: completed, equal projections, writer unblocked`);
   } finally {
     const rel = path.relative(work, fixture);
     assert.ok(rel && !rel.startsWith('..') && !path.isAbsolute(rel));

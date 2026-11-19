@@ -1,8 +1,9 @@
 # AUD-004 evidence (2026-11-17)
 
-The [AUD-004 findings](../AUD-004-findings.md) describe five current failures and
-their valid/unchanged controls. These scripts deliberately assert observed bad
-behavior; success is reproduction evidence, **not** a remediation gate. Run from
+The [AUD-004 findings](../AUD-004-findings.md) describe five failures at the reviewed
+revisions and their valid/unchanged controls. Except for the maintained writer
+regression noted below, these scripts deliberately assert observed bad behavior;
+success is reproduction evidence, **not** a remediation gate. Run from
 the indicated repository with the reviewed Windows/Node 22.16.0 environment and
 installed dependencies:
 
@@ -36,6 +37,13 @@ operational configuration or makes a live wallet/chain/CMS request. The config
 runner executes unchanged tests in separate processes; do not replace it with
 real-tree transaction tests that intentionally write source/projection paths.
 Both repositories must be present for cross-repository evidence.
+
+`AUD-004-writer-cas-repro.mjs` is now a maintained regression for AUD-004-003:
+the later save must survive with reconciliation required, while unchanged apply
+still completes. The original lost-edit observation remains in the dated findings.
+`shared/drop-params/drop-params-projection.test.mjs` extends this case across
+staging/replacement boundaries, exact-byte ownership, partial failures and
+interrupted recovery using disposable fixtures.
 
 # AUD-003 reproduction status
 
