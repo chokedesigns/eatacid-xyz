@@ -1,3 +1,47 @@
+# AUD-005 evidence (2026-11-19)
+
+The [AUD-005 findings](../AUD-005-findings.md) classify five current failures,
+their controls and limitations at Outer `fd47dda4adc4ccd23b71447d765acc8c1198d543`
+and Admin `9edef7cac18c04f40e75a9b15fca0517208f7c6a`. These reproduction scripts
+assert bad behavior; success demonstrates a defect, not a remediation gate.
+
+```text
+# Outer: actual functions / disposable copies, inert I/O
+node audits/repro/AUD-005-writer-read-window-repro.mjs
+node audits/repro/AUD-005-drops-inventory-repro.mjs
+node audits/repro/AUD-005-thumb-url-repro.mjs
+
+# Admin: actual client/provider/subscriber and status producer/consumer
+node tests/repro/AUD-005-authoring-body-repro.mjs
+node tests/repro/AUD-005-drop-status-order-repro.mjs
+
+# Supporting current ABI check; same limits as the historical probe below
+node audits/repro/AUD-005-contract-abi-check.mjs
+```
+
+The writer runner copies unchanged modules and wraps only a native filesystem
+read seam to interleave an independently verified editor save after old source
+bytes were obtained. Before-check and unchanged controls distinguish the
+remaining window from the corrected AUD-004 trigger. It never edits a real
+source/projection/journal/archive/lock. Asset runners likewise use bounded
+disposable workspace copies. No runner sends a wallet/chain/CMS request.
+
+The body-stall runner controls time and HTTP bodies, composing the real client,
+provider and subscriber. The status-order runner uses current bundled params,
+normalizer/builder/classifier/publication guards and controlled indexer ordering.
+Drops inventory uses maintained real-handler extraction plus the real button
+function and schema acceptance check. Mocked confirmation is not chain execution.
+
+Current AUD-004 writer/provenance and isolated config runners remain useful.
+The historical AUD-004 ABI probe needs new pair authority/target dependencies;
+the AUD-005 copy supplies the maintained fixture dependencies without changing
+production code. Outer AUD-003 `drop-authority` similarly has an obsolete helper
+VM and is not a passing current gate; Admin's current
+`tests/runtime/drops-send-invalidation.test.mjs` and `pair-authority.test.mjs`
+cover its maintained behavior. The other eleven maintained Outer AUD-003 runners
+and five Admin AUD-003 replacements passed this pass. Frozen old defect
+assertions are preserved below, not reinterpreted as current runtime failures.
+
 # AUD-004 evidence (2026-11-17)
 
 The [AUD-004 findings](../AUD-004-findings.md) describe five failures at the reviewed

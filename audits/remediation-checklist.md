@@ -1,17 +1,17 @@
-Group 0 — Wallet intent
+Group 0 — Configuration ownership
 
-0.1 Preserve entered XTZ withdrawal amounts
+0.1 Preserve source edits through Drop Params replacement
 
-0.2 Bind all pair writes to the initiating account
+Group 1 — Local authoring health
 
-Group 1 — Configuration ownership
+1.1 Bound authoring response decoding and retire stalled health
 
-1.1 Preserve external source edits during normal Drop Params apply
+Group 2 — Drop readiness
 
-Group 2 — Readiness evidence
+2.1 Retire superseded drop pair status requests
 
-2.1 Invalidate depleted checklist projections when supply becomes unknown
+2.2 Require full redemption inventory before trading
 
 Group 3 — Asset generation
 
-3.1 Safely serialize thumbnail filenames before replacing the manifest
+3.1 Preserve thumbnail filename identity in generated URLs
