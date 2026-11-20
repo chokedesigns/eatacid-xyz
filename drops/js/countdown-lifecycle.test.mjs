@@ -62,7 +62,7 @@ function fixture({ past = false, pendingTime = false, wallet = false, networkAva
       return id;
     },
     clearTimeout: id => { waits.delete(id); deadlines.delete(id); },
-    dropsBalanceRefreshFailed: false, handleEventExchange() {},
+    dropsBalanceRefreshFailed: false, handleEventExchange() {}, redeemToken: { redeemAmount: 3 },
   });
   vm.runInContext(code, context);
   const call = text => vm.runInContext(text, context);
@@ -73,6 +73,8 @@ function fixture({ past = false, pendingTime = false, wallet = false, networkAva
       [...waits.values()][0](); await flush();
     },
     buttonState() {
+      vm.runInContext(source.slice(source.indexOf('function getRedeemInventoryStatus('),
+        source.indexOf('function assertRedeemSupplyAvailable(')), context);
       vm.runInContext(source.slice(source.indexOf('function computeExchangeButtonState('),
         source.indexOf('function updateExchangeButtonState(')), context);
       return call('computeExchangeButtonState(AppState)');

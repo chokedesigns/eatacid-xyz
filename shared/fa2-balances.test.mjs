@@ -36,7 +36,8 @@ function fixture(surface = 'shared') {
   const code = surface === 'shared'
     ? section('./beacon-setup.js', 'async function fetchNFTs(', 'window.fetchNFTs = fetchNFTs;')
     : section('../exchange/js/exchange.js', 'async function fetchNFTs(', '/**\n * Processes');
-  vm.runInContext(code + '\n' + section('../drops/js/events.js', 'async function fetchRedeemSupply(', '/**\n * Starts a repeated poll'), context);
+  vm.runInContext(code + '\n' + section('../drops/js/events.js', 'function parseDropsBalance(', '/**') +
+    section('../drops/js/events.js', 'async function fetchRedeemSupply(', '/**\n * Starts a repeated poll'), context);
   return Object.assign(h, { context, fetch: address => context.fetchNFTs(address),
     supply: () => context.fetchRedeemSupply(), initial: () => context.resolveInitialRedeemSupply(),
     update: () => context.updateRedeemSupplyDisplay() });

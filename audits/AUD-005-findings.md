@@ -62,6 +62,8 @@ The [reproduction](../admin-ui/tests/repro/AUD-005-authoring-body-repro.mjs) use
 
 ## AUD-005-004 — positive inventory is insufficient for a multi-unit redemption (P2)
 
+**Remediation (AUD-005-004, 2026-11-19):** Outer now requires known exact inventory covering the complete configured redeem amount in presentation and entry/final send guards. The [maintained lifecycle regressions](../drops/js/trade-lifecycle.test.mjs) replace the defect assertions in the audit command below and cover multi-unit and amount-one thresholds, exact identity/integer handling, unknown/invalid inventory, pre-send refresh invalidation, captured-action bypasses, pause/LIVE authority and confirmation failure. The original property, reproduction observations and limits below are historical evidence; a sufficient observed balance still does not guarantee chain success.
+
 **Property and path.** A known inventory balance must cover the entire configured redemption before the application presents the action as available or requests it. The [Drops send guard](../drops/js/events.js#L1066) and [button state](../drops/js/events.js#L2646) require only positive finite supply. They do not compare it with `redeemToken.redeemAmount`. Current authoring explicitly permits positive safe-integer redeem amounts greater than one. With amount 3 and supply 1 or 2, both gates allow a request for 3.
 
 **Demonstration.** From Outer:

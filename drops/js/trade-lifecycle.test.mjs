@@ -5,6 +5,8 @@ import test from 'node:test';
 import { isCurrentWalletProjection } from './reveal-coordinator.js';
 import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForConfirmation as reconcileConfirmation } from '../../shared/public-trade-ops.js';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
+import dropParams from '../../shared/drop-params/drop-params.js';
+import { validateDropParams } from '../../shared/drop-params/drop-params-authoring.mjs';
 
 // Execute current production selection, send and wallet lifecycle consumers.
 // Only DOM rendering, Beacon and indexer/poll boundaries are inert.
@@ -155,6 +157,165 @@ function installInventory(f) {
     fail: () => { provider = async () => ({ ok: false, status: 503 }); },
   };
 }
+
+function inventoryRows(balance, tokenId = '7', contract = 'redeem') {
+  return { ok: true, json: async () => [
+    { id: 1, token: { tokenId, contract: { address: contract } }, balance: String(balance) }
+  ] };
+}
+
+test('AUD-005-004: multi-unit redeem amounts remain supported authored configurations', () => {
+  assert.equal(validateDropParams({ ...dropParams,
+    redeemToken: { ...dropParams.redeemToken, redeemAmount: 3 }
+  }, { operation: 'active' }).ok, true);
+});
+
+test('AUD-005-004: full configured inventory gates presentation and direct submission with exact terms', async () => {
+  for (const amount of [1, 3, 5]) {
+    for (const supply of [0, 1, amount - 1, amount, amount + 1]) {
+      const storage = new Map(), f = fixture({ inventory: true, storage }), s = f.inventory;
+      f.context.redeemToken.redeemAmount = amount;
+      s.provider(async () => inventoryRows(supply)); await s.initialize();
+      const sufficient = supply >= amount;
+      assert.equal(f.state.redeemSupply, supply);
+      assert.equal(s.pill.textContent, 'x' + String(supply).padStart(2, '0'));
+      assert.equal(f.state.exchangeDisabled, !sufficient, `amount ${amount}, supply ${supply}`);
+      assert.equal(typeof f.context.computeExchangeButtonState(f.state).clickAction === 'function', sufficient);
+      assert.equal(s.intervals.size, supply === 0 ? 0 : 1, 'Positive remainders keep polling');
+      await f.send(); // Bypass the rendered button too.
+      assert.equal(f.requests.length, sufficient ? 1 : 0);
+      if (sufficient) {
+        const [left, right] = f.requests[0].operationDetails.at(-1).parameters.value[0].args;
+        assert.deepEqual(left.args[1].args, [{ int: '4' }, { int: String(amount) }]);
+        assert.deepEqual(right.args[0].args, [{ string: 'redeem' }, { int: '7' }]);
+        assert.equal(f.confirmations.length, 1);
+      } else {
+        assert.equal(f.started.size, 0); assert.equal(storage.size, 0);
+        assert.match(f.modals.at(-1)[1], supply === 0 ? /sold out/ : /insufficient/i);
+      }
+    }
+  }
+});
+
+test('AUD-005-004: unknown, malformed and inexact inventory never authorize a redemption', async () => {
+  for (const supply of [null, undefined, NaN, Infinity, -1, 1.5, '3', Number.MAX_SAFE_INTEGER + 1]) {
+    const storage = new Map(), f = fixture({ inventory: true, storage });
+    f.context.updateAppState({ redeemSupply: supply });
+    assert.equal(f.state.exchangeDisabled, true, String(supply));
+    await f.send();
+    assert.equal(f.requests.length, 0); assert.equal(f.started.size, 0); assert.equal(storage.size, 0);
+    assert.match(f.modals.at(-1)[1], /unavailable/);
+  }
+  for (const balance of ['9007199254740993', '1.5', '-1', '3junk']) {
+    const f = fixture({ inventory: true }), s = f.inventory;
+    s.provider(async () => inventoryRows(balance)); await s.initialize();
+    assert.equal(f.state.redeemSupply, null); assert.equal(s.pill.textContent, '[UNAVAILABLE]');
+    assert.equal(f.state.exchangeDisabled, true); assert.equal(s.intervals.size, 1);
+    await f.send(); assert.equal(f.requests.length, 0);
+  }
+});
+
+test('AUD-005-004: invalid configured redeem amounts cannot enable or submit a trade', async () => {
+  for (const amount of [undefined, null, 0, -1, 1.5, NaN, Infinity, Number.MAX_SAFE_INTEGER + 1, '3', true]) {
+    const storage = new Map(), f = fixture({ inventory: true, storage }), s = f.inventory;
+    f.context.redeemToken.redeemAmount = amount;
+    s.provider(async () => inventoryRows(7)); await s.initialize();
+    assert.equal(f.state.exchangeDisabled, true, String(amount));
+    await f.send();
+    assert.equal(f.requests.length, 0); assert.equal(storage.size, 0); assert.equal(f.started.size, 0);
+    assert.match(f.modals.at(-1)[1], /Redeem amount must be a positive safe integer/);
+  }
+});
+
+test('AUD-005-004: live styling requires the same full inventory, pause and phase authority', () => {
+  const f = fixture(), panels = [];
+  const staticImg = { style: {}, removeAttribute() {} }, animatedImg = { style: {}, removeAttribute() {} };
+  Object.assign(f.context, {
+    document: { body: { classList: { toggle: (_name, active) => panels.push(active) } }, querySelector: () => null },
+    getCurrentFlameContainer: () => ({ querySelector: selector => selector.includes('animated') ? animatedImg : staticImg }),
+  });
+  vm.runInContext(section('function updateFlames(', '// CMS ROW MAPPING'), f.context);
+  for (const state of [
+    { redeemSupply: null }, { redeemSupply: 0 }, { redeemSupply: 1 }, { redeemSupply: 2 },
+    { redeemSupply: 3 }, { redeemSupply: 4 }, { redeemSupply: 3, contractPaused: true },
+    { redeemSupply: 3, countdownPhase: 'standby' },
+  ]) {
+    Object.assign(f.state, { walletConnected: true, selectedTokenId: '4', contractPaused: false, countdownPhase: 'live' }, state);
+    f.context.updateFlames();
+    const active = state.redeemSupply >= 3 && !state.contractPaused && !state.countdownPhase;
+    assert.equal(panels.at(-1), active);
+    assert.equal(animatedImg.style.display, active ? 'block' : 'none');
+  }
+});
+
+test('AUD-005-004: only the exact redeem contract and token ID contribute inventory', async () => {
+  const f = fixture({ inventory: true }), s = f.inventory;
+  f.context.redeemToken.tokenId = '9007199254740993';
+  for (const [contract, tokenId] of [['another-redeem', '9007199254740993'], ['redeem', '9007199254740992']]) {
+    assert.equal(Number(tokenId), Number(f.context.redeemToken.tokenId));
+    s.provider(async () => inventoryRows(3, tokenId, contract));
+    await s.initialize(); await f.context.updateRedeemSupplyDisplay();
+    assert.equal(f.state.redeemSupply, 0); assert.equal(f.state.exchangeDisabled, true);
+    await f.send(); assert.equal(f.requests.length, 0);
+  }
+  s.provider(async () => inventoryRows(3, '9007199254740993'));
+  await f.context.updateRedeemSupplyDisplay(); await f.send();
+  assert.equal(f.state.redeemSupply, 3); assert.equal(f.requests.length, 1);
+  const [, right] = f.requests[0].operationDetails.at(-1).parameters.value[0].args;
+  assert.deepEqual(right.args[0].args, [{ string: 'redeem' }, { int: '9007199254740993' }]);
+});
+
+for (const stage of ['initial-account', 'approval', 'mapping', 'final-account']) {
+  test(`AUD-005-004: supply loss during ${stage} blocks captured actions before reservation`, async () => {
+    for (const supply of [null, 0, 1, 2]) {
+      const storage = new Map(), f = fixture({ inventory: true, storage, pause: stage }), s = f.inventory;
+      s.provider(async () => inventoryRows(3)); await s.initialize();
+      const action = f.context.computeExchangeButtonState(f.state).clickAction;
+      const run = action(); await f.waitAt(stage);
+      if (supply === null) s.fail();
+      else s.provider(async () => inventoryRows(supply));
+      await s.tick();
+      assert.equal(f.state.redeemSupply, supply); assert.equal(f.state.exchangeDisabled, true);
+      f.gate.resolve(); await run;
+      assert.equal(f.requests.length, 0); assert.equal(f.confirmations.length, 0);
+      assert.equal(storage.size, 0); assert.equal(f.pending(), false);
+      await action(); assert.equal(f.requests.length, 0, 'Previously captured action stays guarded');
+    }
+  });
+}
+
+test('AUD-005-004: remainder recovery needs full inventory and preserves pause and LIVE authority', async () => {
+  const f = fixture({ inventory: true }), s = f.inventory;
+  s.provider(async () => inventoryRows(2)); await s.initialize();
+  assert.equal(f.state.exchangeDisabled, true); assert.equal(s.intervals.size, 1);
+  f.context.updateAppState({ contractPaused: true });
+  const gate = deferred(); s.provider(() => gate.promise);
+  const update = s.tick(); s.phase('standby');
+  gate.resolve(inventoryRows(3)); await update;
+  assert.equal(f.state.redeemSupply, 3); assert.equal(f.state.exchangeDisabled, true);
+  await f.send(); assert.equal(f.requests.length, 0);
+  s.phase('live'); await flush();
+  assert.equal(f.state.contractPaused, true); assert.equal(f.state.exchangeDisabled, true);
+  await f.send(); assert.equal(f.requests.length, 0);
+  f.context.updateAppState({ contractPaused: false });
+  assert.equal(f.state.exchangeDisabled, false);
+  await f.send(); assert.equal(f.requests.length, 1); assert.equal(f.confirmations.length, 1);
+});
+
+test('AUD-005-004: exact safe-integer threshold is preserved without rounding the requested amount', async () => {
+  for (const supply of [Number.MAX_SAFE_INTEGER - 1, Number.MAX_SAFE_INTEGER]) {
+    const f = fixture({ inventory: true }), s = f.inventory;
+    f.context.redeemToken.redeemAmount = Number.MAX_SAFE_INTEGER;
+    s.provider(async () => inventoryRows(supply)); await s.initialize();
+    assert.equal(f.state.exchangeDisabled, supply < Number.MAX_SAFE_INTEGER);
+    await f.send();
+    assert.equal(f.requests.length, supply < Number.MAX_SAFE_INTEGER ? 0 : 1);
+    if (f.requests.length) {
+      const [left] = f.requests[0].operationDetails.at(-1).parameters.value[0].args;
+      assert.equal(left.args[1].args[1].int, '9007199254740991');
+    }
+  }
+});
 
 for (const state of [
   { contractPaused: true }, { contractPaused: null }, { contractPaused: undefined },
@@ -504,14 +665,15 @@ for (const stage of ['fetch', 'json', 'http-text']) {
   });
 }
 
-test('TX-002: verified terminal failure releases Drops receipt and permits an evidence-based fresh send', async () => {
+test('AUD-005-004 / TX-002: sufficient observed inventory still requires chain confirmation; terminal failure permits a fresh send', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => ({ ok: true, json: async () => [{ id: 1, type: 'transaction',
     hash: 'inert-operation-hash', sender: { address: 'wallet-A' }, target: { address: 'escrow' },
     parameter: { entrypoint: 'initiate_trade' }, status: 'backtracked' }] });
   try {
-    const h = fixture({ confirmation: (hash, receipt) => reconcileConfirmation({ tzktBase: receipt.tzktBase,
+    const h = fixture({ inventory: true, confirmation: (hash, receipt) => reconcileConfirmation({ tzktBase: receipt.tzktBase,
       opHash: hash, submittedTrade: receipt, timeout: 8, interval: 0 }) });
+    h.inventory.provider(async () => inventoryRows(3)); await h.inventory.initialize();
     await h.send(); assert.equal(h.requests.length, 1); assert.equal(h.refreshes.length, 0);
     assert.equal(h.modals.at(-1)[0], 'ERROR'); assert.match(h.modals.at(-1)[1], /backtracked/);
     assert.equal(vm.runInContext('submittedTrades.get(submittedTradeScope())', h.context), null);

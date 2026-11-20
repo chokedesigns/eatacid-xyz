@@ -896,7 +896,7 @@ async function fetchRedeemSupply() {
     n.contractAddress === redeemAddr &&
     String(n.tokenId) === String(redeemToken.tokenId)
   );
-  return match ? Number(match.balance) : 0;
+  return match ? parseDropsBalance(match.balance) : 0;
 }
 
 /**
@@ -1063,10 +1063,21 @@ async function retryTradeConfirmation() {
   }
 }
 
+/** Classifies only exact inventory observations against the complete configured trade. */
+function getRedeemInventoryStatus(supply) {
+  const amount = redeemToken.redeemAmount;
+  if (!Number.isSafeInteger(amount) || amount <= 0) return 'invalid-amount';
+  if (!Number.isSafeInteger(supply) || supply < 0) return 'unknown';
+  if (supply === 0) return 'zero';
+  return supply < amount ? 'insufficient' : 'sufficient';
+}
+
 function assertRedeemSupplyAvailable() {
-  if (!Number.isFinite(AppState.redeemSupply) || AppState.redeemSupply <= 0) {
-    throw new Error('Redeem supply is unavailable or sold out.');
-  }
+  const status = getRedeemInventoryStatus(AppState.redeemSupply);
+  if (status === 'invalid-amount') throw new Error('Redeem amount must be a positive safe integer.');
+  if (status === 'unknown') throw new Error('Redeem supply is unavailable.');
+  if (status === 'zero') throw new Error('Redeem supply is sold out.');
+  if (status === 'insufficient') throw new Error('Redeem supply is insufficient for the configured redeem amount.');
 }
 
 function assertDropLive() {
@@ -1434,13 +1445,13 @@ function updateFlames() {
     redeemSupply
   } = AppState;
 
-  // “Live” with supply > 0 triggers animated flame + white panels
+  // A complete redeemable trade triggers animated flame + white panels.
   const liveActive =
     walletConnected &&
     !!selectedTokenId &&
     countdownPhase === 'live' &&
-    !contractPaused &&
-    redeemSupply > 0;
+    contractPaused === false &&
+    getRedeemInventoryStatus(redeemSupply) === 'sufficient';
 
   // “Sold‑Out” specifically: live phase but supply is 0
   const soldOutLive =
@@ -2643,7 +2654,7 @@ function computeExchangeButtonState({
         pulse      = true;
         break;
       case 'live':
-        if (contractPaused !== false || !Number.isFinite(redeemSupply) || redeemSupply <= 0) break;
+        if (contractPaused !== false || getRedeemInventoryStatus(redeemSupply) !== 'sufficient') break;
         defaultColor = contractPaused ? '#363636' : '#d4d4d4';
         hoverLabel   = 'EXCHANGE';
         hoverColor   = '#f5c414';

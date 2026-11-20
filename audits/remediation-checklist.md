@@ -14,6 +14,8 @@ Group 2 — Drop readiness
 
 2.2 Require full redemption inventory before trading
 
+Implemented in Outer by AUD-005-004. Button/action state, live styling and entry/final send guards require known exact inventory covering the full configured redeem amount. Maintained `AUD-005-004` cases in `drops/js/trade-lifecycle.test.mjs` cover thresholds, identity, unknown/invalid inventory, asynchronous invalidation, bypasses and confirmation failure; the original audit command runs those regressions. Chain outcomes remain subject to confirmation.
+
 Group 3 — Asset generation
 
 3.1 Preserve thumbnail filename identity in generated URLs

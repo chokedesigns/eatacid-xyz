@@ -292,6 +292,8 @@ assert.match(eventsSource, /if \(!redeemInitialSupplyCommitted\) return false/);
   };
 
   runInNewContext(
+    eventsSource.slice(eventsSource.indexOf('function parseDropsBalance('),
+      eventsSource.indexOf('/**', eventsSource.indexOf('function parseDropsBalance('))) +
     `${eventsSource.slice(pollingStart, pollingEnd)}\n` +
       `globalThis.pollingHarness = {\n` +
       `  reconcileRedeemSupplyPolling,\n` +
