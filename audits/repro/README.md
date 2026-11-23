@@ -1,3 +1,36 @@
+# AUD-006 evidence (2026-11-19; source pass completed 2026-11-23)
+
+The [AUD-006 working findings](../AUD-006-findings.md) document two current
+Admin Drops ownership failures and positive controls. Run separately from Admin:
+
+```text
+node tests/repro/AUD-006-drop-auto-error-repro.mjs
+node tests/repro/AUD-006-unpause-owner-repro.mjs
+```
+
+These run checked-out functions with inert DOM, indexer and countdown boundaries;
+the loader now also covers older-manual/newer-Auto success and rejection. The
+second also runs the current poll helper and preview renderer. Success
+asserts the documented defects, not their remediation. They do not send wallet,
+chain or Webflow requests or change configuration. The application-wide source
+examination is complete with these two unremediated findings; see
+[coverage](../coverage.md) for external/unexecuted boundaries. Older evidence
+below retains its original revision and purpose.
+
+Two additional Admin runners preserve challenged hypotheses without counting
+them as defects:
+
+```text
+node tests/repro/AUD-006-send-input-repro.mjs
+node tests/repro/AUD-006-modal-content-repro.mjs
+```
+
+The first characterizes draft-input versus already-clicked cached send intent;
+no independent cancellation requirement is asserted. The second demonstrates
+modal mutation only with an injected delayed local metadata promise, which the
+current production producer cannot supply across ordinary user clicks. Both
+have positive controls; neither is a remediation gate or a follow-up ticket.
+
 # AUD-005 evidence (2026-11-19)
 
 The [AUD-005 findings](../AUD-005-findings.md) classify five current failures,

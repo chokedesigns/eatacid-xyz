@@ -1,5 +1,338 @@
 # Correctness review coverage
 
+## AUD-006 — completed source examination (2026-11-23)
+
+**COMPLETE APPLICATION SOURCE PASS — TWO CONFIRMED FINDINGS; NOT CLEAN.**
+This continues the November 19 investigation, including its independently
+discovered map and evidence. It does not restart enumeration or discard that
+checkpoint. All twenty mapped workflows have now received the source audit-pass
+procedure; no local consequential workflow remains partially examined. External
+integration execution and legacy contract execution remain unverified as stated
+below. Completion of source examination is not a deployment or clean verdict.
+
+| Repository / existing branch | Exact reviewed and tested runtime revision |
+| --- | --- |
+| Outer / `ticket-AUD-006-full-correctness-review` | `5b465deb2e3ffc393a400458cff26725b1a2f612` |
+| Admin / `ticket-AUD-006-full-correctness-review` | `3fda8b857d3f3374a49ff4d3e9f7273e96213bca` |
+
+Runtime revisions, lockfiles, installed toolchain, network/address configuration
+and scope are unchanged from the checkpoint below. The continuation began with
+only the recorded coverage/README/findings changes and two Admin repros. Reviewed
+working changes now comprise Outer audit documentation/checklist and four Admin
+evidence runners. The two original runners are preserved; the loader runner adds
+reverse-order cases. No runtime, schema, generated source/mirror, operational
+journal/archive/lock, contract or deployment change was made.
+
+Target identity stays explicit: current Admin Drops/root resolves the documented
+legacy root `KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5`; Public Drops resolves dedicated
+`KT1HMCqYqyP9fTDjzm8KAfyPhFn3tpmSW4kc`. Exchange uses its dedicated configured
+surface. No assumption is made that setting Admin Drops pairs changes Public
+Drops storage. The current root/surface split is an implemented, documented
+configuration boundary; the historical Phase-11 verification of the dedicated
+instances does not certify the legacy root or its current ABI/storage.
+
+Scope remains the implemented application, including direct contract and operator
+entries, shared infrastructure, Public, Admin, assets and delivery. Cosmetic
+effects without consequential visibility, future architecture proposals and
+third-party internals beyond the identified interfaces remain excluded. Current
+source and independently grounded authority/identity/conservation/recovery
+properties supplied the oracle; old audit dispositions and passing suites did
+not substitute for examination. The original forward/reverse/boundary discovery
+and reconciliation are retained below. This is the completion of that same pass,
+not the independent post-clean refresh required for a final clean claim: findings
+remain, so no provisional clean result or post-clean refresh is claimed.
+
+### Completed behavioral examination
+
+The original map below retains the workflow boundaries, intended properties and
+core source locations. This table supersedes its **examination status** column
+and unfinished-work list. “Examined” means complete local consequential source
+tracing under the stated external assumptions, not that every integration ran.
+
+| Workflow | Completion of forward, reverse and boundary examination |
+| --- | --- |
+| W01 Arrival/navigation/reveal/Utility | **Examined.** All four local shells' app entries/inline scripts, shared first paint, reveal barrier, navigation and Utility startup traced. Independent early/application imports settle failure separately; inactive/unconfigured/missing-region paths release pending state. Utility SVG and marquee work has no financial authority. Hosted Webflow/CSS behavior is external. |
+| W02 Public wallet | **Examined.** Initial, permission, SDK event, same-account, replacement, mismatch, disconnect and mobile entries through verified projections/final account reads. Stale success/rejection/clear completion cannot authorize a replacement. Transport and signing remain external. |
+| W03 Holdings/identity/rendering | **Examined.** Complete balance pager through both consumers, canonical CMS snapshots, HEN mirror/exclusions, row cloning/stamping, selection restoration, missing metadata and unknown/zero states. Presentation names/images do not select operation identities; current wallet generations gate publication and exact selected balance gates submission. |
+| W04 Drops schedule/pause/inventory | **Examined.** Initial/inactive/config-error, PRE/time-unavailable/standby/LIVE, pause/recovery, visibility/page lifecycle and full redemption thresholds traced through countdown, buttons, flames and final trade gates. Delayed/failed provider data does not establish current readiness. External time/indexer accuracy remains assumed. |
+| W05 Public Drops trade | **Examined.** Each selection path through verified balance, approval fallback, unique six-term pair resolution, exact payload, final account/selection/time/pause/inventory check, retained submission, confirmation and balance refresh. Preflight liveness qualification below; no wallet execution. |
+| W06 Public Exchange | **Examined.** Startup delay, all panes/tabs, quantity options, clear/remove/reset/cart rendering, duplicate identities, reward totals, per-unit expansion, final cart/account checks and retained receipt/balance reduction. Bounds precede allocation; malformed economics fail the authoritative cart gate. |
+| W07 Retained Public submissions | **Examined.** Reservation/hash/unknown/rejection, scoped durable store, lock, retry, deadline, receipt attribution and final balance admission traced from both pages. Reload does not silently turn an ambiguous submitted operation into a fresh trade. Browser locking/storage and real receipts remain external. |
+| W08 Admin boot/network/authority | **Examined.** Surface wiring, persisted selector/full reload, wallet SDK event consumers, immutable target capture, admin indicator and read-only Exchange status. Indicator unknown is distinct from verified admin; chain authority remains decisive. Read-only refresh controls serialize supported clicks. |
+| W09 Pause/recovery | **Examined.** Both surface controllers through helper, final authority/target checks, persisted uncertainty, conflict/reload/recovery and refreshed pause publication. Rejected-before-request and ambiguous-after-request branches remain distinct. |
+| W10 Treasury | **Examined.** Completed orchestrator/config/context/lifecycle/status/bridge and all button/event consumers around previously traced transfer/withdraw/MAX/table/recovery. Exact recipient, token nat and decimal mutez survive helpers; changing account/target/balance context retires pending authority. Unknown receipts retain recovery exclusion. |
+| W11 Pairs | **Examined.** Both surfaces' table/create/edit/cleanup, set-panel view/widgets, modal shell/content/widgets/validators/context, custom/local token choices, locked Exchange redemption, status and serializers. Stored IDs survive amount-only edits and absent catalogs. Deferred local-metadata challenge is qualified below; it is not a current supported failure. |
+| W12 Admin Drops | **Examined, findings 001/002 remain.** Full normalizer/translation audit/build/load/view/status/countdown/send graph, manual/Auto mutual ordering, reset/provider/network/phase retirement and error branches traced. Direct loader mutation escapes scoped status guards; cancelled unpause completion escapes same-phase ownership. Clicked cached-send intent and draft-input behavior were characterized separately. |
+| W13 Checklist/Health/catalog | **Examined.** Completed GitHub comparison/cache/poll/epoch, Health summary mirrors, CSV upload/restore, token economics, full catalog enumeration, NFT/title/thumbnail and persistent cache producers. Known zero differs from unavailable evidence; failed supply recomputes dependents. Current NFT titles/previews are local-only; diagnostic cache is not transaction identity authority. |
+| W14 Local authoring/provider | **Examined.** Form/time/token choices, disabled-row preservation, state/view/preview, validation/apply/readback and provider/subscriber invalidation traced. Edit invalidates reviewed candidate/preview; service CAS and consumed preview token govern apply. Production removes the development capability. |
+| W15 Writer/projection/archive/recovery | **Examined.** Completed strict active/inactive/canonical schema, deterministic serialization, archive path/hash/schema/exclusive publication/collision/readback, watcher drain and CLI dispatch around full writer/projector/recovery/lock traces. Supported writers share the claim; pending/diverged state blocks projection/READY. External editor concurrency remains the accepted AUD-005-001 limitation. |
+| W16 Direct contracts | **Examined source; execution unverified.** Every active escrow entry and meaningful validation/effect/failure branch traced, including all trade terms inside each loop, grouped/repeated identities, later-item and downstream failure, pair cardinality, admin custody/XTZ and default. Typed FA2 acceptance alone cannot prove movement or irreversible burning. |
+| W17 Build/delivery/dev | **Examined.** Completed all root/environment wrappers, artifact verifier, first-paint verifiers, dev port/Parcel/harness/sanity scripts and CI assembly. Main owns permanent/prod loaders, staging owns staging loaders; byte provenance and referenced bundles are checked before artifact upload. Admin mirror/manifest/prune/isolation gates traced. Actual remote assembly/hosting and fresh Linux/Node-20 install remain unverified. |
+| W18 Assets/CMS | **Examined.** Completed process-local manifest capability/ownership/release, standalone generator, input/backfill allocation/rollback, static optimizers and complete exported Webflow CMS library. Pagination validates completeness; writes are not blindly retried; transport/body/upload ambiguity remains explicit; image identity/content/readback checks are separate. No live CMS mutation or read was made. |
+| W19 Pair provisioning CLI | **Examined.** Fixed payload/default dry-run, explicit execute admission, chain/admin/entrypoint/storage/empty-map checks, exact packing and complete readback. No signer/provider/execute invocation in this review. |
+| W20 Contract provenance | **Examined local correspondence.** Source/snapshot/mechanical fixture/target, Phase 7/8 certification/freeze, Phase 10 promotion and Phase 11 deployment record traced. All 31 freeze-table checkout/blob identities rechecked, alongside canonical/promoted checks. Historical block-pinned observations are not new live verification. |
+
+### Consequential branch and ordering review
+
+- Public trades: entry/configuration and complete holdings; absent/ambiguous or
+  mismatched pairs; approval present/absent/read error; exact per-trade terms and
+  whole cart/batch limits; final identity/cart/pause/inventory; request rejection,
+  no hash/unknown, applied/failed/unconfirmed, later refresh failure and retry.
+  Approval and trade effects share the submitted operation group; source/protocol
+  rollback reasoning is distinct from actually running the configured FA2.
+  Preflight account/approval/pair reads have no application-wide deadline and may
+  leave processing pending until provider settlement or reload. They precede the
+  durable request reservation; reload cannot itself duplicate a request that was
+  never made. If a held read later settles, final current-context checks still
+  apply. The bounded confirmation deadline does not cover these preflight reads.
+- Privileged operations: all six helper entry families and both escrow surfaces,
+  initiating account/target through availability/permission/account awaits,
+  exact nat/decimal conversion and recipient, each batch's request/confirmation,
+  stale publication, no-hash/hash uncertainty and supported recovery. Direct
+  contract entry bypasses UI checks but retains on-chain admin/sender/six-term
+  validation. No admin setter exists; constructor identity is a deployment trust
+  boundary. A failed later trade or FA2 call is not a successful partial trade.
+- Admin Drops: initial/manual/Auto loaders, every asynchronous overlap/build/
+  metadata/status/countdown continuation, success/rejection and reset/provider/
+  network/phase replacements. Manual-to-manual and Auto-to-Auto use their own
+  epochs; cross-kind supersession and rejected Auto are the 001 gap. Phase/network
+  reset fences unpause; same-phase abort without a new poll epoch is 002. Pending
+  sends retain per-batch receipts and stop after authoritative preview/config/
+  account invalidation. Pure draft edits are discussed in findings, not asserted
+  to be revocation without an independent cancellation requirement.
+- Configuration/asset writers: admission/CAS, supported lock acquisition/reuse,
+  staging/replacement/final equality, partial failure/rollback/reconciliation,
+  archive-before-deactivation and collision/readback, watcher coalescing, manifest
+  generator versus import rollback, and stale/unknown provider publication.
+  Real external edits during apply remain unsupported. OS crash/power-loss and
+  noncooperating external writers are not proved safe by disposable fixtures.
+
+Cross-products without reachable effects were not invented: custom modal initial
+metadata has no pending I/O in the current producer; changing Admin networks
+normally reloads the app; catalog/title/image failures cannot themselves choose
+financial terms; read-only Health diagnostics do not mint or transfer assets.
+Newly exposed paths were pursued through their real producers and consumers,
+including the two controlled but non-finding cases described in the findings.
+
+### Historical reconciliation and actual continuation verification
+
+All seven `docs/known-issues.md` paths, eleven AUD-002 findings, twenty AUD-003
+findings (including the canonical 015 / ticket alias 008 distinction), five
+AUD-004 findings and five AUD-005 findings were reassessed against current source.
+The findings document records their current path dispositions. No prior finding
+was dropped because an old report called it fixed. No additional actionable old
+issue remains beyond current 001/002; AUD-005-001 remains an accepted unsupported
+external-concurrency limitation, with no new supported-writer counterexample.
+
+Continuation checks on November 23 used the exact revisions above. Logs are
+ignored `audits/work/AUD-006-continuation-*.log`; commands did not mutate real
+operational state. No test count is presented as proof of source examination.
+
+| Actual command / selection | Result |
+| --- | --- |
+| Outer explicit top-level `shared`, `drops/js`, `exchange/js`, `scripts`, `loaders` `*.test.mjs`, plus Outer thumbnail and CMS suites; `node --test --experimental-vm-modules --experimental-test-isolation=none <enumerated paths>` | 462 selected: 452 pass; ten thumbnail child-process cases blocked at sandbox `spawn EPERM` |
+| Permitted `node --test --experimental-test-isolation=none assets/thumbs/scripts/thumbs.test.mjs` | 27/27 pass, including all ten blocked cases |
+| Admin `npm run test:runtime`; `npm run test:thumbs` | 1,961/1,961 and 37/37 pass |
+| Permitted Outer `node audits/repro/AUD-004-config-suite.mjs` | Disposable unchanged suites: 25 authoring + 19 transaction + 10 service + 90 projection + 1 watcher = 145 pass |
+| Admin original `AUD-006-drop-auto-error-repro.mjs` and `AUD-006-unpause-owner-repro.mjs` | Defects and positive controls reproduce; loader adds older-manual/newer-Auto success/rejection evidence |
+| Admin `AUD-006-send-input-repro.mjs`; `AUD-006-modal-content-repro.mjs` | Characterization/control and injected-delay/control pass; neither is counted as a confirmed new defect |
+| Outer `npm run test:public-trade-ops` | 20 named fixtures and 19 deadline tests pass; overlaps broad selection |
+| Outer `node audits/repro/AUD-005-contract-abi-check.mjs`; `node audits/repro/AUD-004-contract-provenance-check.mjs` | Six Admin and both Public builders decode; canonical/snapshot/mechanical-target and frozen/promoted identities pass |
+| `python "docs/EA-XYZ Contract Audit/tests/verify-invariant-coverage.py"`; read-only Python SHA-256 comparison of Phase-8 table to checkout and `git show HEAD:<path>` | 26/26 invariants, 181/181 obligations, 13 mapped tests; all 31 certified file checkout/blob pairs match. Mapping/identity only, not legacy execution |
+| Outer `npm run build:pages:staging`; Admin `npm run build:clean` | Both pass; six Public bundles; Admin removes four development chunks and verifies eight production files. Existing Browserslist-age/size warnings |
+| Outer `npm run verify:home-first-paint-build`; `npm run verify:drops-first-paint-build` | Both pass; staging freshly rebuilt, production output pre-existing |
+
+The November 19 inert default 44-pair provisioning check remains applicable to
+unchanged source; it was not repeated as live verification. Historical defect
+scripts that assert pre-remediation failures were not repurposed as fix gates.
+Both repositories' final diffs/status/whitespace and separate `ticket:diff`
+exports are checked for the compact handoff. Indexes/HEADs/branches are preserved.
+
+### Result and unverified boundaries
+
+Completed: 20/20 local behavioral workflows examined, zero unfinished local
+source rows. Confirmed: AUD-006-001 and AUD-006-002, both P2 and unremediated.
+`audits/remediation-checklist.md` now contains only their actionable loader and
+countdown tickets in the prescribed format. Historical findings/checkpoints are
+preserved. No `audits/report.md`, final public report or clean claim is produced.
+
+Unverified: current browser/Webflow DOM, custom code, CMS and hosted CSS/assets;
+Beacon transport/signing and real browser storage/Web Locks; RPC/TzKT accuracy,
+consistency/finality/reorg and time-provider accuracy; configured FA2 ledger,
+operator/transfer behavior; present deployed escrow code/storage/admin/sink,
+inventory and receipts; remote Pages/main/staging artifact identity and hosting.
+No exact live Webflow site was inspected. No wallet/chain transaction, deployment,
+dev/sanity server or manual browser smoke; no fresh dependency install, production
+rebuild or Linux/Node-20 CI; no OS crash-durability campaign. Compatible legacy
+SmartPy compile/scenario/native protocol checks were not run; historical
+certification is identified historical evidence, not freshly executed assurance.
+
+---
+
+The following November 19 checkpoint is retained verbatim as partial-pass
+history; the November 23 section above supersedes its current-status claims.
+
+## AUD-006 — partial investigation (2026-11-19)
+
+**PARTIAL — FULL APPLICATION EXAMINATION UNFINISHED. Two confirmed Admin
+findings. No completed or clean pass is claimed.**
+[Working findings and controls](AUD-006-findings.md) describe the evidence.
+This section supersedes the current-review context only; historical sections and
+their revision-specific claims remain intact. `audits/remediation-checklist.md`
+is unchanged: the methodology's final checklist is conditional on completing the
+full pass, and must not imply that this partial examination is complete.
+
+| Repository | Exact runtime source reviewed and tested |
+| --- | --- |
+| Outer, including contracts and shared tooling | `5b465deb2e3ffc393a400458cff26725b1a2f612` |
+| Independent Admin | `3fda8b857d3f3374a49ff4d3e9f7273e96213bca` |
+
+Both verified branches are `ticket-AUD-006-full-correctness-review`; both initial
+worktrees and indexes were clean. Runtime source stayed at these revisions.
+Reviewed working changes are this section, `AUD-006-findings.md`, the evidence
+README and two Admin `tests/repro/AUD-006-*.mjs` runners. No runtime remediation,
+schema/address/network changes, new audit infrastructure or final public report.
+
+### Scope, assumptions and independent discovery
+
+The intended scope is the entire consequential implemented application: Public,
+Admin, direct contract calls, shared configuration/writers, assets and
+build/delivery. Exclusions are cosmetic effects without consequential visibility,
+unimplemented proposals, and third-party internals beyond identified interfaces;
+external effects themselves remain included as boundaries. Scope was **not**
+silently narrowed to the examined rows below.
+
+Before opening historical coverage/findings, source discovery read runtime page
+and Admin registrations, wallet events, operation builders, contract entrypoints,
+package commands, writer/service/projector entries, registry and Pages CI. An
+18-group candidate behavioral map was recorded in ignored
+`audits/work/AUD-006-discovery.md`. Forward tracing began at user/operator events,
+startup/background work and direct-chain/CLI entries. Reverse tracing followed
+wallet requests, FA2/XTZ effects, privileged/configuration writes and
+balance/readiness/LIVE/outcome publications. Boundary tracing followed
+account/network generations, CMS and mirror identities through cart/Micheline to
+contract effects, source/projections/mirror, recovery state and artifact delivery.
+Only after that candidate map were coverage and prior findings consulted.
+
+Reconciliation retained the earlier W01–W20 behavioral distinctions, explicitly
+separating provisioning and contract provenance from general delivery and
+splitting public submission from trade construction. No earlier row was dropped
+as already fixed. The table below is the current source-discovered map, **not a
+claim that each workflow has received the complete audit-pass procedure**.
+
+- Windows PowerShell, Node `v22.16.0`, npm `10.4.0`, installed dependencies; no
+  install or upgrade. Beacon SDK 4.8.1/core+dapp 4.8.0, Taquito 19.0.2,
+  Parcel 2.16.4, Sharp 0.35.3. Outer lockfile SHA-256
+  `D0083CFF4CC978C52830D78062E2A4DE9D7D5C3C9C490AE773ABB664B83EC935`;
+  Admin `8A79D21B6E5F50FBAE2E972CE8B665836E8151FF49D2865B83F7E1BEE334C3EB`.
+- `NETWORK` unset; Public `testnet` means Shadownet. Admin retains its persisted
+  selector/reload boundary. RPC `https://rpc.tzkt.io/shadownet`, indexer
+  `https://api.shadownet.tzkt.io`; Drops
+  `KT1HMCqYqyP9fTDjzm8KAfyPhFn3tpmSW4kc`, Exchange
+  `KT1Ue9es4biDzt528YhNctPGcNeqw9nDXnSv`, legacy
+  `KT1SZFfxFfRkbTcDUS17y1WVCKeudoLo8LX5`. Mainnet remains incomplete behind
+  configuration gates. These are configured source values, not live observations.
+- Current scheduled SPLINTERED source: mirror `testnet`, October 9 2026 3 PM
+  seasonal EST zone, HEN burn 1 excluding canonical `141634`, CANAAN `29`
+  redeem 1, planned supply 10. Tests use controlled alternative data and clocks.
+- Reference reads on 2026-11-19: [Octez failure semantics](https://octez.tezos.com/docs/active/michelson.html#failures)
+  and the [raw FA2 specification](https://gitlab.com/tezos/tzip/-/raw/master/proposals/tzip-12/tzip-12.md).
+  These ground interface assumptions, not configured-provider behavior or deployed
+  identity. No wallet, chain, CMS, Webflow or hosting mutation was performed.
+
+### Behavioral coverage and examination status
+
+Expected properties below derive independently from project intent, exact asset
+identity/conservation, current authority, recovery and truthful evidence. Existing
+tests were challenged with new ordered rejection/cancellation cases. Passing
+tests are supporting seam evidence, not proof that a partial row is examined.
+
+| ID / workflow and consequential source boundaries | Intended properties | Examination status at handoff |
+| --- | --- | --- |
+| W01 Arrival/navigation/reveal/Utility: shells → `webflow/*`, `shared/public-first-paint.js`, `drops/js/reveal-coordinator.js`, Utility entry | Font/image/load failures settle visibility; usable controls retain identity and local navigation | **Partial.** Shared reveal/Utility and loader registrations read; startup/navigation/reveal fixtures pass. Full shell/custom-code and all arrival alternatives not re-examined; live Webflow unverified. |
+| W02 Public wallet: `shared/beacon-setup.js` → page subscribers and SDK | Only verified current network/account observations authorize state and actions; obsolete reads cannot clear replacements | **Local lifecycle examined.** Boot, account events, permission/connect deduplication, mismatch clearing, disconnect and mobile controls traced; current regressions pass. SDK account/request implementation inspected. Transport/signing and SDK asynchronous internals beyond the inspected seam remain external/unverified. |
+| W03 Complete holdings/identity: `shared/tzkt-fa2-balances.js` → Drops rendering and Exchange verified quantities | Complete exact balances; unknown differs from zero; canonical CMS IDs/exclusions map to the intended wallet identity | **Core examination done; broader workflow partial.** Pager, cursor/caps, malformed/duplicate/unsafe values and both main consumers traced. Current FA2/wallet/identity suites pass. Full metadata/template and alternate rendering consumers still need examination. |
+| W04 Drops time/pause/inventory/LIVE: shared time/countdown → `drops/js/events.js` polling/button guards | Trusted schedule plus current unpause and sufficient full redemption inventory before actionable trade | **Partial.** UTC uncertainty/DST, lifecycle retirement, pause fetch/body deadlines, continuing pause poll, inventory initial/recovery polling and final inventory gates examined. Full remaining UI/state cross-products not completed; provider truth unverified. |
+| W05 Drops approval/trade: selected row → shared pair lookup/approval → request → escrow | Exact burn/redeem identities and six terms; current selected balance/wallet at request; no partial cart send | **Core high-impact construction traced; workflow partial.** One-trade payload, approval fallback, full-term uniqueness, entry/final gates and receipt admission read. ABI/current lifecycle tests pass. Remaining selection/metadata alternatives and unbounded preflight-read behavior need examination; no wallet/chain execution. |
+| W06 Exchange cart/trade: `exchange/js/*` → shared operations → escrow | Exact per-unit reward, owned/aggregate limits, all intended entries, current cart/account and dedicated target | **Partial.** Cart quantity/duplicate limits, reward arithmetic, per-unit expansion, full-term pair lookup, final equality, confirmation and balance gating read. Remaining reset/tab/UI alternative paths not completely examined. |
+| W07 Public retained submission/outcomes: shared store/poll → both page retry/refresh consumers | Ambiguous submission blocks repetition; attribution/terminal result differs from balance refresh; bounded confirmation | **Shared core examined.** Complete store/lock/reservation/rejection/poll/confirmation/reduction code read; page main/retry consumers traced. Fixtures/deadline and runtime controls pass. Browser storage/Web Locks, real receipt attribution, finality and indexer consistency unverified. |
+| W08 Admin boot/network/authority: `admin.js`, `network.js`, Beacon, wallet/live-cfg → all writes/status | Correct surface/network and initiating account through awaits; chain admin authority is independent of UI | **Partial.** Startup surface wiring, network persistence/reload, send-authority capture, account events and helper checks examined. Indicator/read-only Exchange status and all event consumers remain to complete. |
+| W09 Pause and recovery, both escrows: `pause*` → `escrow-ops.js` → stored request/status | Current target/authority; uncertain toggle cannot become a fresh retry; truthful refreshed status | **Local source examination done.** Controller, recovery locking/storage, final send checks, hash retention, confirmation and refresh ownership read; pause/runtime controls pass. No actual toggle, persisted browser recovery or external confirmation observed. |
+| W10 Treasury custody/XTZ/MAX, both escrows: transfer/withdraw/table/recovery → helper → contract | Exact recipient, whole tokens/decimal mutez, current balance context, complete batch and durable uncertainty | **Partial.** Transfer/withdraw/MAX, table, recovery and serialization/confirmation core read. Runtime amount/pending/order/recovery controls pass. Complete orchestrator/config/status/lifecycle event graph still needs independent examination. No funds movement. |
+| W11 Pairs list/create/edit/cleanup, both escrows: controllers/set panel/modal → helpers/TzKT | Exact terms/IDs, initiating authority, scoped complete reads, truthful confirmation and retained intent | **Partial.** Main controllers, Exchange locked redeem, modal save/refresh, set validation/availability and all helper serializers read. Pair authority/read/pagination/session controls pass. Full widget/content/set-panel wiring and rejected-await/publication matrix unfinished. |
+| W12 Drop normalize/build/load/send/status/countdown: `features/drops/*` → pair helper and preview/checklist | Every asynchronous owner must retain source/network/wallet/UI intent; per-batch exact effects and honest partial results | **Partial, two confirmed findings.** Send/chunk construction and gates, loader ranges, request-scoped pair status, cancellation/epochs and countdown owner read. **001**: old Auto rejection clears newer manual preview. **002**: aborted unpause completion republishes old start ID/LIVE. Full normalization/translation/view and remaining phase/order combinations unfinished. |
+| W13 Checklist/Health/CMS/economics/catalog: health and checklist modules → adapters/cache/CSV/TzKT | Current scoped complete evidence; unknown cannot imply zero/ready; exact CMS/token economics | **Partial.** Supply dependency publication, full-page balance economics, Health enumeration, CSV normalization/comparison and upload ownership core examined. Catalog reads and consumers traced. Remaining GitHub comparison/polling, health summary mirrors, NFT/cache/title and all event interactions need completion. |
+| W14 Local authoring/provider: controller/client/provider/subscriber → loopback API | Reviewed preview/version owns apply; failed/stalled verification retires trusted params; no production writer authority | **Partial.** Controller request/session state, provider refresh constraints/retirement, full response deadline and apply readback examined. Runtime authoring/timeout tests pass. Form/view/token serialization and complete schema compatibility paths remain. |
+| W15 Source/projection/mirror/archive/lock/recovery: service/CLI → writer/projector/watcher | Coordinated supported writers, CAS/idempotence, exact projections, preserved unresolved journal and recoverable partial writes | **Partial.** Complete writer/recovery/projector/lock and service request/apply flows read; isolated current suites pass. Full schema/archive/watcher/CLI examination unfinished. AUD-005-001 stays accepted unsupported independent-editor concurrency; no new supported-writer counterexample asserted. |
+| W16 Direct escrow trade/admin/default: active legacy SmartPy plus Public/Admin builders | Every trade matches sender and six stored terms; correct custody/recipients; admin-only mutation; atomic failure and truthful events | **Source-logic examination done; execution unavailable.** Every executable escrow entry read: pause/empty/nonexistent/mismatched/later-item trades; repeated/grouped burn/redeem identities and external FA2 transfer effects; setup/update positive amounts/distinct contracts/duplicate IDs; cleanup cardinality/nonexistent IDs; admin rescue/withdraw and default XTZ receive. External rejection and insufficient inventory roll back under protocol assumptions. ABI decoding passes. Legacy compile/tests/deployed Michelson not verified. |
+| W17 Public/Admin build/delivery/dev: packages/CI → projections/bundles → root/environment loaders → Pages | Branch-owned artifact graph and source provenance agree; no development authoring in production | **Partial.** Package/Pages stages, core root/early loader logic and Admin guards/prune/isolation read; both builds and graph fixture checks pass. Complete verifier, remaining loaders, dev/harness command effects, Linux/Node-20 and actual remote branch/deployment graph not fully examined. |
+| W18 Thumbnail/site/CMS tooling: Outer asset input/backfill → Admin manifest; CMS library exports | Exact asset identity, originals/exclusive publication/rollback; complete reads and explicit ambiguous writes | **Partial.** Thumbnail conversion/allocation/rollback/backfill and current generator URL fix read; concurrency and filename suites pass. Webflow CMS library only entry-enumerated, not completely re-examined; manifest-lock implementation and static optimizers remain. No live site accessed. |
+| W19 Signer provisioning: fixed pair CLI → provider/chain/admin/ABI → send/readback | Default inert; explicit authorized execute; fixed target/exact payload and complete readback | **Source flow examined; external execution unverified.** All command modes, payload validation/packing, signer/chain/entrypoint/storage checks, empty mapping/cardinality, request/confirmation/readback read. Default 44-pair dry-run and fixtures pass. ABI check is not deployed-code equivalence; no live verify/execute. |
+| W20 Contract provenance/origination: canonical source → frozen/promoted artifacts and records | Current source, certified snapshot and originated identity remain distinct | **Partial.** Existing source/artifact identity checker and invariant-map checker pass; current payloads decode. Certification/promotion/deployment records and their complete correspondence still need full independent re-examination. Historical origination is not a current live observation. |
+
+For W16, repeated trades do not reuse only the first validation: sender and all
+six terms are checked inside the loop, each burn/redeem is accumulated and every
+group invokes its FA2 transfer interface. Later validation or external rejection
+cannot legitimately be called successful execution; source and protocol reasoning
+do not execute these effects. There is no runtime admin/burn-address setter in
+the active escrow source. Its constructor identities and actual FA2 behavior
+remain deployment trust boundaries. MockFA2 and artifact/ABI checks do not
+establish real operator policy or irreversible burning at the configured sink.
+
+### Actual verification at these revisions
+
+Logs are ignored `audits/work/AUD-006-*.log`. Commands below do not imply that
+unexamined source was covered by reading or that mocks establish live behavior.
+
+| Actual command or exact selection | Outcome |
+| --- | --- |
+| Outer PowerShell enumerated top-level `shared/*.test.mjs`, `drops/js/*.test.mjs`, `exchange/js/*.test.mjs`, `scripts/*.test.mjs`, `loaders/*.test.mjs`, plus `assets/thumbs/scripts/thumbs.test.mjs` and `assets/webflow-cms/webflow-cms.test.mjs`; passed paths to `node --test --experimental-vm-modules --experimental-test-isolation=none` | 462 selected: 452 pass, 10 fail solely at sandbox child-process `spawn EPERM` in thumbnail cases; no application assertion failure in the other cases |
+| Permitted rerun: `node --test --experimental-test-isolation=none assets/thumbs/scripts/thumbs.test.mjs` | All 27 thumbnail tests pass, including all ten previously blocked cases |
+| Admin `npm run test:runtime` | 1,961 pass, zero fail/skip |
+| Admin `npm run test:thumbs` | 37 pass, zero fail/skip |
+| Outer `node audits/repro/AUD-004-config-suite.mjs` | Initial sandbox `spawnSync EPERM`; permitted rerun passes unchanged suites in disposable copies: 25 schema/authoring + 19 transaction + 10 service + 90 projection + 1 watcher = 145 |
+| Outer `npm run test:public-trade-ops` | 20 named fixtures and 19 deadline tests pass; overlaps broad selection |
+| Admin `node tests/repro/AUD-006-drop-auto-error-repro.mjs`; `node tests/repro/AUD-006-unpause-owner-repro.mjs` | Both demonstrate their defects and positive controls, repeated successfully; not remediation gates |
+| Outer `node audits/repro/AUD-005-contract-abi-check.mjs` | Six Admin operations and both Public handlers decode against promoted ABI, preserving tested terms/user/large IDs; no contract execution |
+| Outer `node audits/repro/AUD-004-contract-provenance-check.mjs` | Canonical/snapshot, mechanical fixture/target and frozen/promoted identities pass; canonical SHA-256 `0BC3B735377B92F1E5635ED7789B7693018DECA2256FA79DEEBD952279FC8BD9`, promoted `FE850EA74A082D8E57EE47D0E3D70339088D1490128D93A86BDDDB338947F0A9` |
+| `python "docs/EA-XYZ Contract Audit/tests/verify-invariant-coverage.py"` | Mapping checker: 26/26 invariants, 181/181 obligations, 13 mapped tests; not compile/test execution |
+| Outer `node scripts/shadownet-exchange-pairs.mjs` | Inert default 44-pair payload/dry-run passes; no provider/signer/RPC/transaction |
+| Outer `npm run build:pages:staging`; Admin `npm run build:clean` | Both pass; mirror/manifest guards, six Public bundles and Admin prune/isolation (four dev chunks removed, eight production files checked). Existing Browserslist-age and bundle-size warnings remain |
+| Outer `npm run verify:home-first-paint-build`; `npm run verify:drops-first-paint-build` | Pass; staging freshly built, prod output pre-existing and not freshly rebuilt |
+
+### Unfinished examination and result limits
+
+The table's partial rows are unfinished work, not accepted risks or inferred
+successes. Continue the original method on their remaining producers/consumers,
+alternate entries, malformed/boundary inputs, rejection/cancellation orderings,
+recovery and cross-system combinations. In particular, finish the Drops
+normalization/translation/view and full async branch matrix; pair widgets/modal
+content; Treasury orchestration; checklist GitHub/Health/NFT/cache graph; authoring
+form/schema/archive/watcher; complete CMS/asset and build/dev delivery flows; and
+historical finding reassessment/provenance. Fresh passing broad suites do not
+replace this source examination. Newly exposed local findings 001/002 have been
+traced and reproduced with controls; no other material local hypothesis is
+asserted as a confirmed defect by this partial result.
+
+Unverified integrations: current browser/Webflow DOM and custom code/CMS;
+Beacon transport/wallet signing and real Web Locks/storage; RPC/TzKT pagination
+truth, consistency/finality/reorg; time provider accuracy; external FA2 ledger,
+operator and transfer behavior; deployed escrow source/code/storage/admin/sink,
+inventory and operation outcomes; Pages/hosting/custom-code identity and remote
+main/staging artifacts. No detailed Webflow read was performed; no exact site ID
+was assumed. No dev/sanity server, fresh dependency install, fresh production
+build, Linux/Node-20 CI, OS crash/power-loss durability or manual browser smoke.
+Compatible legacy SmartPy tooling was not supplied: no legacy compile/tests,
+modern substitute execution, manual Michelson edit or generated artifact.
+
+No complete-pass disposition, no provisional/final clean claim and no conditional
+post-clean coverage refresh. No final checklist update or `audits/report.md`.
+The supported-workflow limitation in AUD-005-001 remains accepted; it was not
+reopened as a production defect. Production behavior, network configuration,
+runtime contracts, operational journals/archives/locks and historical evidence
+are preserved. Final diff/status/whitespace checks and separate exports are
+reported in the universal handoff.
+
 ## AUD-005 — current investigation (2026-11-19)
 
 **COMPLETE AVAILABLE-SOURCE PASS — FIVE CONFIRMED FINDINGS.** No clean, deployment-readiness or live-integration claim. [Findings/evidence](AUD-005-findings.md) and the [remediation checklist](remediation-checklist.md) record the result. Historical sections below concern their identified older revisions.
