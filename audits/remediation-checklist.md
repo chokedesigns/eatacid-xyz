@@ -1,7 +1,3 @@
-Group 0 — Public confirmed-trade recovery
+Group 0 — Drop Params writer coordination
 
-0.1 Recover confirmed trades when incoming tokens mask the net burn
-
-Group 1 — Admin Drop Params readiness
-
-1.1 Retire obsolete readiness claims when provider parameters change
+0.1 Preserve exclusive ownership during stale-lock reclamation
