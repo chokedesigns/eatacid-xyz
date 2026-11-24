@@ -1,3 +1,22 @@
+# AUD-008 evidence (2026-11-24)
+
+The [AUD-008 findings](../AUD-008-findings.md) record the completed source pass
+and two conditional defects. From Outer:
+
+```text
+node audits/repro/AUD-008-public-net-balance-repro.mjs
+node audits/repro/AUD-008-admin-status-invalidation-repro.mjs
+```
+
+Both scripts exercise current implementation seams with inert boundaries and
+positive controls. Success asserts the defect, not remediation. The first also
+runs the full Exchange handler through send, applied evidence, retry, reconnect
+and reload; the second observes the real Admin provider-consumer/controller/view
+invalidation boundary. No real configuration, journal, wallet, chain or Webflow
+mutation occurs. Exact revisions and execution limits are in the findings and
+[coverage](../coverage.md). Older sections retain revision-specific claims;
+AUD-007's original exclusion trigger is corrected on the AUD-008 revisions.
+
 # AUD-007 evidence (2026-11-23)
 
 The [AUD-007 findings](../AUD-007-findings.md) record the completed application
