@@ -1,3 +1,21 @@
+# AUD-007 evidence (2026-11-23)
+
+The [AUD-007 findings](../AUD-007-findings.md) record the completed application
+source pass and one conditional exclusion-identity defect. From Outer:
+
+```text
+node audits/repro/AUD-007-exclusion-identity-repro.mjs
+```
+
+This runs current Public holdings functions and Admin normalization/translation
+against the current registry, with valid and intentionally excluded controls.
+It also proves supported EDIT-writer admission in a disposable workspace copy.
+Success asserts the defect, not remediation. It performs no real configuration,
+operational-state, wallet, chain or Webflow mutation. Exact revisions, other checks
+and external boundaries are in [coverage](../coverage.md). Historical evidence
+below retains its original purpose; AUD-006's two ownership findings are corrected
+on the AUD-007 revisions and remain preserved as historical records.
+
 # AUD-006 evidence (2026-11-19; source pass completed 2026-11-23)
 
 The [AUD-006 working findings](../AUD-006-findings.md) document two current

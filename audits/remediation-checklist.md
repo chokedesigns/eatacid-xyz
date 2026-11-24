@@ -1,5 +1,3 @@
-Group 0 — Admin Drops asynchronous ownership
+Group 0 — Canonical exclusion identity
 
-0.1 Retire superseded manual and Auto loaders
-
-0.2 Fence cancelled unpause countdown publications
+0.1 Preserve canonical exclusions through Public and Admin translation
