@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import { isCurrentWalletProjection } from './reveal-coordinator.js';
-import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, pollForConfirmation as reconcileConfirmation } from '../../shared/public-trade-ops.js';
+import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, areAppliedTradeBalancesRefreshed, pollForConfirmation as reconcileConfirmation } from '../../shared/public-trade-ops.js';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
 import dropParams from '../../shared/drop-params/drop-params.js';
 import { validateDropParams } from '../../shared/drop-params/drop-params-authoring.mjs';
@@ -48,7 +48,7 @@ function fixture({ pause, approved = false, failure, inventory = false, storage 
   const context = vm.createContext({
     networkConfigAvailable: true, network: 'testnet', TZKT_BASE: 'https://inert.test',
     createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
-    classifyPublicTradeRequestRejection, showSubmittedTradeStatus,
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus, areAppliedTradeBalancesRefreshed,
     burnTokens: [{ collection: 'HEN', enabled: true, burnAmount: 2 }], collections: { HEN: 'burn', REDEEM: 'redeem' },
     redeemToken: { collection: 'REDEEM', tokenId: '7', redeemAmount: 3 }, REDEEM_CONTRACT_ADDRESS: 'redeem',
     BURN_REDEEM_CONTRACT_ADDRESS: 'escrow',

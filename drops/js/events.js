@@ -26,6 +26,7 @@ import {
 import {
   classifyPublicTradeRequestRejection,
   createSubmittedTradeStore,
+  areAppliedTradeBalancesRefreshed,
   showSubmittedTradeStatus,
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
@@ -793,13 +794,20 @@ async function pollForConfirmation(opHash, submittedTrade, timeout = 120000, int
 }
 
 /**
- * Polls until balances have decreased by the configured burn amount (or timeout).
+ * Polls for complete holdings with post-operation block evidence (or timeout).
  */
 async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval = 3000) {
+  let submittedTrade = submittedTrades.get(submittedTradeScope(address));
+  if (submittedTrade?.status === 'applied' &&
+      (!Number.isSafeInteger(submittedTrade.appliedLevel) || submittedTrade.appliedLevel <= 0)) {
+    submittedTrade = await submittedTrades.reconcile(submittedTrade, pollForConfirmation);
+  }
   return pollForSharedNFTUpdate({
     fetchNFTs,
     address,
     tradedTokens,
+    submittedTrade,
+    scope: submittedTradeScope(address),
     timeout,
     interval,
     refetchOnTimeout: true
@@ -1044,7 +1052,7 @@ async function retryTradeConfirmation() {
     if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
     const balancesPending = submittedTrades.get(submittedTradeScope(address));
     showModal(balancesPending ? 'BURN COMPLETE.' : 'SUCCESS!', balancesPending
-      ? '[BALANCES STILL UPDATING. USE RETRY BALANCES.]' : '[BURN COMPLETE. BALANCES REFRESHED.]');
+      ? '[HOLDINGS FRESHNESS UNVERIFIED. USE RETRY BALANCES.]' : '[BURN COMPLETE. BALANCES REFRESHED.]');
     const spinner = document.querySelector('.loading-spinner-01');
     if (spinner) spinner.style.display = 'none';
     setTimeout(hideModal, 3000);
@@ -1389,7 +1397,7 @@ async function handleEventExchange() {
       updateEventCartBurnToken();
     }
     showModal(tradeConfirmed ? 'BURN COMPLETE. ✅' : 'ERROR', tradeConfirmed
-      ? '[BALANCES STILL UPDATING. USE RETRY BALANCES.]'
+      ? '[HOLDINGS FRESHNESS UNVERIFIED. USE RETRY BALANCES.]'
       : `${error.message || 'Unknown issue'}`);
     setTimeout(hideModal, 3000);
   } finally {
@@ -2027,7 +2035,7 @@ async function updateTokensWithWalletData(nfts) {
   }
 
   renderConnectedWalletTokenState(renderedCount);
-  submittedTrades.clearApplied(submittedTradeScope());
+  submittedTrades.clearApplied(submittedTradeScope(), nfts);
   confirmedDropsTrades.delete(synchronizedWalletAddress);
   dropsBalanceRefreshFailed = false;
   updateAppState({});
@@ -2894,13 +2902,9 @@ async function refreshDropsWallet(account, generation, nftsPromise) {
 function assertDropsTradeBalances(nfts) {
   const trade = confirmedDropsTrades.get(synchronizedWalletAddress);
   if (!trade) return;
-  if (!Array.isArray(nfts) || trade.some(token => {
-    const matches = nfts.filter(nft => normalizeString(nft.contractAddress) === normalizeString(token.contractAddress) &&
-      String(nft.tokenId) === String(token.tokenId));
-    return matches.length > 1 || matches.some(nft =>
-      !Number.isSafeInteger(Number(nft.balance)) || Number(nft.balance) < 0 ||
-      Number(nft.balance) > token.startingBalance - token.quantity);
-  })) throw new Error('Confirmed trade balances are still updating. Retry balances.');
+  if (!areAppliedTradeBalancesRefreshed(nfts, submittedTrades.get(submittedTradeScope()), submittedTradeScope())) {
+    throw new Error('Confirmed trade holdings freshness is unverified. Retry balances.');
+  }
 }
 
 async function retryDropsBalances() {

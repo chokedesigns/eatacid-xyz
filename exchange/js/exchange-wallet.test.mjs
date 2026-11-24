@@ -1,9 +1,10 @@
+import { appliedOperations, balanceRows, fixtureHoldings } from '../../shared/public-trade-test-fixtures.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 import { fetchFa2BalancePages } from '../../shared/tzkt-fa2-balances.js';
-import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, areTradedTokensRefreshed, pollForConfirmation as reconcileConfirmation, pollForNFTUpdate } from '../../shared/public-trade-ops.js';
+import { classifyPublicTradeRequestRejection, createSubmittedTradeStore, showSubmittedTradeStatus, areAppliedTradeBalancesRefreshed, areTradedTokensRefreshed, pollForConfirmation as reconcileConfirmation, pollForNFTUpdate } from '../../shared/public-trade-ops.js';
 
 // Execute the complete page module with inert DOM, wallet and indexer boundaries.
 const source = readFileSync(process.env.EA_T013_SOURCE || new URL('./exchange.js', import.meta.url), 'utf8')
@@ -86,7 +87,7 @@ function fixture({ storage = new Map(), originType = 'extension', tokenIds = ['0
     poll: async opts => opts.fetchNFTs(opts.address), connectCalls: 0 };
   const context = vm.createContext({ document, window: {}, fetchFa2BalancePages,
     createSubmittedTradeStore: () => createSubmittedTradeStore({ locks: () => ({ request: async (_name, options, run) => (run || options)({}) }), storage: () => ({ get length() { return storage.size; }, key: i => [...storage.keys()][i], getItem: k => storage.get(k), setItem: (k, v) => storage.set(k, v), removeItem: k => storage.delete(k) }) }),
-    classifyPublicTradeRequestRejection, showSubmittedTradeStatus, areTradedTokensRefreshed,
+    classifyPublicTradeRequestRejection, showSubmittedTradeStatus, areAppliedTradeBalancesRefreshed, areTradedTokensRefreshed,
     cfg: { network: 'testnet', rpc: {}, tzkt: { testnet: 'https://inert.test' }, contracts: { testnet: {
       collections: { pane0: 'KT1419', pane1: 'KT1Canaan' }, escrow: 'KT1Escrow', redeemTokenContract: 'KT1Redeem' } } },
     createPublicLogger: () => ({ log() {}, debug() {} }),
@@ -94,10 +95,10 @@ function fixture({ storage = new Map(), originType = 'extension', tokenIds = ['0
     getVerifiedPublicActiveAccount: () => h.verify(), requestPublicWalletConnection: async () => { h.connectCalls++; },
     buildSharedApprovalOps: async opts => { approvals.push(opts); return h.approve(opts); },
     fetchSharedTokenPairId: async opts => { pairs.push(opts); return h.pair(opts); },
-    pollForSharedConfirmation: opts => h.confirm(opts),
+    pollForSharedConfirmation: async opts => (await h.confirm(opts)) ?? appliedOperations(opts.submittedTrade),
     pollForSharedNFTUpdate: opts => { polls.push(opts); return h.poll(opts); },
-    fetch: async url => ({ ok: true, json: async () => (await h.fetchRows(url)).map((n, i) => ({ id: n.id ?? i, balance: n.balance,
-      token: { tokenId: n.tokenId, contract: { address: n.contractAddress } } })) }),
+    fetch: async url => ({ ok: true, json: async () => balanceRows(await h.fetchRows(url),
+      h.call('submittedTrades.get(submittedTradeScope())'), new URL(url).searchParams.get('account')) }),
     Option: function(text, value) { const el = new Element('', String(text)); el.value = String(value); return el; },
     MutationObserver: class { observe() {} },
     setTimeout: fn => { timers.push(fn); return timers.length; },
@@ -124,6 +125,68 @@ function unavailable(h) {
   }
   assert.equal(h.cartRows.children.length, 0); assert.equal(h.controls.live.style.display, 'none');
 }
+
+test('AUD-008-001: incoming same-token transfers recover the full Exchange handler and permit a later trade', async () => {
+  for (const amount of [0, 1, 5]) {
+    const h = fixture(); await h.connect(); h.select();
+    h.fetchRows = async () => [{ ...nft(amount), lastLevel: 100 }];
+    await h.trade();
+    assert.equal(h.sent.length, 1); assert.equal(h.errors.length, 0);
+    assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+    if (amount) {
+      assert.equal(h.dropdowns[0].disabled, false);
+      h.select(); await h.trade(); assert.equal(h.sent.length, 2);
+    }
+  }
+});
+
+test('AUD-008-001: Exchange retains stale sufficient holdings through refresh/reconnect/reload, then verifies incoming recovery', async () => {
+  const storage = new Map(), h = fixture({ storage }); await h.connect(); h.select();
+  h.fetchRows = async () => [{ ...nft(0), lastLevel: 99 }];
+  await h.trade(); unavailable(h);
+  for (let i = 0; i < 3; i++) { await h.controls.connect.click(); unavailable(h); }
+  h.disconnect(); await h.connect(); unavailable(h);
+  const reload = fixture({ storage });
+  reload.fetchRows = h.fetchRows; await reload.connect(); unavailable(reload);
+  assert.equal(reload.call('submittedTrades.get(submittedTradeScope()).status'), 'applied');
+  await reload.trade(); assert.equal(reload.sent.length, 0);
+  for (const lastLevel of [null, '100', {}, -1]) {
+    reload.fetchRows = async () => [{ ...nft(1), lastLevel }];
+    await reload.controls.connect.click(); unavailable(reload);
+    assert.equal(storage.size, 1);
+  }
+  reload.fetchRows = async () => [{ ...nft(1), lastLevel: 100 }];
+  await reload.controls.connect.click();
+  assert.equal(storage.size, 0); assert.equal(reload.dropdowns[0].disabled, false);
+  reload.select(); await reload.trade(); assert.equal(reload.sent.length, 1);
+});
+
+test('AUD-008-001: Exchange requires post-operation evidence for every traded identity, regardless of quantity or incoming tokens', async () => {
+  const h = fixture({ tokenIds: ['0', '1'] });
+  await h.connect('wallet-A', [nft(5), nft(8, 'KT1419', '1'), nft(4, 'KT1Canaan')]);
+  h.select('2'); h.select('3', 1); h.select('1', 2);
+  const rows = [nft(5), nft(8, 'KT1419', '1'), nft(4, 'KT1Canaan')].map(n => ({ ...n, lastLevel: 100 }));
+  h.fetchRows = async () => rows.map((n, i) => i === 2 ? { ...n, lastLevel: 99 } : n);
+  await h.trade(); unavailable(h); assert.equal(h.sent.length, 1);
+  h.fetchRows = async () => rows;
+  await h.controls.connect.click();
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
+  assert.equal(h.call('walletBalancesVerified'), true);
+});
+
+test('AUD-008-001: Exchange retries missing or legacy operation-block evidence without sending again', async () => {
+  const storage = new Map(), h = fixture({ storage }); await h.connect(); h.select();
+  h.confirm = async opts => appliedOperations(opts.submittedTrade).map(op => ({ ...op, level: null }));
+  h.fetchRows = async () => [{ ...nft(1), lastLevel: 100 }];
+  await h.trade(); unavailable(h); assert.equal(h.sent.length, 1);
+  assert.equal(h.call('submittedTrades.get(submittedTradeScope()).appliedLevel'), null);
+  const [key, raw] = [...storage][0], legacy = JSON.parse(raw); delete legacy.appliedLevel;
+  storage.set(key, JSON.stringify(legacy));
+  const reload = fixture({ storage }); reload.fetchRows = h.fetchRows;
+  await reload.connect();
+  assert.equal(storage.size, 0, 'Reconnect re-polls the legacy hash and verifies complete current holdings');
+  assert.equal(reload.sent.length, 0); assert.equal(reload.dropdowns[0].disabled, false);
+});
 
 test('AUD-003-012: duplicate selections retain applied receipt through stale snapshots, reconnect and reload', async () => {
   const storage = new Map(), h = fixture({ storage, tokenIds: ['0', '0'] });
@@ -188,11 +251,17 @@ test('AUD-003-012: distinct contracts and token IDs require only their own reduc
 });
 
 for (const remaining of [0, null]) {
-  test(`AUD-003-012: duplicate full depletion clears receipt with ${remaining === null ? 'absent' : 'zero'} holdings`, async () => {
+  test(`AUD-003-012: duplicate full depletion ${remaining === null ? 'retains absent-row receipt until explicit zero' : 'clears with attributed zero'}`, async () => {
     const h = fixture({ tokenIds: ['0', '0'] });
     await h.connect('wallet-A', [nft(3)]); h.select('2'); h.select('1', 1);
     h.fetchRows = async () => remaining === null ? [] : [nft(remaining)];
     await h.trade();
+    if (remaining === null) {
+      unavailable(h);
+      assert.equal(h.call('submittedTrades.get(submittedTradeScope()).status'), 'applied');
+      h.fetchRows = async () => [nft(0)];
+      await h.controls.connect.click();
+    }
     assert.equal(h.call('submittedTrades.get(submittedTradeScope())'), null);
     assert.equal(h.call('walletBalancesVerified'), true);
     assert.equal(h.sent.length, 1);
@@ -333,7 +402,7 @@ test('TX-002: unknown Exchange receipt survives Retry Balances, reset and reload
     await reload.connect('wallet-A', [nft(5)]); reload.select(); await reload.trade();
     assert.equal(reload.sent.length, 0); unavailable(reload);
     evidence = [{ id: 1, type: 'transaction', hash: 'inert-hash', sender: { address: 'wallet-A' },
-      target: { address: 'KT1Escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied' }];
+      target: { address: 'KT1Escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied', level: 100 }];
     reload.fetchRows = async () => [nft(5)];
     const timersBefore = reload.timers.length;
     await reload.context.retryTradeConfirmation();
@@ -354,7 +423,7 @@ for (const stage of ['fetch', 'json', 'http-text']) {
     const storage = new Map(), gate = deferred();
     let signal, applied = false, calls = 0;
     const evidence = [{ id: 1, type: 'transaction', hash: 'inert-hash', sender: { address: 'wallet-A' },
-      target: { address: 'KT1Escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied' }];
+      target: { address: 'KT1Escrow' }, parameter: { entrypoint: 'initiate_trade' }, status: 'applied', level: 100 }];
     t.mock.method(globalThis, 'fetch', (_url, init) => {
       signal = init.signal; calls++;
       if (applied) return Promise.resolve({ ok: true, json: async () => evidence });
@@ -512,7 +581,7 @@ test('BAL-001: incomplete post-trade pages retain the confirmed burn and balance
   assert.equal(h.controls.connect.textContent, 'RETRY BALANCES');
   h.fetchRows = async () => [nft(1)];
   await h.controls.connect.click(); unavailable(h); // confirmed delta remains required
-  h.fetchRows = async () => [];
+  h.fetchRows = async () => [nft(0)];
   await h.controls.connect.click();
   assert.equal(h.controls.connect.style.display, 'none');
 });
@@ -669,7 +738,7 @@ test('Repeated connected notifications cannot supersede an in-flight post-burn r
   const refresh = deferred(); h.poll = () => refresh.promise;
   const retry = h.controls.connect.click(); await flush(); unavailable(h);
   h.context.receivePublicWalletState(h.walletState); await flush(); unavailable(h);
-  refresh.resolve([nft(0)]); await retry;
+  refresh.resolve(await fixtureHoldings([nft(0)], h.call('submittedTrades.get(submittedTradeScope())'), h.call('submittedTradeScope()'))); await retry;
   assert.equal(h.controls.empty.style.display, 'block'); assert.equal(h.dropdowns[0].disabled, true);
 });
 
@@ -789,7 +858,7 @@ for (const fail of [false, true]) {
     const trade = h.trade(); await flush(); h.disconnect(); h.account = { address: 'wallet-A' };
     h.state({ status: 'connected', account: h.account, nftsPromise: snapshot.promise });
     h.fetchRows = async () => [nft(1)]; confirmation.resolve(); await trade; unavailable(h);
-    h.fetchRows = async () => []; await h.controls.connect.click();
+    h.fetchRows = async () => [nft(0)]; await h.controls.connect.click();
     assert.equal(h.controls.empty.style.display, 'block');
     if (fail) snapshot.reject(new Error('inert obsolete snapshot')); else snapshot.resolve([nft(31)]);
     await flush();
@@ -826,7 +895,7 @@ for (const [balance, quantity, stale, remaining] of [[1, 1, 1, 0], [5, 2, 4, 3]]
     h.context.window.receiveNFTs([nft(balance)]); await flush(); unavailable(h);
     h.select(); await h.trade(); assert.equal(h.sent.length, 1);
     await h.controls.connect.click(); unavailable(h);
-    h.fetchRows = async () => remaining ? [nft(remaining)] : [];
+    h.fetchRows = async () => [nft(remaining)];
     await h.controls.connect.click();
     assert.equal(h.dropdowns[0].options.length, remaining + 1);
     assert.equal(h.controls.connect.style.display, 'none');

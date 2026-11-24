@@ -279,15 +279,11 @@ throw error;
 }
 
 try {
-const nfts = await fetchFa2BalancePages({ baseUrl, account: address, fetchImpl: fetch });
+const nfts = await fetchFa2BalancePages({ baseUrl, account: address, fetchImpl: fetch, project: true });
 
 logger.log('NFTs fetched from ' + network + ':', nfts);
 
-return nfts.map(nft => ({
-  tokenId: nft.token.tokenId,
-  contractAddress: nft.token.contract.address,
-  balance: nft.balance
-}));
+return nfts;
 
 } catch (error) {
 console.error('Error fetching NFTs:', error);

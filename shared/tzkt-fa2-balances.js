@@ -1,10 +1,28 @@
 // Complete FA2 reads shared by Public and Admin. Callers own lifecycle publication.
 const isNat = value => (typeof value === 'string' && /^[0-9]+$/.test(value))
   || (Number.isSafeInteger(value) && value >= 0);
+const snapshots = new WeakMap();
+
+// Only the complete reader can supply this evidence. A successful arbitrary
+// fetch, a copied array, and an absent row carry no post-operation attribution.
+export function isPostTradeFa2Snapshot(nfts, { baseUrl, account, minimumLevel, tradedTokens }) {
+  const snapshot = snapshots.get(nfts);
+  if (!snapshot || snapshot.baseUrl !== baseUrl || snapshot.account !== account ||
+      !Number.isSafeInteger(minimumLevel) || minimumLevel <= 0 ||
+      !Array.isArray(tradedTokens) || !tradedTokens.length ||
+      JSON.stringify(nfts) !== snapshot.projection ||
+      nfts.some(row => !isNat(row.balance) || !Number.isSafeInteger(Number(row.balance)))) return false;
+  return tradedTokens.every(token => {
+    const row = snapshot.rows.find(row => row.contractAddress === token.contractAddress &&
+      row.tokenId === String(token.tokenId));
+    return row && Number.isSafeInteger(row.lastLevel) && row.lastLevel >= minimumLevel &&
+      row.account === account && row.entrypoint == null;
+  });
+}
 
 export async function fetchFa2BalancePages({
   baseUrl, account, pageSize = 100, nonzeroOnly = false, fetchImpl = fetch,
-  maxPages = 200, timeoutMs = 15000
+  maxPages = 200, timeoutMs = 15000, project = false
 }) {
   const url = new URL(`${baseUrl}/v1/tokens/balances`);
   url.searchParams.set('account', account);
@@ -62,7 +80,17 @@ export async function fetchFa2BalancePages({
       all.push(row);
     }
     // A short, valid page establishes completeness, including genuine empty reads.
-    if (rows.length < pageSize) return all;
+    if (rows.length < pageSize) {
+      if (!project) return all;
+      const result = all.map(row => ({ tokenId: row.token.tokenId,
+        contractAddress: row.token.contract.address, balance: row.balance }));
+      if (!nonzeroOnly && all.every(row => row.account?.address === account && row.entrypoint == null)) snapshots.set(result, { baseUrl, account,
+        projection: JSON.stringify(result),
+        rows: all.map(row => ({ contractAddress: row.token.contract.address,
+          tokenId: String(row.token.tokenId), lastLevel: row.lastLevel,
+          account: row.account?.address, entrypoint: row.entrypoint })) });
+      return result;
+    }
   }
   throw new Error(`TzKT FA2 balance pagination exceeded safety cap (${maxPages} pages)`);
 }

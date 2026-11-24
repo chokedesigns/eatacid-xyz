@@ -1,3 +1,5 @@
+import { isPostTradeFa2Snapshot } from './tzkt-fa2-balances.js';
+
 const DEBUG = false;
 const dlog = (...args) => { if (DEBUG) console.log(...args); };
 
@@ -125,9 +127,14 @@ export function createSubmittedTradeStore({ storage = () => globalThis.localStor
       return replace(record, next);
     },
     cancel(record) { replace(record, null); },
-    clearApplied(scope) {
+    clearApplied(scope, nfts) {
       const record = this.get(scope);
-      if (record?.status === 'applied') replace(record, null);
+      if (record?.status === 'applied') {
+        if (!areAppliedTradeBalancesRefreshed(nfts, record, scope)) {
+          throw new Error('Confirmed trade holdings freshness is unverified. Retry balances.');
+        }
+        replace(record, null);
+      }
     },
     reconcile(record, poll) {
       if (attempts.has(record.id)) return attempts.get(record.id);
@@ -136,19 +143,23 @@ export function createSubmittedTradeStore({ storage = () => globalThis.localStor
       const attempt = manager.request(`ea.public-trades.reconcile.${record.id}`, async () => {
         const current = this.get(record);
         if (!current || current.id !== record.id) throw new Error('Submitted trade receipt changed.');
-        if (current.status === 'applied') return current;
+        if (current.status === 'applied' && Number.isSafeInteger(current.appliedLevel) && current.appliedLevel > 0) return current;
         if (!current.hash) throw new Error('Submission outcome unknown; no operation hash was returned. Check your wallet operation history.');
+        let evidence;
         try {
-          await poll(current.hash, current);
+          evidence = await poll(current.hash, current);
         } catch (error) {
           const latest = this.get(record);
-          if (latest?.id === current.id && latest.status === 'applied') return latest;
-          if (error.code === 'PUBLIC_TRADE_FAILED') replace(current, null);
+          if (latest?.id === current.id && latest.status === 'applied' &&
+            Number.isSafeInteger(latest.appliedLevel) && latest.appliedLevel > 0) return latest;
+          if (error.code === 'PUBLIC_TRADE_FAILED' && current.status !== 'applied') replace(current, null);
           throw error;
         }
         const latest = this.get(record);
-        if (latest?.id === current.id && latest.status === 'applied') return latest;
-        return replace(current, { ...current, status: 'applied' });
+        if (latest?.id === current.id && latest.status === 'applied' &&
+            Number.isSafeInteger(latest.appliedLevel) && latest.appliedLevel > 0) return latest;
+        const confirmation = getOperationConfirmation(evidence, { submittedTrade: current });
+        return replace(current, { ...current, status: 'applied', appliedLevel: confirmation.appliedLevel ?? null });
       }).finally(() => attempts.delete(record.id));
       attempts.set(record.id, attempt);
       return attempt;
@@ -482,7 +493,9 @@ export async function pollForConfirmation({
 }
 
 /**
- * Polls wallet NFTs until each traded token is absent, zeroed, or decreased by its expected burn quantity.
+ * Polls wallet NFTs for attributed complete holdings when a receipt/scope is
+ * supplied. The unscoped balance-delta interface remains for legacy callers;
+ * it cannot authorize applied-journal cleanup or Public holdings publication.
  *
  * @param {Object} args
  * @param {Function} args.fetchNFTs
@@ -494,6 +507,8 @@ export async function pollForConfirmation({
  * @param {string} [args.timeoutMessage]
  * @param {boolean} [args.fetchBeforePolling=false]
  * @param {boolean} [args.refetchOnTimeout=false]
+ * @param {Object} [args.submittedTrade] Retained applied receipt with attributed block level.
+ * @param {Object} [args.scope] Exact account/network/indexer/escrow scope.
  * @returns {Promise<Array>}
  */
 export async function pollForNFTUpdate({
@@ -505,7 +520,9 @@ export async function pollForNFTUpdate({
   logPrefix,
   timeoutMessage,
   fetchBeforePolling = false,
-  refetchOnTimeout = false
+  refetchOnTimeout = false,
+  submittedTrade,
+  scope
 }) {
   const startTime = Date.now();
   let nfts = fetchBeforePolling ? await fetchNFTs(address) : [];
@@ -513,7 +530,8 @@ export async function pollForNFTUpdate({
   while (Date.now() - startTime < timeout) {
     nfts = await fetchNFTs(address);
 
-    if (areTradedTokensRefreshed(nfts, tradedTokens)) {
+    if (scope || submittedTrade ? areAppliedTradeBalancesRefreshed(nfts, submittedTrade, scope)
+      : areTradedTokensRefreshed(nfts, tradedTokens)) {
       logIfEnabled(logPrefix, "All traded tokens are refreshed.");
       return nfts;
     }
@@ -592,7 +610,12 @@ function getOperationConfirmation(ops, {
     if (matching.length !== submittedTrade.operations.length ||
         matching.some(op => !Number.isSafeInteger(op.id) || op.id < 0) ||
         new Set(matching.map(op => op.id)).size !== matching.length) return { applied: false, failed: false };
-    if (matching.every(isAppliedOperation)) return { applied: true, failed: false };
+    if (matching.every(isAppliedOperation)) {
+      const levels = matching.map(op => op.level);
+      const appliedLevel = levels.every(level => Number.isSafeInteger(level) && level > 0 && level === levels[0])
+        ? levels[0] : null;
+      return { applied: true, failed: false, appliedLevel };
+    }
     if (matching.every(isTerminalFailedOperation)) return { applied: false, failed: true,
       message: `Transaction confirmation failed: expected initiate_trade operations ended with status ${matching.map(getOperationStatus).join(', ')}.` };
     return { applied: false, failed: false };
@@ -742,6 +765,17 @@ export function areTradedTokensRefreshed(nfts, tradedTokens) {
 
     return false;
   });
+}
+
+// Confirmation and holdings freshness are separate evidence. TzKT balance rows
+// carry the last ledger-change block; a row from that block or later reflects
+// the applied block even when incoming transfers leave a larger balance.
+export function areAppliedTradeBalancesRefreshed(nfts, record, scope) {
+  return record?.status === 'applied' && typeof record.hash === 'string' && record.hash.length > 0 &&
+    ['network', 'tzktBase', 'escrowAddress', 'account'].every(key =>
+      typeof scope?.[key] === 'string' && scope[key] === record[key]) &&
+    isPostTradeFa2Snapshot(nfts, { baseUrl: record.tzktBase, account: record.account,
+      minimumLevel: record.appliedLevel, tradedTokens: record.tradedTokens });
 }
 
 function logIfEnabled(logPrefix, ...args) {

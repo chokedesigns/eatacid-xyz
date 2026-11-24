@@ -1,5 +1,15 @@
 # AUD-008 — full adversarial correctness findings
 
+**AUD-008-001 corrective addendum, 2026-11-24.** Checklist 0.1 is implemented
+on `ticket-AUD-008-001-trade-balance-freshness`. The investigation below records
+the original source revision and defect. Its historical executable entrypoint
+now runs maintained corrective tests in `shared/public-trade-freshness.test.mjs`
+and both existing Public consumer suites. Success now asserts safe recovery,
+including incoming transfers, rather than the historical defect. See
+[Public recovery](../docs/operations.md#public-applied-trade-recovery) for the
+provider evidence, precise unsupported cases and verification limits.
+AUD-008-002 and the original audit's other dispositions are unchanged.
+
 **COMPLETE / NOT CLEAN, 2026-11-24.** Full source examination and explicit
 behavioral reconciliation against both historical enumerations are complete.
 Two confirmed conditional P2 findings remain. Source: Outer

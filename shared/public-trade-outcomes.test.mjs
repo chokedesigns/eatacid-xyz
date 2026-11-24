@@ -1,3 +1,4 @@
+import { appliedOperations, fixtureHoldings } from './public-trade-test-fixtures.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -73,7 +74,7 @@ function fixture() {
   const reserve = (owner = journal, context = scope) => owner.reserve(context, operations, tokens);
   const submit = () => journal.submitted(reserve(), 'returned-hash');
   const evidence = (status = 'applied') => [{ id: 1, type: 'transaction', hash: 'returned-hash',
-    sender: { address: 'wallet-A' }, target: { address: 'escrow' }, parameter: { entrypoint: 'initiate_trade' }, status }];
+    sender: { address: 'wallet-A' }, target: { address: 'escrow' }, parameter: { entrypoint: 'initiate_trade' }, status, level: 100 }];
   const poll = (hash, receipt) => pollForConfirmation({ tzktBase: receipt.tzktBase, opHash: hash,
     submittedTrade: receipt, timeout: 7, interval: 0 });
   return { rows, storage, store, journal, scope, reserve, submit, evidence, poll, operations, tokens };
@@ -133,9 +134,9 @@ for (const existingKeys of [9999, 10000, 10001]) {
       assert.equal(f.store().get(f.scope).status, 'submitted');
       assert.equal(f.store().get(f.scope).hash, 'boundary-hash');
       assert.throws(() => f.reserve(f.store()), /reconciled/);
-      await f.journal.reconcile(record, async hash => { assert.equal(hash, 'boundary-hash'); });
+      await f.journal.reconcile(record, async (hash, receipt) => { assert.equal(hash, 'boundary-hash'); return appliedOperations(receipt); });
       assert.equal(f.store().get(f.scope).status, 'applied');
-      f.journal.clearApplied(f.scope);
+      f.journal.clearApplied(f.scope, await fixtureHoldings([{ contractAddress: 'burn', tokenId: '4', balance: 4 }], f.journal.get(f.scope), f.scope));
       assert.deepEqual([...f.rows], original, 'Only the reconciled receipt is removed');
     } else {
       await assert.rejects(send(), existingKeys === 10000 ? /no room.*No operation was sent/ : /storage is too large/);
@@ -226,7 +227,7 @@ test('TX-002: real poller rejects unrelated, incomplete, malformed and contradic
     }
     globalThis.fetch = async () => ({ ok: true, json: async () => [...valid, { ...valid[0], id: 2 }] });
     assert.equal((await f.journal.reconcile(batch, f.poll)).status, 'applied');
-    f.journal.clearApplied(f.scope); assert.equal(f.journal.get(f.scope), null);
+    f.journal.clearApplied(f.scope, await fixtureHoldings([{ contractAddress: 'burn', tokenId: '4', balance: 4 }], f.journal.get(f.scope), f.scope)); assert.equal(f.journal.get(f.scope), null);
   } finally { globalThis.fetch = originalFetch; }
 });
 
@@ -252,10 +253,10 @@ test('TX-002: overlapping polls coalesce across pages; late queued callbacks can
   const otherTab = f.store();
   let otherCalls = 0;
   const other = otherTab.reconcile(record, async () => { otherCalls++; throw new Error('obsolete failure'); });
-  resolve(); await first;
+  resolve(appliedOperations(record)); await first;
   await other; assert.equal(otherCalls, 0, 'A queued attempt observes applied evidence without polling again');
   assert.equal(f.journal.get(f.scope).status, 'applied');
-  f.journal.clearApplied(f.scope);
+  f.journal.clearApplied(f.scope, await fixtureHoldings([{ contractAddress: 'burn', tokenId: '4', balance: 4 }], f.journal.get(f.scope), f.scope));
   const next = f.submit();
   await assert.rejects(otherTab.reconcile(record, async () => {}), /receipt changed/);
   assert.equal(f.journal.get(f.scope).id, next.id);

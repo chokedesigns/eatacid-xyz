@@ -8,7 +8,7 @@ import {
   classifyPublicTradeRequestRejection,
   createSubmittedTradeStore,
   showSubmittedTradeStatus,
-  areTradedTokensRefreshed,
+  areAppliedTradeBalancesRefreshed,
   buildApprovalOps as buildSharedApprovalOps,
   fetchTokenPairId as fetchSharedTokenPairId,
   pollForConfirmation as pollForSharedConfirmation,
@@ -135,7 +135,7 @@ async function retryTradeConfirmation() {
     if (address !== synchronizedWalletAddress || generation !== walletRefreshGeneration) return;
     const balancesPending = submittedTrades.get(submittedTradeScope(address));
     showModal(balancesPending ? 'BURN COMPLETE.' : 'SUCCESS!', balancesPending
-      ? '[BALANCES STILL UPDATING. USE RETRY BALANCES.]' : '[BURN COMPLETE. BALANCES REFRESHED.]');
+      ? '[HOLDINGS FRESHNESS UNVERIFIED. USE RETRY BALANCES.]' : '[BURN COMPLETE. BALANCES REFRESHED.]');
     const spinner = document.querySelector('.loading-spinner-01');
     if (spinner) spinner.style.display = 'none';
     setTimeout(hideModal, 3000);
@@ -631,7 +631,7 @@ function renderConnectedWalletTokenState(nfts) {
   });
 
   updateBurnCart();
-  submittedTrades.clearApplied(submittedTradeScope());
+  submittedTrades.clearApplied(submittedTradeScope(), nfts);
   confirmedExchangeTrades.delete(synchronizedWalletAddress);
 }
 
@@ -825,22 +825,12 @@ async function fetchNFTs(walletAddress) {
 
   try {
     const nfts = await fetchFa2BalancePages({
-      baseUrl: TZKT_BASE, account: walletAddress, fetchImpl: fetch
+      baseUrl: TZKT_BASE, account: walletAddress, fetchImpl: fetch, project: true
     });
 
     logger.log(`NFTs fetched from ${network}:`, nfts);
 
-    // Map to extract tokenId, contractAddress, and balance.
-    return nfts.map((nft) => {
-      const tokenId = nft?.token?.tokenId;
-      const contractAddress = nft?.token?.contract?.address;
-
-      return {
-        tokenId,
-        contractAddress,
-        balance: nft.balance,
-      };
-    });
+    return nfts;
   } catch (error) {
     console.error("Error fetching NFTs:", error);
     throw error;
@@ -1195,10 +1185,17 @@ function refreshConnectedState(nfts) {
 // -----------------------------------------------------
 
 async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval = 3000) {
+  let submittedTrade = submittedTrades.get(submittedTradeScope(address));
+  if (submittedTrade?.status === 'applied' &&
+      (!Number.isSafeInteger(submittedTrade.appliedLevel) || submittedTrade.appliedLevel <= 0)) {
+    submittedTrade = await submittedTrades.reconcile(submittedTrade, pollForConfirmation);
+  }
   return pollForSharedNFTUpdate({
     fetchNFTs,
     address,
     tradedTokens,
+    submittedTrade,
+    scope: submittedTradeScope(address),
     timeout,
     interval,
     logPrefix: DEBUG ? '[exchange] ' : undefined,
@@ -1208,8 +1205,8 @@ async function pollForNFTUpdate(address, tradedTokens, timeout = 30000, interval
 }
 
 function assertTradedBalancesRefreshed(nfts, tradedTokens) {
-  if (!areTradedTokensRefreshed(nfts, tradedTokens)) {
-    throw new Error('Confirmed trade balances are still updating. Retry balances.');
+  if (!areAppliedTradeBalancesRefreshed(nfts, submittedTrades.get(submittedTradeScope()), submittedTradeScope())) {
+    throw new Error('Confirmed trade holdings freshness is unverified. Retry balances.');
   }
 }
 
