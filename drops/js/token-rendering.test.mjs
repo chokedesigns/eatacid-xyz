@@ -49,11 +49,11 @@ test('render identities do not duplicate rows or reuse a wallet identity', () =>
     ]
   );
 
-  assert.deepEqual(
-    resolveBurnTokenRenderIdentities({
+  assert.throws(
+    () => resolveBurnTokenRenderIdentities({
       eligibleTokenIds: ['0'],
       tokenMapping: { '94684': '0', '103062': '0' }
     }),
-    [{ canonicalTokenId: '94684', walletTokenId: '0' }]
+    /Ambiguous.*translation/
   );
 });

@@ -123,7 +123,7 @@ function fixture({ enabled = ['HEN', 'INTRODUCTIONS'] } = {}) {
     collections: { HEN: 'contract-HEN', INTRODUCTIONS: 'contract-INTRODUCTIONS', CANAAN: 'contract-CANAAN' },
     burnTokens: ['HEN', 'INTRODUCTIONS'].map(collection => ({ collection, enabled: enabled.includes(collection),
       burnAmount: 2, exclude: collection === 'HEN' ? ['103062'] : [] })),
-    tokenMapping: { HEN: { '94684': '0', '103062': '1', '104492': '2' }, INTRODUCTIONS: {} },
+    tokenMapping: { HEN: { '94684': '0', '103062': '1', '104492': '2' }, INTRODUCTIONS: { '7': '7', '8': '8' } },
     normalizeString: value => String(value ?? '').trim().toLowerCase(),
     logger: { log() {} }, console: { error: (...args) => errors.push(args) },
     setRegionPending, isCurrentWalletProjection, resolveBurnTokenRenderIdentities,
@@ -174,6 +174,73 @@ function assertPending(h) {
   for (const pane of Object.values(h.panes)) assert.equal(pane.style.display, 'none');
   assert.equal(h.wallet['aria-busy'], 'true'); assert.equal(h.spinner.style.display, 'flex');
 }
+
+test('AUD-007-001: rendered holdings exclude canonical keys and retain exact native transaction identities', async () => {
+  const mapping = { '94684': '0', '103062': '9007199254740992', '104492': '9007199254740993' };
+  for (const [exclude, expected] of [
+    [[], Object.values(mapping)], [['0'], Object.values(mapping)],
+    [['94684'], ['9007199254740992', '9007199254740993']],
+    [['9007199254740992'], Object.values(mapping)],
+    [['103062', '104492'], ['0']], [Object.keys(mapping), []],
+  ]) {
+    const h = fixture({ enabled: ['HEN'] });
+    h.context.burnTokens[0].exclude = exclude;
+    h.context.tokenMapping.HEN = mapping;
+    h.connect('wallet-A', Promise.resolve([...Object.values(mapping).map(id => nft(id)), nft('94684'), nft('0', 'INTRODUCTIONS')]));
+    await flush();
+    assert.deepEqual(h.ids('HEN'), expected);
+    assert.equal(h.errors.length, 0);
+    assert.equal(h.empty.style.display, expected.length ? 'none' : 'flex');
+    vm.runInContext(section('function getSelectedEventTokenWithBalance(', '// HELPERS: REDEEM PANEL'), h.context);
+    for (const el of h.panes.HEN.querySelectorAll('[data-token-id]')) {
+      const canonical = Object.keys(mapping).find(key => mapping[key] === el.dataset.tokenId);
+      assert.equal(el.dataset.contractAddress, 'contract-HEN');
+      assert.equal(el.querySelector('.collection-item-title-text').textContent, `Canonical ${canonical}`);
+      assert.equal(el.querySelector('.token-id-number').textContent, el.dataset.tokenId);
+      assert.equal(el.querySelector('.collection-item-owned-text').textContent, '2');
+      const checkbox = el.querySelector('.w-checkbox-input.events_checkbox');
+      checkbox.checked = true;
+      const selected = h.context.getSelectedEventTokenWithBalance();
+      assert.equal(selected.contractAddress, 'contract-HEN');
+      assert.equal(selected.tokenId, el.dataset.tokenId);
+      assert.equal(selected.oldBalance, 2);
+      checkbox.checked = false;
+    }
+    assertCanonical(h);
+  }
+});
+
+test('AUD-007-001: missing, invalid and ambiguous testnet translations cannot expand rendered eligibility', async () => {
+  for (const mapping of [undefined, {}, null, [], 'invalid', { '94684': null },
+    { '94684': 'bad' }, { bad: '0' }, { '94684': Number.MAX_SAFE_INTEGER + 1 },
+    { '94684': '0', '103062': '0' }]) {
+    const h = fixture({ enabled: ['HEN'] });
+    h.context.tokenMapping.HEN = mapping;
+    h.context.burnTokens[0].exclude = ['103062']; // must not hide ambiguity
+    h.connect('wallet-A', Promise.resolve([nft('0'), nft('94684')])); await flush();
+    assert.deepEqual(h.ids('HEN'), []);
+    assert.equal(h.errors.length, 1);
+    assert.match(String(h.errors[0][1]), /translation/);
+    assert.match(h.heading.textContent, /UNAVAILABLE/);
+    assert.equal(h.state.selectedTokenId, null);
+  }
+  const partial = fixture({ enabled: ['HEN'] });
+  partial.context.tokenMapping.HEN = { '103062': '1' };
+  partial.context.burnTokens[0].exclude = [];
+  partial.connect('wallet-A', Promise.resolve([nft('0'), nft('94684'), nft('1')])); await flush();
+  assert.deepEqual(partial.ids('HEN'), ['1'], 'missing entries never become same-ID translations');
+  assert.equal(partial.errors.length, 0);
+});
+
+test('AUD-007-001: nonmirrored canonical holdings retain canonical exclusions', async () => {
+  const h = fixture({ enabled: ['HEN'] });
+  h.context.network = 'mainnet'; // inert identity-rendering control; no network config is enabled
+  h.context.tokenMapping.HEN = {};
+  h.context.burnTokens[0].exclude = ['103062'];
+  h.connect('wallet-A', Promise.resolve([nft('94684'), nft('103062'), nft('104492')])); await flush();
+  assert.deepEqual(h.ids('HEN'), ['94684', '104492']);
+  assert.equal(h.errors.length, 0);
+});
 
 test('AUD-003-002: malformed and overflowing holdings retire actionable wallet rows', async () => {
   const invalid = [undefined, null, '', ' ', '5junk', '5.5', '-1', 'NaN', 'Infinity',

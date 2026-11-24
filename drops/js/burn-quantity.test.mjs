@@ -129,12 +129,13 @@ test('Public invalid amounts, disabled burns and insufficient holdings never req
     const f = fixture(options); await f.send(); assert.equal(f.operations.length, 0);
   }
 });
-test('Public wallet eligibility requires the configured amount', async () => {
+test('Public wallet candidates require the configured amount; empty render reports no eligible rows', async () => {
   const f = fixture(); let count;
+  let candidates;
   Object.assign(f.context, {
     document: { querySelector: () => null }, window: { cmsRowsByCollection: { HEN: [] } },
     renderWalletTokenLoadingState() {}, updateEventCartBurnToken() {},
-    getCollectionSlug: () => 'hen', resolveBurnTokenRenderIdentities: () => [], updateOwnedTokenCounts() {},
+    getCollectionSlug: () => 'hen', resolveBurnTokenRenderIdentities: args => { candidates = args.eligibleTokenIds; return []; }, updateOwnedTokenCounts() {},
     renderConnectedWalletTokenState: value => { count = value; }, tokenMapping: { HEN: {} },
   });
   vm.runInContext(section('function computeBalances(', '// HELPERS: FA2') +
@@ -142,10 +143,12 @@ test('Public wallet eligibility requires the configured amount', async () => {
   await f.context.updateTokensWithWalletData([1, 2, 3].map((balance, id) => ({
     contractAddress: 'burn-contract', tokenId: String(id), balance,
   })));
-  assert.equal(count, 2);
+  assert.deepEqual(Array.from(candidates), ['1', '2']);
+  assert.equal(count, 0);
   f.config[0].burnAmount = 1.5;
   await f.context.updateTokensWithWalletData([{ contractAddress: 'burn-contract', tokenId: '1', balance: 3 }]);
   assert.equal(count, 0);
+  assert.deepEqual(Array.from(candidates), []);
 });
 test('Shared NFT polling waits for the full configured burn delta', async () => {
   let reads = 0;

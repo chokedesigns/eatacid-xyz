@@ -348,7 +348,7 @@ assert.match(walletPendingBranch, /walletRefreshGeneration\+\+/);
 assert.match(walletPendingBranch, /renderWalletTokenLoadingState\(\)/);
 assert.doesNotMatch(walletPendingBranch, /handleWalletDisconnected/);
 assert.match(eventsSource, /if \(request !== walletHoldingsRequest \|\| !isCurrentWalletProjection\(\{/);
-assert.match(eventsSource, /renderConnectedWalletTokenState\(eligible\.length\)/);
+assert.match(eventsSource, /renderConnectedWalletTokenState\(renderedCount\)/);
 
 const postTradeRefresh = eventsSource.slice(
   eventsSource.indexOf('async function handleEventExchange'),
@@ -439,7 +439,7 @@ const connectedProjection = eventsSource.slice(
 );
 assert.ok(
   connectedProjection.indexOf('updateOwnedTokenCounts(nfts)') <
-  connectedProjection.indexOf('renderConnectedWalletTokenState(eligible.length)')
+  connectedProjection.indexOf('renderConnectedWalletTokenState(renderedCount)')
 );
 
 const connectedHandler = eventsSource.slice(
@@ -510,7 +510,7 @@ function createWalletTokenFixture() {
       { collection: 'INTRODUCTIONS', enabled: false, exclude: [], burnAmount: 1 }
     ],
     collections: { HEN: 'KT1-burn', INTRODUCTIONS: 'KT1-disabled', CANAAN: 'KT1-redeem' },
-    tokenMapping: {},
+    tokenMapping: { HEN: { '1': '1', '2': '2' } },
     window: { cmsRowsByCollection: { HEN: [row('1', 'KT1-burn'), row('2', 'KT1-burn')] } },
     logger: { log() {} },
     setRegionPending,

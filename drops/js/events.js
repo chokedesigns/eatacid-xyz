@@ -1965,7 +1965,6 @@ async function updateTokensWithWalletData(nfts) {
     const entry = burnTokens.find(t =>
       t.enabled &&
       normalizeString(nft.contractAddress) === normalizeString(collections[t.collection]) &&
-      !t.exclude.includes(nft.tokenId) &&
       Number.isSafeInteger(t.burnAmount) && t.burnAmount > 0 &&
       balances[`${nft.contractAddress}:${nft.tokenId}`] >= t.burnAmount
     );
@@ -1973,6 +1972,7 @@ async function updateTokensWithWalletData(nfts) {
   });
   logger.log("Eligible NFTs:", eligible);
 
+  let renderedCount = 0;
   burnTokens.forEach(config => {
     if (!config.enabled) return;
 
@@ -1988,7 +1988,8 @@ async function updateTokensWithWalletData(nfts) {
         .filter(n => n.contractAddress === collections[key])
         .map(n => n.tokenId),
       excludedTokenIds: config.exclude,
-      tokenMapping: tokenMapping[key]
+      tokenMapping: tokenMapping[key],
+      allowCanonicalFallback: network === 'mainnet'
     }).forEach(({ canonicalTokenId, walletTokenId }) => {
       const orig = cmsRows.find(r => r.dataset.tokenId === canonicalTokenId);
       if (!orig || !parent) return;
@@ -2005,6 +2006,7 @@ async function updateTokensWithWalletData(nfts) {
 
       wrappedRow.style.display = "";
       parent.appendChild(wrappedRow);
+      renderedCount++;
 
       logger.log(
         `[DEBUG] Appended row for ${key} token ${walletTokenId} in .${slug}-collection (contract=${collections[key]})`
@@ -2024,7 +2026,7 @@ async function updateTokensWithWalletData(nfts) {
     }
   }
 
-  renderConnectedWalletTokenState(eligible.length);
+  renderConnectedWalletTokenState(renderedCount);
   submittedTrades.clearApplied(submittedTradeScope());
   confirmedDropsTrades.delete(synchronizedWalletAddress);
   dropsBalanceRefreshFailed = false;
