@@ -1,3 +1,4 @@
+import { exactNat, sameTokenPairTerms } from './token-pair-terms.js';
 import { isPostTradeFa2Snapshot } from './tzkt-fa2-balances.js';
 
 const DEBUG = false;
@@ -249,12 +250,7 @@ export async function fetchTokenPairId({
       for (const entry of raw) {
         const value = entry?.value;
         if (entry?.active === false || value == null) continue;
-        if (value.burn_contract_address !== terms.burn_contract_address ||
-            value.redeem_contract_address !== terms.redeem_contract_address ||
-            exactNat(value.burn_token_id) !== terms.burn_token_id ||
-            exactNat(value.burn_amount, true) !== terms.burn_amount ||
-            exactNat(value.redeem_token_id) !== terms.redeem_token_id ||
-            exactNat(value.redeem_amount, true) !== terms.redeem_amount) continue;
+        if (!sameTokenPairTerms(value, terms)) continue;
         if (matchingId !== null) {
           throw new Error('Ambiguous token pair: multiple active mappings match the intended trade terms.');
         }
@@ -275,15 +271,6 @@ export async function fetchTokenPairId({
     console.error("\u274C Error fetching token_pair_id:", error);
     return null;
   }
-}
-
-function exactNat(value, positive = false) {
-  if (typeof value === 'number' && (!Number.isSafeInteger(value) || value < 0)) return null;
-  if (typeof value !== 'number' && typeof value !== 'string') return null;
-  const text = String(value);
-  if (!/^\d+$/.test(text)) return null;
-  const nat = BigInt(text);
-  return positive && nat === 0n ? null : nat.toString();
 }
 
 /**
