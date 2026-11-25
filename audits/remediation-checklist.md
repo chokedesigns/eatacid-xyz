@@ -1,3 +1,3 @@
-Group 0 — Drop Params writer coordination
+Group 0 — Public pair compatibility
 
-0.1 Preserve exclusive ownership during stale-lock reclamation
+0.1 Align pair authoring and readiness with Public resolution
