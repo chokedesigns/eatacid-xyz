@@ -1,6 +1,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
-import { mkdir, open, readFile, readdir, rename, unlink } from "node:fs/promises";
+import { link, mkdir, open, readFile, readdir, rename, unlink } from "node:fs/promises";
+import { setTimeout as wait } from "node:timers/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -181,7 +182,9 @@ async function inspectLockClaim(claimPath, options = {}) {
   let metadata = null;
   try {
     metadata = JSON.parse(snapshot.text);
-  } catch {}
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+  }
 
   const ageMs = Math.max(0, Date.now() - snapshot.identity.mtimeMs);
   if (!metadata || typeof metadata.token !== "string" || !Number.isSafeInteger(metadata.pid)) {
@@ -296,19 +299,8 @@ async function writeLockClaim(metadata, options = {}) {
   const claimPath = lockClaimPath(metadata.token);
   const text = `${JSON.stringify(metadata)}\n`;
   let handle;
-
-  if (options.create === true) {
-    try {
-      handle = await open(claimPath, "wx");
-      await handle.writeFile(text, "utf8");
-      await handle.sync();
-      await handle.close();
-      return claimPath;
-    } catch (error) {
-      if (handle) await handle.close().catch(() => {});
-      throw error;
-    }
-  }
+  let snapshot;
+  let published = false;
 
   const temporaryPath = path.join(
     DROP_PARAMS_PATHS.transactionLock,
@@ -318,8 +310,25 @@ async function writeLockClaim(metadata, options = {}) {
     handle = await open(temporaryPath, "wx");
     await handle.writeFile(text, "utf8");
     await handle.sync();
+    const stat = await handle.stat();
+    snapshot = {
+      text,
+      identity: Object.fromEntries(["dev", "ino", "size", "mtimeMs", "birthtimeMs"]
+        .map(key => [key, stat[key]]))
+    };
     await handle.close();
     handle = null;
+    if (options.create === true) {
+      // Publish complete metadata in one no-replace filesystem operation. The
+      // private staging file is never a claim, even if its writer is suspended.
+      // A supported visible claim therefore cannot be stale-invalid and revive
+      // after a reclaimer's last inspection. Do not fall back to open('wx') here.
+      await link(temporaryPath, claimPath);
+      published = true;
+      await unlink(temporaryPath);
+      return snapshot;
+    }
+    await assertLockClaim(metadata.token, options.expectedSnapshot);
     const renameStartedAt = Date.now();
     while (true) {
       try {
@@ -332,32 +341,33 @@ async function writeLockClaim(metadata, options = {}) {
         await sleep(5);
       }
     }
-    return claimPath;
+    return snapshot;
   } catch (error) {
     if (handle) await handle.close().catch(() => {});
     await unlink(temporaryPath).catch(() => {});
+    if (published) await removeLockClaim(metadata.token, snapshot);
     throw error;
   }
 }
 
-async function releaseOwnedLock(expectedMetadata) {
-  const claimPath = lockClaimPath(expectedMetadata.token);
-  let currentMetadata;
+async function assertLockClaim(token, expectedSnapshot) {
+  if (!sameLockSnapshot(expectedSnapshot, await readLockSnapshot(lockClaimPath(token)))) {
+    throw Object.assign(new Error("Drop Params transaction lock ownership lost"), {
+      code: "lock_ownership_lost"
+    });
+  }
+}
+
+async function removeLockClaim(token, expectedSnapshot) {
+  const claimPath = lockClaimPath(token);
+  if (!sameLockSnapshot(expectedSnapshot, await readLockSnapshot(claimPath))) return false;
   try {
-    currentMetadata = JSON.parse(await readFile(claimPath, "utf8"));
+    await unlink(claimPath);
+    return true;
   } catch (error) {
     if (error?.code === "ENOENT") return false;
     throw error;
   }
-  if (
-    currentMetadata?.token !== expectedMetadata.token ||
-    currentMetadata?.pid !== process.pid ||
-    currentMetadata?.phase !== "owned"
-  ) {
-    return false;
-  }
-  await unlink(claimPath);
-  return true;
 }
 
 function validTicket(metadata) {
@@ -389,9 +399,13 @@ export async function acquireDropParamsLock(options = {}) {
     ticket: null,
     acquiredAt: new Date().toISOString()
   };
-  const claimPath = await writeLockClaim(metadata, { create: true });
+  options.signal?.throwIfAborted();
+  // Only this successful, exclusive publication authorizes cleanup of the claim.
+  // In particular an EEXIST failure must never unlink someone else's claim.
+  let snapshot = await writeLockClaim(metadata, { create: true });
 
   try {
+    options.signal?.throwIfAborted();
     let claims = await listLockClaims(options);
     await reclaimObservedStaleClaims(claims, options);
     claims = await listLockClaims(options);
@@ -401,10 +415,12 @@ export async function acquireDropParamsLock(options = {}) {
         : highest
     , 0);
     metadata = { ...metadata, phase: "waiting", ticket: highestTicket + 1 };
-    await writeLockClaim(metadata);
+    snapshot = await writeLockClaim(metadata, { expectedSnapshot: snapshot });
 
     while (true) {
+      options.signal?.throwIfAborted();
       claims = await listLockClaims(options);
+      await assertLockClaim(token, snapshot);
       await reclaimObservedStaleClaims(claims, options);
       claims = await listLockClaims(options);
 
@@ -417,15 +433,18 @@ export async function acquireDropParamsLock(options = {}) {
       });
 
       if (!blocked) {
+        options.signal?.throwIfAborted();
         metadata = { ...metadata, phase: "owned" };
-        await writeLockClaim(metadata);
+        snapshot = await writeLockClaim(metadata, { expectedSnapshot: snapshot });
+        await assertLockClaim(token, snapshot);
+        options.signal?.throwIfAborted();
         let released = false;
         const ownedMetadata = Object.freeze({ ...metadata });
         return Object.freeze({
           metadata: ownedMetadata,
           async release() {
             if (released) return false;
-            const didRelease = await releaseOwnedLock(ownedMetadata);
+            const didRelease = await removeLockClaim(token, snapshot);
             released = true;
             return didRelease;
           }
@@ -439,10 +458,10 @@ export async function acquireDropParamsLock(options = {}) {
           : "";
         throw new Error(`Timed out waiting for the Drop Params transaction lock${ownerLabel}`);
       }
-      await sleep(retryMs);
+      await wait(retryMs, undefined, { signal: options.signal });
     }
   } catch (error) {
-    await unlink(claimPath).catch(() => {});
+    await removeLockClaim(token, snapshot);
     throw error;
   }
 }
