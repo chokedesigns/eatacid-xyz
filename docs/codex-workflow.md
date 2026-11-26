@@ -12,6 +12,8 @@ Use the existing ticket loop for features, remediation, and maintenance: owner-p
 
 Routine, sensitive, and investigation tasks use these same execution conventions. Scale verification to risk: focused checks may suffice for documentation/tooling; runtime, wallet, network, transaction, and release changes retain their applicable regression/build/smoke gates. Investigations may be read-only and produce findings that become ordinary remediation tickets; they do not establish a separate implementation workflow.
 
+Correctness audits follow the canonical [correctness-review procedure](correctness-review.md), including bounded batch execution and its completion criteria. For audit progress sessions, defer broad final verification and review exports until audit finalization unless needed to validate a specific batch; state those deferrals in the compact handoff. Finalization retains complete per-repository exports, including new/untracked evidence, independent review of the entire exported patch, and owner-controlled integration.
+
 Keep ticket prompts short: state the objective, repositories/branches, scope, acceptance criteria, and any exceptions. Reference this guide and local instructions instead of repeating durable rules or historical procedures.
 
 ## Review export
