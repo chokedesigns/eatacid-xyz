@@ -1,5 +1,736 @@
 # Correctness review coverage
 
+## AUD-011 — Final reconciliation (2026-11-25)
+
+**COMPLETE / NOT CLEAN.** The seven recorded source/inert examinations cover
+all **40 scopes: 38 workflow scopes, W37's exported support-library boundary and
+W40's provenance dependency; 0 PARTIAL, 0 NOT EXAMINED** within that boundary.
+All original **33 workflows** and consolidated **20 groups** reconcile below.
+Fifteen independent material findings remain confirmed P2 and unresolved;
+one additional nonmaterial P3 mobile display discrepancy is preserved. See
+[final dispositions](AUD-011-findings.md#final-disposition-and-evidence-boundary)
+and the [remediation checklist](remediation-checklist.md). Completion concerns
+source investigation/finalization, not verified live integration or readiness.
+Material findings preclude a clean-result refresh; none was performed.
+
+Exact reviewed/tested revisions: Outer
+`2453358c8cf91d4db3bc24e447ed0859f91216e8`, Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`; both on
+`ticket-AUD-011-full-correctness-review`. Neither implementation changed during
+the seven batches or finalization. Initial expected Outer state was modified
+coverage plus untracked findings/eight evidence scripts; Admin was clean. Final
+delta is Outer audit documentation, those preserved scripts and an exact,
+exportable copy of B1's ignored provenance entrypoint. Both HEADs, indexes and
+branches, historical evidence, generated data and operational state are preserved.
+Windows PowerShell, Node `v22.16.0`, npm `10.4.0`, installed/pinned dependencies
+and current source configuration were used without installation or upgrade.
+Testnet is Shadownet; Mainnet remains incomplete/disabled. Build delivery variant
+does not select a chain. No live/remote system was inspected or mutated.
+
+### B2-001 corrective reconciliation (2026-11-25)
+
+The [corrected finding](AUD-011-findings.md#aud-011-b2-001--hen-redeem-is-admitted-despite-its-burn-only-role)
+supersedes the original supported-HEN-redemption assumption. The owner requirement
+establishes HEN as burn-side only; current selector/service/schema/Public gate
+acceptance is the defect, not evidence of product eligibility. Canonical `141634`
+commit and native `6` validation remain preserved observations of that invalid
+path; neither is an eligible HEN redeem. The existing HEN-burn/CANAAN-redeem
+configuration remains the eligible role control. Checklist `0.1` now rejects HEN
+redeem admission rather than translating HEN redeem IDs.
+
+Disposition remains confirmed conditional **P2**: operator-approved ineligible
+configuration can be published and consumed; actual chain effects require
+additional inventory/pair/wallet conditions and remain unverified. Counts remain
+**15 material findings plus one P3 display observation**, with no added root or
+coverage credit. Current source, reproduction scripts and historical logs are
+unchanged. Policy records corroborate HEN's burn role but concern future new-work
+authoring; a complete current collection-role matrix is not established there.
+The developer guide now distinguishes implementation admission from the explicit
+HEN requirement. No other collection eligibility rule is inferred.
+
+Targeted corrective verification only: read-only Node assertions confirm current
+schema, shared compatibility and Public configuration admission for both HEN IDs,
+with HEN-burn/CANAAN-redeem control; documentation checks cover corrected links,
+checklist format, unchanged counts and preservation of unrelated records/scripts.
+`git diff --check` and Outer `npm run ticket:diff` pass; export contents include
+all ten pre-existing untracked findings/evidence files and all corrected documents.
+Both real indexes, HEADs and branches are preserved; Admin stays clean and its
+exports are untouched. Historical broad suites/builds below were not repeated.
+
+### Batch obligations and final source ownership
+
+This is consolidation of the existing forward/reverse/boundary examinations,
+not an eighth examination. Each batch's detailed rows and controls below remain
+the source trace. The initial 39-scope freeze and post-comparison W40 addition
+in the findings remain preserved; discovery is not misrepresented as examination.
+
+| Batch / final scopes | Completed obligations and cross-batch closure |
+| --- | --- |
+| B1 — W02/W33/W34/W35/W40 (5) | Registry/resolver/token identity; every direct trade and privileged pair/pause/rescue/XTZ branch; default/FA2 ingress and custody; source/fixture/frozen/promoted/archive identity. B4 checks client terms/outcomes, B5 custody callers, B6 producers and B7 signer consumers. Native protocol/FA2/legacy execution and current deployment identity remain explicit stops. |
+| B2 — W30/W31/W32 (3) | Registered authoring/provider sessions and loopback validate/preview/apply; supported CLI/service writer, schema, CAS, archive, lock, interrupted rollback/reconcile; source→JSON→mirror/provider retirement. B3/B6 complete downstream state/plan consumers and B7 production packaging. Real operational journals/locks were never recovered or removed. |
+| B3 — W01/W05/W06/W07/W08/W10 (6) | Public wallet startup/events/holdings ownership; Drops params/CMS/exclusion/selection/metadata/image/supply; calendar/trusted time/standby/continuing LIVE; Exchange editions/cart/quantities. B4 completes effect-time gates and submitted outcomes; B7 closes independent reveal/navigation. |
+| B4 — W09/W11/W12 (3) | Both send handlers through exact six-term mapping/operator reads, approvals/payloads/final authority; durable reservation, rejection/no-hash/late hash/reload/retry; all intended operation evidence and independent refreshed holdings. SDK request mismatch is E2's Public extension, not a duplicated root. B1 direct-chain and B6 producer comparisons are retained. |
+| B5 — W13–W20 (8) | Both Admin surfaces' wallet/network/authority/status; both pause actions and durable recovery; inventory/MAX/XTZ/FA2 selection/build/send/confirmation/reconciliation; alternative exports assessed separately. B6 closes event/readiness consumers and extends read-owner findings to pair/GitHub entries. |
+| B6 — W21–W29 (9) | Complete pair catalogue/availability/create/edit/cleanup across registered surfaces; immutable params/translation/initial/Auto/manual/cache and dormant parsing exports; every chunk and partial/error result; classifier/checklist/Health/holder/CSV/economics/GitHub/countdown consumers. B1/B4 shared term/authority effects and B2 provider retirement are compared at actual seams. |
+| B7 — W03/W04/W36/W37/W38/W39 (6) | Thumbnail launchers/intake/backfill/shared manifest ownership; exported CMS support capability with no registered publisher inferred; signer dry-run/verify/execute source through exact readback; Public shells/inline/reveal/router/loader graph, Admin build/dev isolation, local helpers and invoking-repository exporter. Final execution below closes builds/export and the ten formerly blocked thumbnail cases. |
+
+### Final original-workflow reconciliation
+
+Numbers refer to the original AUD-001 33-row map retained below. W labels refer
+to AUD-011's independent inventory, not historical consolidated group labels.
+Every row is source COMPLETE through its batch owners above; the qualifications
+in those ledgers and final verification still apply. No old scope is silently
+dropped because it is dormant, unsupported or externally bounded.
+
+| Original workflow | Final AUD-011 coverage / retained qualification |
+| --- | --- |
+| 1 Arrival/navigation/Utility | W03/W04; local shells/reveal/inline/routes, live geometry/embedding unverified; no shipped bridge/mint inferred. |
+| 2 Network/escrow/token identity | W02/W14; exact targets, strict/fallback/disabled slots and canonical/native mirrors. |
+| 3 Public wallet/holdings | W01/W06/W10/W12; current owned projections, complete/exact balances and retained submissions. |
+| 4 Drops config/catalog/selection | W05/W06/W08; authored source, CMS canonical IDs, exclusions, selection and reveal owners. |
+| 5 Time/pause/inventory | W07/W08; expiry versus unpause, continuing LIVE, unknown supply and resume defect retained. |
+| 6 Drops trade/refresh | W09/W12/W33; exact approvals/trade/whole outcomes versus independent holdings freshness. |
+| 7 Exchange cart/economics | W10; cart/quantity/quote identity, malformed edition finding retained. |
+| 8 Exchange multi-token send | W11/W12/W33; per-unit/grouped operations, authority, recovery and fresh balances. |
+| 9 Approval/pair/outcome evidence | W09/W11/W12 plus W22/W23/W26/W27; complete unique six-term reads, producer/consumer agreement and attributed outcomes. |
+| 10 Admin boot/wallet/network | W13/W14/W30/W32; independent surfaces, reload and static/dev provider ownership. |
+| 11 Admin indication/pause | W15/W16/W20; both targets, authority/readback/pending and terminal versus unknown recovery. |
+| 12 Treasury inventory/rescue | W17/W19/W20/W34/W35; complete exact custody reads, selected destinations, admin-only effects and durable uncertainty. |
+| 13 XTZ/MAX/withdrawal | W17/W18/W20/W34; account-bound balance/MAX, exact mutez, admin recipient and outcomes. |
+| 14 Drops pair create/edit/cleanup | W21–W24/W34; exact terms/IDs, async owners, cleanup concurrency and current-ID deletion. |
+| 15 Exchange pair management | W02/W14/W21–W23/W34; dedicated testnet escrow, locked redeem terms, no registered cleanup. |
+| 16 Drop load/preview | W25/W32; immutable snapshots, native translation, exact cached/current plans, dormant loader/parser capability separately. |
+| 17 Drop chunk send | W26; per-chunk gates, request/terminal/unknown/partial results, stale whole-plan readiness finding. |
+| 18 Lifecycle/readiness/checklist | W07/W27; source/plan/pause/supply/time/classifier/GitHub dependency invalidation. |
+| 19 Health/CMS/economics | W28/W29; complete holders, unknown counts, local CSV and scoped caches, not live CMS proof. |
+| 20 Labels/catalogues/caches | W21/W28/W29/W36; exact identity versus local metadata, HEN display and manifest consumers. |
+| 21 Authoring UI/provider | W30/W32/W25; collection-role admission (corrected B2-001: HEN burn-only), eligible redeem identity, preview/session/apply/health and provider admission/version. |
+| 22 Loopback API | W30/W31; route/host/origin/payload/token/version/preview binding and uncertain replies in disposable seams. |
+| 23 Writer/archive/recovery | W31; supported locks/CAS/journal/rollback/reconcile; AUD-005-001 unsupported external-edit limitation unchanged. |
+| 24 Projection/mirror | W31/W32/W39; generation/watch/mirroring/guard/provider and production packaging. |
+| 25 Direct trade/FA2 | W33/W35; every sender/term, grouping/recipients and failure atomicity reasoning; no native FA2 execution credit. |
+| 26 Direct pair mutation | W34; set/update/cleanup/cardinality and direct duplicate-term capability versus rejecting clients. |
+| 27 Direct pause/rescue/XTZ | W34/W35; admin-only effects, custody/sink/default and event meaning. |
+| 28 Signer provisioning | W38; fixed assignments, provider/chain/admin/ABI/payload/outcome/readback; no live provider/execute invoked. |
+| 29 Provenance/origination | W40, consumers W38/W39; discovered omission closed in B1, local/historical identity distinct from current deployment. |
+| 30 Thumbnail/site assets | W36/W04/W39; launchers, import/backfill/generator/lock/rollback, optimizers and consumer identity. |
+| 31 Exported Webflow CMS | W37; inert API capability/read-write ambiguity/content/locale/publication helpers; no registered executable publisher found. |
+| 32 Public delivery/build/Pages | W03/W04/W39; loaders/root ownership, early/main failure, emitted staging graphs and release source; remote branch/deployment unverified. |
+| 33 Admin production/dev/harness | W30–W32/W39; provider graph, mirror/thumb gates, production prune/isolation, local process helpers and separate review export. |
+
+### Final consolidated-group reconciliation
+
+H labels refer to the later AUD-006 W01–W20 map, retained below. The independent
+AUD-011 workflow boundaries refine those groups without discarding obligations.
+
+| Historical group | Final AUD-011 scopes / batch owners |
+| --- | --- |
+| H01 Arrival/Utility/reveal | W03/W04 — B7. |
+| H02 Public wallet | W01 — B3; submission consumer W09/W11 — B4. |
+| H03 Holdings/identity/rendering | W01/W05/W06/W10/W17 — B3/B5; retained refresh W12 — B4. |
+| H04 Drops schedule/pause/inventory | W05/W07/W08 — B3; checklist W27 — B6. |
+| H05 Drops trade | W09/W12/W33 — B4/B1. |
+| H06 Exchange | W10–W12/W33 — B3/B4/B1. |
+| H07 Retained Public submissions | W12 — B4. |
+| H08 Admin boot/network/authority | W13–W15 — B5; producer identity W02 — B1. |
+| H09 Pause/recovery | W16/W20/W34 — B5/B1. |
+| H10 Treasury | W17–W20/W34/W35 — B5/B1. |
+| H11 Pairs | W21–W24/W34 — B6/B1; SDK seam E2 retained. |
+| H12 Admin Drops | W25–W27/W32 — B6/B2. |
+| H13 Checklist/Health/catalogue | W21/W27–W29/W36 — B6/B7. |
+| H14 Authoring/provider | W30/W32 — B2; immutable consumer W25 — B6. |
+| H15 Writer/projection/archive/recovery | W31/W32 — B2; package consumers W39 — B7. |
+| H16 Direct contracts | W33–W35 — B1. |
+| H17 Build/delivery/dev | W03/W04/W30/W32/W39 — B7/B2. |
+| H18 Assets/CMS | W36/W37, catalogue W21/W28/W29 — B7/B6; exported remote library distinct from registered local CSV. |
+| H19 Provisioning CLI | W38 — B7. |
+| H20 Contract provenance | W40 — B1; CLI/build/artifact consumers W38/W39 — B7. |
+
+Reconciliation found no new consequential unexamined source workflow requiring
+another batch. It closed recorded deferred execution below, made B1's ignored
+provenance script exportable, and separated current conclusions from historical
+PARTIAL/NOT EXAMINED/deferral snapshots. E1 ABI evidence is now freshly executed;
+E2 live/alternative-transport unknowns remain qualified rather than invented
+tests. Existing accepted external-edit limits and prior correction evidence
+remain preserved. Related observations are consolidated as specified in the
+final findings; no duplicate root is added for a new surface or consumer.
+
+### Final verification and limitations
+
+All final successful commands below exited 0. Native exits, not PowerShell's
+formatting of stderr warnings, determine outcomes. Public/supporting/Admin each
+ran once on unchanged source. Only sandbox-blocked process checks and a failed
+build-probe setup were retried for the identified reasons below.
+
+| Actual command / scope | Final outcome and evidence meaning |
+| --- | --- |
+| Outer `node --test --experimental-vm-modules --experimental-test-isolation=none shared/fa2-balances.test.mjs shared/beacon-setup.test.mjs shared/public-trade-freshness.test.mjs shared/public-trade-outcomes.test.mjs shared/public-trade-pairs.test.mjs shared/public-confirmation-deadline.test.mjs drops/js/trade-lifecycle.test.mjs exchange/js/exchange-wallet.test.mjs` | **298 PASS**, no failures/skips/TODOs. |
+| Outer `node --test --experimental-vm-modules --experimental-test-isolation=none shared/drop-time.test.mjs shared/drop-countdown.test.mjs drops/js/countdown.test.mjs drops/js/countdown-lifecycle.test.mjs shared/chain-registry.test.mjs shared/hen-identity.test.mjs drops/js/drop-compatibility.test.mjs drops/js/token-rendering.test.mjs drops/js/reveal-coordinator.test.mjs drops/js/wallet-rendering.test.mjs drops/js/burn-quantity.test.mjs loaders/loader-architecture.test.mjs scripts/verify-pages-loader-artifacts.test.mjs scripts/shadownet-exchange-pairs.test.mjs scripts/public-navigation.test.mjs scripts/parcel-source-map-sources.test.mjs scripts/mainnet-runbook.test.mjs` | **134 PASS**, no failures/skips/TODOs. Includes current navigation, configuration, first-paint/reveal/loader/graph and signer inert regressions. |
+| Admin `npm run test:runtime` | **2,204 PASS**, no failures/skips/TODOs; current full runtime infrastructure, including prior correction regressions. |
+| Outer `npm run test:drop-params:lock` | **17 PASS**. Initial sandbox result 16 pass/one child `EPERM`; permitted local-process rerun passes. |
+| Outer `node audits/repro/AUD-004-config-suite.mjs` | Disposable authoring/transaction/service/projection/watcher suites: **25/19/10/90/1 PASS** respectively, no failures/skips/TODOs. Nested TAP is not counted twice. Initial sandbox child-launch failure resolved with permitted process access; actual operational state untouched. |
+| Outer `npm run test:thumbs` | **27/27 PASS** on the one legitimate permitted child-process execution. Resolves B7's exact 17-pass/10-unverified restriction, including independent-process ordering/interruption/recovery. Source and test expectations unchanged. |
+| Admin `npm run test:thumbs`; `npm run check:thumbs` | **37 PASS**; read-only manifest freshness: **9 contracts / 133 references / 67 assets**. No real asset regeneration. |
+| Outer `npm run test:webflow-cms` | **39 PASS**, no failures/skips/TODOs; injected inert transport only. |
+| Outer `node --experimental-vm-modules audits/repro/<name>.mjs`, separately for `AUD-011-admin-custody-repro`, `AUD-011-admin-orchestration-repro`, `AUD-011-config-propagation-repro`, `AUD-011-contract-abi-check`, `AUD-011-delivery-tooling-repro`, `AUD-011-public-observations-repro`, `AUD-011-public-operations-repro`, `AUD-011-sdk-account-binding-repro` | **All eight PASS** with their positive/negative controls. Config reproduction's initial sandbox failure occurred only at the real child lock; `node audits/repro/AUD-011-config-propagation-repro.mjs` with permitted access completes all five assertions/controls. Passing defect assertions do not mean clean source. |
+| Outer `node audits/repro/AUD-011-contract-provenance-check.mjs`; `node audits/repro/AUD-004-contract-provenance-check.mjs` | **PASS**: 31 exact checkout/HEAD manifest identities, source/snapshot/mechanical fixture, freeze/promotion/archive correspondence, eight event types and nat/int mutation rejection; resolver/mirror/duplicate-term controls. Ignored B1 script copied exactly to the first exportable entrypoint. Initial Node→Git `EPERM` resolved with read-only permitted subprocess access. ABI script above decodes six actual Admin writes and both Public builders, including huge naturals. No Michelson/native execution. |
+| Outer `python -B 'docs/EA-XYZ Contract Audit/tests/verify-invariant-coverage.py'` | **PASS**, 26 invariants / 181 mapped obligations / 13 scenarios; mapping integrity only. Initial temporary runner's quoted filename failed before executing Python; corrected direct command succeeds. |
+| Disposable Outer `npm run build:pages:staging`; disposable Admin `npm run build:clean` | **Both PASS**, using current tracked file bytes and installed-dependency junctions, excluding untracked operational state. Source→JSON unchanged; Admin mirror/thumb guards, prune (4 development chunks) and isolation (8 production files) pass. Original outputs/caches/metadata unchanged. Existing Browserslist-age/bundle-size notices only. |
+| Existing `scripts/verify-{home,drops}-first-paint-build.mjs` assertions over fresh disposable staging output | **PASS**, staging-only probes: exact early graph, forbidden Beacon/trade graph controls, positive main-bundle Beacon controls and relative size. Verification-copy changes only scope variants to staging and spell the known junction-resolved Parcel helper source as `../../../node_modules/...` after exact realpath identity check. Initial literal-path mismatch was a probe setup failure, corrected before rerun; source maps and production scripts were not altered. No fresh prod compilation or both-variant/deployed graph claim. |
+| `node --check` for all nine AUD-011 evidence files; PowerShell AST parse of exporter; Markdown link/checklist/history checks; both repositories' `git diff --check` | **PASS**. Final export/content and Git-preservation checks are described below. |
+
+Live wallet/chain/FA2/SDK transport, Webflow/CMS/custom code, time/indexer/RPC/
+GitHub truth, browser layout/storage/Web Locks timing, signer execution/finality,
+current hosted/deployed identity and actual Linux CI/remote branch assembly
+remain **unverified integrations**. No manual UI/dev server, prod Pages build,
+live smoke, legacy SmartPy compile/scenario execution or Octez typecheck ran.
+No operational action, external write, transaction, production remediation or
+Git integration occurred. The accepted AUD-005-001 unsupported-external-edit
+limitation remains unchanged and is not reopened by supported-writer B2 findings.
+These external stops constrain a COMPLETE source investigation; they do not
+establish deployment readiness. Fifteen material findings preclude CLEAN.
+
+### Review export and preservation
+
+Outer exports are `ticket.AUD-011-full-correctness-review.outer.diff` and
+`ticket.AUD-011-full-correctness-review.outer.stat.txt` at the Outer root.
+Admin exports are `ticket.AUD-011-full-correctness-review.admin.diff` and
+`ticket.AUD-011-full-correctness-review.admin.stat.txt` at the Admin root;
+Admin remains unchanged and its exports are empty. Each is generated separately
+with `npm run ticket:diff`, without staging or modifying either real index.
+The exported file set and Git-normalized blob bytes are checked against actual
+tracked modifications and every intended untracked file; all nine AUD-011
+entrypoints and the complete findings document are included. Historical audit
+text is retained, and prior evidence hashes match their starting values.
+Task-created disposable copies/probes/logs are removed after bounded-path checks;
+pre-existing work evidence and operational state remain. Final status is Outer
+audit-only modifications/untracked evidence, clean Admin, unchanged HEADs,
+indexes and branches; no commit/merge/push/deployment or merge approval.
+
+## Historical AUD-011 batch checkpoints
+
+The seven batch and initial planning records below retain their original
+time-local statuses, counts and deferred statements. The final reconciliation
+above supersedes their AUD-011 PARTIAL/next-batch language and resolves the
+thumbnail execution restriction; it does not rewrite earlier evidence.
+
+## AUD-011 — Batch 7 examination (2026-11-25)
+
+**B7 COMPLETE within bounded source/inert examination; AUD-011 remains PARTIAL.**
+All four prescribed slices, **W03/W04/W36–W39**, are source-examined. No new
+material finding was established; **15 independent provisional findings remain
+unresolved**, with all earlier records and scripts preserved. Current bounded
+source totals: **40 COMPLETE, 0 PARTIAL, 0 NOT EXAMINED**. This records the last
+planned batch, not ticket finalization, a clean result, a coverage refresh or
+completion of the deferred execution/integration checks below.
+
+Reviewed source: Outer `2453358c8cf91d4db3bc24e447ed0859f91216e8`; Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`; both on
+`ticket-AUD-011-full-correctness-review`. Initial Outer changes were the expected
+modified coverage, untracked findings and seven prior AUD-011 scripts; Admin
+was clean. No implementation diff was present. Windows PowerShell, Node
+`v22.16.0`, npm `10.4.0`, installed dependencies and current registry/source
+configuration were used without installation or upgrade. Public defaults to
+testnet/Shadownet; selecting a prod delivery directory does not select Mainnet.
+No remote branch, current deployment, live Webflow document or provider was read.
+
+**Declared boundary:** all asset intake/backfill/manifest entries and their
+catalogue consumers; exported CMS capability with reachability distinguished;
+signer CLI dry-run/verify/execute source through exact readback and retry;
+Public local shells/inline code/first paint/routers and Pages build graph;
+Admin production/dev packaging, local dev/harness helpers and review exporter.
+Expected properties derive from project intent: exact token/target/source
+identity, truthful actionable outcomes, independent page availability, owned
+file writes and recoverable failures. Forward traces start at package/CLI/
+launcher/module/DOM entries. Reverse traces account for thumbnail/manifest/
+archive/review/report writes, CMS request capabilities, signer send, revealed
+page state, build inputs and release/export outputs. Boundary traces follow
+filename → token key → contract manifest → consumer, source/ref → router →
+loader → bundle, source → mirror → production provider, and pinned ABI → RPC
+snapshot → signer/payload → outcome/readback. External effects remain inert.
+
+| Completed scope | Examination and consequential boundaries |
+| --- | --- |
+| **W36 / slice 1: thumbnail intake/backfill/manifest.** Complete `assets/thumbs/scripts/thumbs.mjs`, both `RUN_*.cmd`, Admin `scripts/{gen-thumbs-manifest,thumbs-manifest-lock}.mjs`; `utils/nft.js` thumb lookup and B6 catalogue/HEN consumers. | CWD-independent launcher paths/exit status; empty/multiple/corrupt/narrow/metadata-bearing input; sequential collection admission, numeric key allocation, output/processed collisions, exclusive file creation and archive copy/unlink; manifest snapshot, capability ownership, generator failure, rollback and uncertain cleanup. Shared canonical-directory lock covers imports and standalone generation, asserts ownership across awaits, never reclaims by PID/age; failed writes/rollback retain recovery evidence. Backfill writes review candidates/report only, preserves masters, removes only managed numeric JPEG candidates, rejects ambiguous/non-numeric/undecodable entries. Standalone manifest admits canonical BigInt IDs, deduplicates numeric prefixes, requires all folders/placeholder and escapes URL segments; read-only checker compares actual local URLs with the current model. Intake uses raw digit prefixes and safe Number allocation, so its “identical” parser comment is inaccurate; generator still rejects canonical duplicate keys before successful archival. Arbitrary-large master IDs are supported by the generator but deliberately block intake allocation. B6 metadata cannot change transaction identity; no HEN ID translation is inferred from filenames. |
+| **W37 / slice 2: exported CMS support boundary.** Complete `assets/webflow-cms/webflow-cms.mjs`, package/import/caller search and retirement record. | Only tests import this library in inspected application/tooling source; no registered migration/publisher CLI or application caller was found. Examined authenticated GETs, stable pagination totals/offsets/identity/locale and failure restart; exact staged field patch/item-ID publish requests; asset metadata → presigned bytes → exact hosted hash versus normalized CMS image comparison; timestamps, draft/archive flags, content and unrelated-item comparisons; mutation transport/body/HTTP ambiguity, no automatic mutation retry, redacted atomic writes and callback-owned read-only reconciliation. A successful HTTP response is request evidence, not publication verification. Helpers require a caller to combine site/collection/item/locale/content/publication checks; do not infer a turnkey publishing workflow, recovery journal or remote state from exports. |
+| **W38 / slice 3: Shadownet signer provisioning.** Complete `scripts/shadownet-exchange-pairs.mjs`; B1 artifact/contract and B4 confirmation dependencies reused at the direct seam. | Strict exclusive modes/provider admission; dry-run exits before provider/toolkit/RPC; fixed registry/chain/escrow/collection identities and 44 explicit assignments; safe positive terms, pinned promoted artifact hash and ABI round-trip. Verify uses no signer; chain inspection checks RPC URL/chain plus parameter/storage ABI at one numeric level. Execute imports a trusted local provider, compares signer/admin, requires all intended IDs missing and zero other cardinality, compares live method parameters to the reviewed payload and sends zero tez. Confirmation failure/unknown stops before success; fresh inspection/readback requires all exact six-term records and no extra count. Occupied/partial/different records block replay rather than overwrite. Code-body identity is **not** checked by live ABI admission (controlled altered-code fixture accepted); B1 provenance is local evidence only. Provider behavior, pending-operation ambiguity and retry/reorg limits are explicit in the findings ledger. No actual CLI verify/execute or provider import ran. |
+| **W03 / slice 4: Public delivery/startup.** All four root routers, all environment loaders, six `webflow/` entries, shared first paint and direct boot/reveal consumers. | Exact production host allowlist versus staging fallback, module-relative imports, independent early/app loads and sync/async rejection diagnostics. Normal ESM URL caching and global first-paint/wallet/page boot guards bound repeat initialization; explicitly exported start functions can initiate imports again and are not a retry/recovery UI. DOM-present/late, fonts missing/rejected/stalled, cached/broken/decode-stalled hero, RAF stall and 1300ms fail-open were traced. Shared first paint is wallet-independent; main bundles provide its fallback when an early bundle fails. If neither runtime loads, no module-owned fallback can execute; local artifacts cannot establish live CSS, embedding or recovery. Drops pending regions independently require parameters/countdown/metadata/supply; image and wallet projections have distinct publication owners. B3 observation findings are retained, not re-examined as resolved. |
+| **W04 / slice 4: Home/Utility availability/navigation.** All four local shells' module/anchor registration, common marquee inline script, Utility inline SVG flow and `collection-utility/js/main.js`. | Root-relative Public routes versus external market links, retained wallet anchors, “coming soon” presentation versus supported actions. Home has first paint plus wallet only; Utility image spinners handle cached good/broken and later load/error independently of wallet observation. Missing image/spinner hooks are tolerated; never-settling image loads have no local image timeout. Inline marquee replaces only generated tracks and rebuilds on font-ready/debounced resize; SVG redraw requires exact stage/card/path hooks and responds to resize/orientation/observer without a transaction path. Local shells are dev/harness inputs, not Pages-hosted HTML or proof of current Webflow markup. Responsive visual geometry and actual asset retrieval remain unverified. |
+| **W39 / slice 4: build/delivery/dev/export.** Both package manifests, `.github/workflows/pages.yml`, all loader/first-paint verifiers, Admin mirror guard/prune/isolation, dev/port/source-map/harness/optimization helpers and exporter. | Separate main/prod and staging/staging checkouts/install/builds, generated JSON freshness gate, main-owned permanent routers/prod loaders and staging-owned staging loaders; missing/empty/drifted references fail before upload, maps removed/asserted absent before verification. Verifier compares supplied owner outputs/markers, not source compilation or deployed bytes. Admin build checks thumbs, syncs/guards mirror, builds, prunes authoring chunks then checks forbidden runtime markers; dev starts watchers/service/frontend fail-fast and enables local provider only outside production on loopback hostnames. No Admin deployment definition was found. Local harness strips app scripts, preserves Webflow scripts/inline content and writes separate direct/loader-chain fixtures; refuses unknown legacy cleanup content. Port check diagnoses without killing an owner; image optimizers have fixed local inputs/outputs and no runtime registration. Exporter source traces invoking-repo/branch/path/ignore guards, private index/object store, lock, invalidation of old pairs, Git/copy failure and bounded finally cleanup. Export execution is explicitly deferred. |
+
+### B7 verification and limitations
+
+- Outer `node --test --experimental-test-isolation=none --test-reporter=dot loaders/loader-architecture.test.mjs scripts/public-navigation.test.mjs drops/js/reveal-coordinator.test.mjs scripts/verify-pages-loader-artifacts.test.mjs scripts/parcel-source-map-sources.test.mjs scripts/shadownet-exchange-pairs.test.mjs` — **PASS**, exit 0 (19 native test cases plus the four assertion-driven suites). Synthetic bundle markers are not fresh build outputs.
+- Outer `node assets/webflow-cms/webflow-cms.test.mjs` — **39/39 PASS**, exit 0. All transport/upload/publication requests are injected inert functions.
+- Outer `node assets/thumbs/scripts/thumbs.test.mjs` — **17 PASS, 10 blocked/fail**, exit 1. Every failed case reports `spawn EPERM` at the child-process fixture. Same-process conversion/import/generator/rollback/ownership checks passed. Independent-process generator/import ordering, interrupted-owner execution and crash recovery execution are **DEFERRED by capability**; their source/lock/recovery paths were examined, but cross-process behavior was not functionally established. Diagnosed once; no escalation or redundant retry.
+- Admin `node --test --experimental-test-isolation=none --test-reporter=dot tests/gen-thumbs-manifest.test.mjs` and `npm run check:thumbs` — **PASS**, exit 0. Current read-only manifest check: 9 contracts, 133 references, 67 assets. Freshness/readability does not decode every real image or verify visual identity.
+- Outer `node audits/repro/AUD-011-delivery-tooling-repro.mjs` — **PASS**, repeated after adding negative controls. Actual first-paint and Utility bodies; actual signer `run` body with only local provider import replaced, real encoder/inspection/readback/poller with inert RPC/fetch/send; actual production prune/isolation in disposable directories. Timeout branch uses an injected rejecting poller and reuses B4's deadline evidence; no 120-second live poll or signer ran. Includes ABI-versus-code and thumbnail parser boundary controls.
+- `node --check audits/repro/AUD-011-delivery-tooling-repro.mjs`, focused JS syntax checks, PowerShell AST parse of `admin-ui/scripts/export-ticket-diff.ps1`, focused diff/whitespace checks in both repositories — **PASS**. The exporter was parsed/read, never invoked.
+
+B1 local artifact/provenance/direct pair semantics, B2 immutable source/mirror
+admission and unresolved provider findings, B3/B4 Public state/confirmation,
+and B6 catalogue/CMS-CSV/readiness evidence were reconciled only at these
+consumers. Exported remote CMS tooling is distinct from B6's registered local
+CSV validator. Pages artifact equality does not date GitHub checklist reads or
+establish publication; production static mirroring does not repair B2 defects.
+
+No additional B7 source slice is outstanding. Deferred evidence remains:
+the ten restricted child-process checks; fresh broad builds and emitted-graph
+verification; Windows launcher UI/dev process lifecycle and real browser/layout/
+storage timing; live Webflow/CMS, provider/FA2/chain/signer/finality and deployed
+code/artifact identity. None is credited as performed. Builds, `ticket:diff`,
+final finding/checklist reconciliation and broad final verification remain
+deferred to separately authorized AUD-011 finalization. No clean-result refresh,
+remediation, operational change, remote write, Git integration or deployment.
+Only the two Outer audit records and the new B7 evidence script change in B7;
+Admin remains clean. Branches/HEADs/index entries, earlier evidence, generated
+projections, assets, locks/journals and runtime contracts are preserved.
+
+## AUD-011 — Batch 6 examination (2026-11-25)
+
+**B6 COMPLETE / WITH FINDINGS within source/inert boundaries; AUD-011 PARTIAL.**
+All four prescribed slices, **W21–W29**, are examined. Source remains Outer
+`2453358c8cf91d4db3bc24e447ed0859f91216e8` and Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`, both on
+`ticket-AUD-011-full-correctness-review`. Initial Outer state contained the
+expected modified coverage, untracked findings and six prior reproductions;
+Admin was clean. Windows/Node `v22.16.0`, installed dependencies, current
+testnet/Shadownet registry and immutable SPLINTERED snapshot are assumed.
+Mainnet remains incomplete. Prior evidence is preserved unchanged. E1/E2 and
+B1/B2/B4/B5 are reused only at direct consumers; no new ABI, native contract,
+SDK account-binding, supported-writer or custody investigation was performed.
+
+**Pre-examination boundary and obligations:** complete pair catalogue/pagination/
+availability and manual create/edit/cleanup on both registered surfaces; immutable
+params through normalization, translation, all preview entries and caching,
+with dormant exports assessed separately; every chunk's send/status/partial/
+recovery path; Health circulation and CMS/CSV caches through checklist, GitHub,
+countdown and event consumers. Completion requires exact identities/amounts,
+current-plan equality, stale request ownership, ambiguity, negative paths,
+pagination completeness and truthful actionable state. Stop at real browser,
+wallet transport/signing, external provider truth and native chain/FA2 effects.
+B7 asset generation/tooling/delivery is excluded; metadata consumers alone are
+included. No production fix, broad suite/build or remote operation is authorized.
+
+Expected properties derive from project intent and B1's exact contract/Public
+consumer rules: a current operator plan owns its input and publication; all
+six pair terms remain exact and unambiguous; partial/unavailable observations
+cannot authorize a full plan; a later chunk failure cannot undo earlier applied
+effects or hide them behind old readiness; an in-flight destructive action owns
+its request; source-file equality and local CSV checks do not certify deployment.
+Forward traces followed initialization, input/Auto/Reset/load/submit/edit/delete,
+manual Health/CSV/GitHub actions and background polls. Reverse traces accounted
+for each pair write, cached Send plan, readiness dot/count and confirmed/final
+event. Boundary traces followed canonical → immutable provider → normalized
+native IDs/amounts → cached preview → serialized per-chunk request → attributed
+result → pair classifier/checklist, and external catalogue/holder/CSV/branch
+observations → caches → consumers. No inference from passing historical tests
+replaced that source examination.
+
+| Completed scope / source boundary | Examined consequential branches and evidence |
+| --- | --- |
+| **W21 pair read/catalogue/availability.** `admin-ui/src/tzkt-api.js:114–315`; complete `features/pairs/pairs.data.js`, `setpanel.{controller,validators,view}.js`, `adapters/{collection-catalog,chain-ui}.js`; title/thumb/`utils/{nft,cache,hen-ids}.js` consumers. | Named-route first-page fallback versus failed continuation; complete short page, item/page caps, advancing row IDs, repeated/invalid/malformed/HTTP/body evidence; exact native IDs, active-only lookup and unknown availability. Range filtering and exact selected IDs are distinct from presentation sorting. Local-title picker eligibility and HEN canonical/native conversion do not rely on remote names. Table render generations fence late successes/errors; old cached catalogue survives a failed read but cannot establish successful Health coverage. Availability debounce/pending gates and final duplicate checks fail closed. Manual Set Auto lacks an owner after its network await (**B6-001**, both surfaces); newer Reset/edit can be overwritten. Stalled pair preflight extends **B5-001**. |
+| **W22 manual create.** Complete `pairs.controller.js` submit; `exchange-pairs.js` target/range/locked-side/build/set exports and submit; `escrow-ops.js:33–146,349–420`; complete `pair-compatibility.js`. | Drops targets its captured escrow; Exchange is explicit testnet-only, forbids fallback, fixes ACID COIN #0, validates ranges and accepts exact natural text/positive amount terms. Manual Drops converts picker token IDs to Number, so unsafe numeric IDs are rejected downstream rather than silently serialized; arbitrary large native text remains supported by other exact helper paths. Per-panel pending ownership covers preflight/send/confirmation, independent of other wallet events. Complete current mapping rejects occupied IDs, duplicate proposed IDs/terms, ambiguous existing terms and unreadable rows. Distinct amounts are distinct terms. Direct helper calls capture authority; SDK binding retains E2's limitation. Preflight is not contract-level tuple uniqueness or a snapshot lock. |
+| **W23 manual edit.** Complete `pairs/modal/{modal.context,modal.controller,modal.validators,modal.view.content,modal.view.widgets,modal.view.shell}.js` and facade; both parent callbacks; `updateExchangeTokenPair` and `updateTokenPair`. | Select/custom contracts and token zero, missing stored identities, preserved large token text, positive amount/change baselines, direct-handler validation, duplicate-term guard, submitted target/entrypoint metadata, complete-operation confirmation and captured-parent refresh. Save owns its session across wallet/wait/refresh; dismiss/reopen, stale refresh success/failure and current invalid/no-change/retry paths were traced. Exchange edit applies its locked-side validation even though the generic modal can display other options. Optional pending custom-resolver population can corrupt a newer session in a controlled exported-hook case, but shipped resolver is local-only: **qualified capability limitation, not an active timing finding**. |
+| **W24 cleanup.** `pairs.controller.js:704–748`, complete `pairs.view.table.js`, `escrow-ops.js:322–343,108–146`; B1 direct cleanup semantics reused. | Exact selected string IDs, invalid/unsafe values, empty list, duplicates, current authority/target, rejected/unknown/applied confirmation and refresh/final events. No Exchange cleanup registration. Missing/deleted IDs are contract no-op deletion failures; `applied` is operation evidence, not per-ID event accounting. Actual Delete remains enabled and has no submit owner: two clicks request identical cleanup before first confirmation (**B6-003**). No durable unresolved pair exclusion exists; no native or remote cleanup was performed. |
+| **W25 active immutable plan and dormant exports, separately.** Complete `features/drops/drops.{controller,data,builder,load.service,state,time-cache,ui.sync,public-state,view.panel,view.preview}.js`, input/view signatures and translation audit; provider/writer admissions reused from B2. | Deep-frozen source ownership; initial/Auto/manual/committed-input/Reset/provider-unready/network epochs; no-source/unscheduled/error/empty/resolution failures; named-zone instant caching; canonical exclusion versus native mirror ID, exhausted/malformed/duplicate translation, exact zero/huge text, safe positive quantities/start range/chunk inputs; cached terms versus rebuilt current terms/collection addresses. Late enrichment/overlap/build/status cannot replace newer load ownership. Auto's first-free/aligned window may conservatively conflict rather than search another block; it does not authorize overlaps. Explicit pairs/multi-burn/fallback are exported normalizer capabilities; canonical supported writer requires one enabled burn collection. `loadParams`/`parse` have no registered caller: source-reviewed JSON/CJS/default-export evaluation, file limit and HTTP/type/body/error behavior, including URL reader's lack of HTTP-status check/deadline. No untrusted script or real URL was executed; these exports do not establish a shipped upload UI. |
+| **W26 chunk orchestration/outcomes/recovery.** Complete `drops.send.service.js`, current cached-send validator, public state/view, `escrow-ops.js` pair path and legacy confirmation adapter; complete `drops.status.service.js`. | Before every request: current source/preview/signatures, target/network/indexer/collections, authority, pause and exact full-plan equality. Safe native IDs/amounts retained through sequential chunk slicing; only attributed complete applied evidence advances. No hash, rejected request, unconfirmed/failed result, account/provider/Reset replacement, late receipt and post-send status/checklist continuation examined separately. Original run retains memory receipts even after UI invalidation; obsolete owner cannot finalize a newer send. Catch after earlier application skips readiness retirement/final events (**B6-002**). Normal unconfirmed path stops/locks; success refreshes independent checklist and mapping state. No durable pair journal/resume or reload receipt restoration exists; normal partial status requires manual cleanup/repreview, not an automatic replay of remaining chunks. |
+| **W27 pair/readiness/classifier/checklist/countdown/GitHub.** Complete `drops.{pairs.status,status.service,checklist.controller,countdown.service,view.checklist}.js`; public state/view and shared countdown/time direct consumers (shared producer examination reused from B3). | Six exact terms compared across complete active mapping, including unsafe-text IDs outside numeric alignment/range; duplicates → conflict; no shape → missing; invalid translation/read failure → verification required. Best contiguous alignment intentionally ignores preview start identity because Public trades resolve by unique terms. Independent request/config epochs prevent old evaluations overwriting new; final pair events retire readiness before refetch. Checklist token existence/supply, planned versus remaining quantity, zero/unknown/unsafe balances, pre/standby/live/paused/depleted states; current surface/network/escrow transfer and pause events, provider replacement and visibility refresh. Expiry only enters standby; HTTP storage success and boolean false establish initial live phase, never unpause automatically. Ongoing pause is separate checklist evidence, not continuing countdown certification. GitHub stable parsed equality, staging/main serial reads, force/throttle/in-flight/error/epoch/poll branches examined: unknown stays neutral; source equality is not deployment. Held fetch/body after replacement strands manual Refresh (**B5-001 extension**) while stale writes remain fenced. |
+| **W28 chain/local metadata health/economics.** Complete `health.controller.js`, catalogue and NFT/cache dependencies; `utils/token-econ.js`. | Initial/manual/network entries, single-run ownership, all-collection coverage and any-failure aggregation; complete catalogue pages and later-page/error/malformed/repeated/unsafe evidence. Local-only title/thumb identity and HEN mirror lookup; UI placeholders and metadata cannot alter payload terms. Circulation uses native contract/token/holder attribution, ordered cursor pages, complete short-page evidence/caps, fetch+body deadlines, canonical sink exclusion, exact safe balances/sums and unknown versus zero. Cache network/contract/TTL/in-flight ownership, forced refresh bypass, stale failure/success and immutable comparison-owned snapshot examined. Source-selected real network switching reloads (B5); synthetic consumer events are not proof of an in-page production switch. Indexer honesty/snapshot consistency remain external. |
+| **W29 local CMS CSV/persistence/readiness.** Complete `health.cms.js`, `utils/{parse-csv,cms-store,hen-ids,token-econ}.js`, Health summary and checklist listeners. | Choose/cancel/read error/load/reload/recheck/clear, row versions before queued awaits, list/network replacement and stale FileReader/comparator completions; stored CSV is network/collection scoped. Tolerant parser plus strict active admission covers quotes/columns/headers/BOM, duplicate live identities, archived/draft exclusions, missing titles/tokens, known-empty tables, canonical/native mirror coverage, collection/title normalization, thumbs and editions/ACID comparisons. CANAAN requires explicit positive ACID. Malformed/unknown/partial holder evidence revokes CMS readiness, force checks use fresh single owned economics snapshot; per-label failures propagate to all-required-label checklist. Persistent storage failures do not certify durability; a CSV check is not remote CMS verification. |
+
+Verification on those revisions:
+
+- **668 selected checks PASS**, exit 0: pair sources **252**, Drops previews/status/
+  countdown/checklist **250**, Health/CMS **128**, selected chunk/equality/outcome
+  cases **38**. Exact four Admin invocations are retained in the
+  [B6 findings/evidence ledger](AUD-011-findings.md#b6-rejected-hypotheses-supported-limits-and-verification).
+  Tests ran in process; no full runtime suite, broad build or unchanged blocked
+  command was run. Passing checks establish only their exercised cases.
+- Outer `node audits/repro/AUD-011-admin-orchestration-repro.mjs` — PASS,
+  repeatable. Actual registered Auto handlers, chunk sender and Send view,
+  cleanup table/controller/serializer, both create owners and GitHub checklist
+  click continuation; inert external boundaries and valid/eventual-response
+  controls. The custom modal hook case is explicitly qualified, not promoted.
+- `node --check audits/repro/AUD-011-admin-orchestration-repro.mjs`, focused
+  diff inspection and `git diff --check` in both repositories — PASS.
+
+**Current totals: 40 scopes: 34 COMPLETE (bounded source), 0 PARTIAL,
+6 NOT EXAMINED.** Three new confirmed source findings have provisional P2
+assessments; B5-001 gains B6 read-owner evidence. All twelve earlier independent
+findings and reproductions remain unresolved/preserved: **15 independent
+provisional findings**. No consequential B6 source obligation remains
+unexamined under these boundaries; no capability restriction blocked an inert
+functional check. Wallet approval/transport and actual signer, chain/FA2
+execution/finality, provider snapshot truth, real browser storage/locks/timing,
+live time/GitHub/Webflow/CMS and deployed code remain unverified integrations.
+
+Only Outer `audits/coverage.md`, `audits/AUD-011-findings.md` and new
+`audits/repro/AUD-011-admin-orchestration-repro.mjs` changed during B6. Admin
+remains clean. Both branches/HEADs/indexes, prior evidence, generated projections,
+network/wallet/DOM/event/runtime contracts and operational state are preserved.
+**Remaining B7: W03/W04/W36–W39**, with the original asset launcher/manifest,
+exported CMS capability, signer provisioning and public/Admin delivery/tooling
+slices. B7 was not started. No remediation/checklist change, full-pass
+finalization, clean-result refresh, export, Git integration, deployment,
+transaction or remote write occurred; `ticket:diff` stays deferred until final
+AUD-011 completion.
+
+## AUD-011 — Batch 5 examination (2026-11-25)
+
+**B5 COMPLETE / WITH FINDINGS within source/inert boundaries; AUD-011 PARTIAL.**
+All four prescribed slices, **W13–W20**, are examined. Source remains Outer
+`2453358c8cf91d4db3bc24e447ed0859f91216e8` and Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`, both on
+`ticket-AUD-011-full-correctness-review`. Initial Outer state was the expected
+modified coverage and six untracked prior findings/reproduction files; Admin
+was clean. Node `v22.16.0`, installed Beacon SDK 4.8.1 and the registry's
+testnet/Shadownet targets are the assumptions. Mainnet remains incomplete.
+E1/B1 identities, ABI, direct contract effects and E2's established authority
+seam are reused only at their direct consumers; no historical audit credit,
+new ABI execution or repeated A-intent/B-request investigation is claimed.
+
+**Pre-examination boundary and outstanding obligations:** B5 assigns the
+unexamined Admin wallet/network/surface/indicator branches; both pause instances
+through storage refresh and durable recovery; both treasury inventories/MAX and
+XTZ submissions; FA2 selection/batch sends and shared reconciliation. Completion
+requires the actual registered Drops and Exchange targets, independent owners,
+all consequential error/unknown/late/reload/contention branches and exported
+alternative helpers, without assuming E2 completed the controllers. Stop at SDK
+transport/signing, native chain/FA2 execution, provider truth and real browser
+storage/locks. B6 pair/Drops orchestration/readiness and B7 delivery/tooling are
+excluded, except the immediate event/configuration consumers needed here.
+
+Expected properties derive from project intent: current account/network/target
+owns each action and publication; identities and integer quantities survive
+selection/serialization; unknown inventory is distinct from zero; a hash is not
+application; complete terminal evidence and current journal identity govern
+recovery; one tab's old state cannot erase another's unresolved work. A stalled
+non-wallet read must not permanently own an otherwise recoverable action.
+Forward examination followed startup, permission/disconnect/account callbacks,
+selectors, click/submit, manual/queued refresh and recovery. Reverse examination
+accounted for every pause/withdraw/FA2 request, reservation/settlement, balance/MAX,
+admin/pause indication and submitted/confirmed event. Boundary examination
+followed observed SDK identity → authority → locked reservation/request; raw
+inventory → off-DOM rows/selection → exact Micheline; operation evidence →
+durable ID → readback/status/event; and per-tab memory ↔ shared storage/locks.
+
+| Completed scope / source boundary | Examined consequential branches and evidence |
+| --- | --- |
+| **W13 wallet/authority.** Complete `admin-ui/src/beacon-setup.js`, `utils/wallet.js`; remaining `escrow-ops.js:33–104` consumers, using recorded E2. | Constructor/reuse and version-scoped legacy transport cleanup; missing/malformed/future metadata and storage denial; ID/fallback wiring, DOM-ready/boot ownership, persisted null/valid/wrong-network/error, cleanup success/failure and delayed 100ms display. Permissions may adopt an initially unconnected intent; changed account/read/key/null/network/disconnect retires it, same-key events preserve it and A→B→A cannot revive it. Explicit disconnect invalidates before its await, but its late publication can hide newer B (**B3-001 Admin extension**). SDK operation binding, real transport/follower/reconnect paths and signer outcomes retain E2's qualifications. No operation-binding proof was rerun. |
+| **W14 network/surface.** Complete `src/network.js`, `admin.js` selector/switcher/initializers; `utils/live-cfg.js` at target boundary. | Supported/default/legacy/invalid persisted slot, debug-only override, same-slot no-op, clear capability/failure, persist failure, reload capability/order and selector error restoration. Actual switching is clear → persist → reload; it does **not** emit `network:change`. Synthetic event tests therefore establish defensive invalidation, not the actual reload lifecycle. Both surface instances stay initialized when hidden; switching changes visibility/ARIA and closes the Drops-owned modal, without retargeting a send or cancelling a valid hidden controller. Exchange rejects missing/malformed/legacy fallback targets; default root remains Drops. Mainnet is not enabled. |
+| **W15 indication/read-only status.** Complete `features/admin-indicator.js`, `exchange-status.js`, `utils/poll.js`; `exchange-custody.js` is inert. | Admin poll coalescing, failure/unknown/retry, final verified-wallet comparison, account/context invalidation and late/unload suppression. Successful admin cache is root/Drops scoped, as documented in current ownership notes; B1 source has no admin mutation entrypoint. Global indicator is not Exchange authorization. Exchange status has explicit independent target, native disabled Refresh during a read, no wallet/send, true/false/unknown and read-error/unconfigured presentation. `Read OK` reports a completed request, not schema certification; malformed paused stays Unknown. There is no current source emitter of `network:change`; hypothetical concurrent event-driven status reads are an exported defensive boundary, not a demonstrated current UI race. No periodic Exchange-status freshness promise is inferred. |
+| **W16 both pause instances.** Complete `features/pause.js` and direct pause helper/recovery; `admin.js:50–66`. | Target and publication/context owners; pending from first await, duplicate click, cached/uncached storage, strict boolean validation, admin/nonadmin/disconnected render, account/network/target changes and refreshes around every await. Unknown/error emits null although the local fallback badge is conservatively Paused. E1 Unit/zero-tez payload and B1 admin-only non-idempotent toggle effects reused. Hash/rejection/no-hash/late-hash, complete applied/failed operation, current settlement, final storage success/error/supersession and retry examined. Storage boolean alone never settles an uncertain toggle, and unchanged boolean does not refute complete applied evidence. Final-read stall retains pending even after successful replacement refresh (**B5-001**). Drops emits document/global mirror; Exchange emits panel-local without global mirror. |
+| **W17 both inventory/MAX paths.** Complete treasury `orchestrate.js`, `context.js`, `treasury.config.js`, `lifecycle.js`, `fetchers.js`, `table.render.js`, both controllers' read/refresh branches; `tzkt-api.js` `j/getStorage/getFa2Balances`. | Independent surface/state/promise ownership; storage prerequisite and complete FA2 cursor pages; missing target, empty versus unavailable, exact large textual native IDs/balances and duplicate/malformed/partial/cap failures. Shared reader contract reused from B3, Admin nonzero adapter independently checked. Off-DOM hydration and single current publication, older/newer manual/queued/initial refreshes, metadata failure fallback and stale errors, context departure/return and lifecycle cleanup. Catalogue/adapter token lookup affects labels/images only, never row contract/ID/max; its awaited shallow-enumeration dependency has no deadline. MAX separately invalidates before reading; exact BigInt mutez formatting, known zero, malformed/HTTP/body/wallet failures, final wallet/context and click-time revalidation, stale request/click and node replacement. Legacy Number fetch/formatter exports have no current caller; MAX does not use them. A newer refresh cannot release a transfer awaiting the old state promise (**B5-001**). |
+| **W18 both XTZ withdrawals.** Complete `withdraw.controller.js`, `escrow-ops.js:175–185`, treasury status/recovery consumers. | Full decimal representation, ≤6 fractional places, whitespace trim, one mutez/zero/negative/exponent/fraction/huge text; exact BigInt conversion with no silent rounding. Input validity and safe MAX are independent; submit intentionally relies on on-chain balance/admin authorization, not cached MAX as a spend lease. Captured amount survives edits and awaits; pending/context/authority guards, rejection/missing/late hash, complete terminal result and balance refresh, input clear/status and retry traced. E1 amount payload/B1 stored-admin destination and insufficient-balance atomic rejection reused. Final balance request/body stall holds busy after settled application (**B5-001**). Protocol mutez range, fees, actual payout and external balance freshness are not established by huge-text serializer tests. |
+| **W19 both FA2 transfers and alternatives.** Complete `transfer.controller.js`, `escrow-ops.js:190–269`; row/config/status/event dependencies. | Whole selected batch validated before permissions: trimmed recipient syntax, blank versus entered zero, invalid/fraction/exponent/unsafe quantity, maximum equality/excess; safe input quantities serialize exactly even with large ledger balances. Exact token ID/FA2/recipient and per-row amount captured before wallet awaits; no partial send for one invalid row. One top-level escrow transaction per selected item, shared durable exclusion across transfer/withdraw, complete group results and delayed refreshes. B1 external FA2 rejection/whole-group rollback remains distinct from indexer evidence. Exported single-token/explicit-target and optionless helpers are read as capabilities, with no new registered controller caller; unlike active controllers they do not independently capture authority. Their weaker syntax/zero-spelling/unsafe numeric-input admission is not certified as equivalent UI validation. No successful wrong-identity effect is inferred. |
+| **W20 durable recovery/outcomes.** Complete `pause-recovery.js`, treasury `recovery.js`, `recovery-ui.js`, `recovery-status.js`, `status.js`; `escrow-ops.js:413–513` matcher/poller. | Network/escrow-wide cross-account/surface/action exclusion, per-category locks and independent targets; write/readback before send, unavailable lock/storage, malformed JSON/schema/changed scope, quota/readback failure and emergency receipt memory. Ambiguous rejection/hashless/reload never guesses failure; late hashes persist independently of publication. Exact hash/target/entrypoint/count, consecutive unique external counters and optional reveal, internal identity/status accounting, partial/malformed/contradictory evidence, complete applied versus complete terminal failure, whole fetch/body/retry deadline and cancellation were examined. Record-ID/current-owner checks, simultaneous recovery and send, status lanes/input/resize/storage-event synchronization and recovery-event payloads traced. Emergency uncertain memory can shadow a newer durable ID and let old reconciliation erase it (**B5-002**). Recorded account is not independently matched to chain sender; E2's attribution limit remains. |
+
+Direct cross-component boundary: Drops pause events feed
+`drops.controller.js:711–749`, `drops.view.panel.js:615–629` and checklist
+`:220–231`; transfer submitted/confirmed feed checklist `:627–655` with current
+Drops/network/escrow filters. Exchange panel-local pause and `exchange-treasury`
+events do not alias those document/default contracts. Recovered transfer events
+use saved details only after applied evidence. No rows-updated consumer supplies
+operation success. These immediate event contracts were read; B6's complete
+readiness/supply/plan orchestration was not begun.
+
+Verification on these unchanged runtime revisions:
+
+- Admin: `node --test --experimental-test-isolation=none --test-reporter=dot` with `tests/runtime/{beacon-wallet-boot-race,beacon-wallet-delayed-state,admin-indicator,pause-pending,pause-recovery,treasury-max,treasury-withdraw-input,treasury-quantity,treasury-submit-invalidation,treasury-refresh-order,treasury-pending-operation,treasury-confirmation,treasury-recovery,legacy-confirmation,fa2-balances}.test.mjs` expanded to fifteen explicit paths in PowerShell — **all selected tests PASS, native exit 0**. No broad runtime suite/build. The legacy helper tests exercise the shared outcome dependency, not B6 pair workflow credit.
+- Outer: `node audits/repro/AUD-011-admin-custody-repro.mjs` — **PASS**, including eight held-read cases, Pause/Treasury stale-memory cases with unchanged-persistence controls, four actual two-tab Refresh consumer cases, independent Admin disconnect evidence and network/surface/status controls. `node --check audits/repro/AUD-011-admin-custody-repro.mjs` — **PASS**. Exit 0 asserts the recorded defects, not clean behavior. Current production bodies run through existing inert fixtures; no SDK client, real storage/lock/provider or transaction is used. Harness corrections/limits are recorded in findings.
+- Focused diff inspection, `git status --short`, `git diff --stat` and `git diff --check` in both repositories — **PASS**. Untracked findings/evidence also pass `git diff --no-index --check -- NUL` (exit 1 means content differs from NUL; only checkout line-ending advisories). Both index SHA-256 values and all five prior AUD-011 reproduction SHA-256 values match the starting observations. Reconstructed prior coverage/findings text hashes also match after accounting only for current status/checkpoint updates. Builds, broad final verification and `ticket:diff` exports remain deferred by task instruction.
+
+**Current totals: 40 scopes: 25 COMPLETE (bounded source), 4 PARTIAL,
+11 NOT EXAMINED.** W13–W20's initial PARTIAL/NOT EXAMINED inventory labels are
+superseded by this result; the frozen inventory remains historical evidence.
+Two new confirmed failures (**B5-001/B5-002**, provisional P2) and a B3-001 Admin
+extension bring the independent unresolved total to **twelve**. No consequential
+B5 local-source obligation is left unexamined. No capability restriction blocked
+or deferred an otherwise in-scope functional check. Completion is specifically
+source/inert examination, with the external boundaries below unverified.
+
+Unverified integrations: real wallet account/permission/prompt/transport/follower/
+reconnect scheduling and E2's later SDK-read alternatives; hosted SDK identity;
+browser storage durability/eviction, permission transitions, cross-tab event
+delivery and Web Locks scheduling; actual HTTP/indexer accuracy and consistency,
+native protocol/FA2 effects/finality and current deployed code/storage/custody.
+The readback-failure schedule assumes setItem succeeds then getItem throws once;
+the fixture establishes that source response, not its browser incidence. Held
+reads are controlled unresolved promises with source-proven absent deadlines,
+not a measured real-provider timeout. Wallet request waits are not treated as
+cancellable non-wallet reads. No live observations or external operations ran.
+
+Only Outer audit records and new
+`audits/repro/AUD-011-admin-custody-repro.mjs` change in B5; Admin runtime and
+tests remain unchanged. Prior evidence, both HEADs/branches/indexes, generated
+configuration and operational state are preserved. **B6–B7 remain outstanding**
+at the original boundaries. No fixes, remediation-checklist change, full-pass
+finalization, clean-result refresh, export, integration or deployment occurred.
+
+## AUD-011 — Batch 4 examination (2026-11-25)
+
+**B4 COMPLETE / WITH FINDINGS within source/inert boundaries; AUD-011 PARTIAL.**
+All three planned slices, **W09/W11/W12**, are examined. Reviewed unchanged Outer
+`2453358c8cf91d4db3bc24e447ed0859f91216e8` and Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`, both on
+`ticket-AUD-011-full-correctness-review`. Initial Outer changes were the expected
+coverage edit and five untracked prior findings/reproduction files; Admin was
+clean. Node `v22.16.0`, installed Beacon SDK 4.8.1, fixed Public
+testnet/Shadownet configuration and current source snapshots are the assumptions.
+No historical examination credit, ABI rerun or repeated Admin binding proof.
+
+**Pre-examination boundary and obligations:** the seven-batch plan assigns B4
+both handler→unique six-term pair/operator→approval/trade construction/final
+authority paths; durable reservation/Web Locks/send rejection/no-hash/late-hash;
+and complete-operation confirmation/reload/status retry/refreshed holdings.
+B1 contract/identity and B3 observation/cart contracts are dependency facts, not
+reopened batches. Follow their direct consumers, including producer/public term
+comparison, through SDK dispatch and retained recovery. Stop at live signing,
+chain finality, external FA2/indexer truth and browser storage/lock scheduling.
+Admin producer comparison is a narrow dependency; B5/B6 controller examination
+and B7 delivery/provisioning remain outside this batch.
+
+Expected properties are independently grounded in project intent: current wallet
+and network must authorize the actual request; token IDs, amounts, owner,
+operator, escrow and recipient must retain exact meaning; partial/uncertain
+evidence must not become success or permission to repeat; applied state and
+fresh holdings are separate; obsolete continuations must not restore actionable
+balances. Forward traversal followed click, status/balance retry, wallet restore
+and late response entries. Reverse traversal accounted for both requestOperation
+sites, every journal write/delete, success publication and restored holdings.
+Boundary traversal followed cart→six terms→Micheline→SDK source→contract checks,
+source/mirror→Admin pair terms→Public lookup, and hash/status/level→attributed
+complete holdings→journal cleanup. Neither Utility nor the legacy private
+`prepareUpdateOperators` helper provides another reachable send. The CLI's
+nonreceipt confirmation matcher remains W38/B7; its shared helper branch was read.
+
+| Completed slice / examined source paths | Consequential branches and evidence |
+| --- | --- |
+| **W09 Drops construction/authority.** `drops/js/events.js:727–817,1015–1421`, selected-input helpers and action registration/gates; `events-config.js` at configured identity boundary. Complete shared pair/operator/build helpers and `token-pair-terms.js`. | Unconfigured, disconnected, pending/changed/reconnected wallet, duplicate click, no selection, changed ID/contract/balance/amount, unsafe/insufficient quantity, pause/phase/inventory changes around every preflight await and the final lock/account await. All six pair terms, exact zero/large native IDs and pair ID, uniqueness over all pages, absent/inactive/mismatched/ambiguous/malformed/error/cap responses; exact operator owner/token/escrow with missing/error fallback. Approval precedes a zero-tez trade with configured multi-unit burn/redeem and user recipient. Final application guards work for observed invalidation; they do not bind the SDK account (**E2 Public extension**). Unbounded operator/pair reads hold the busy guard (**B4-001**). |
+| **W11 Exchange construction/authority.** `exchange/js/exchange.js:100–171,400–455,760–805,1135–1548,1633–1639`; config at target/redeem boundary. Same shared helpers. | Initial/final verified account, account/cart/ownership changes and reconnect epochs, quantity limits before allocation and final send, duplicate identities sharing balances, 20-per-identity/50-total units, exact per-unit reward multiplication/sums. One burn entry per selected unit, grouped by burn FA2 into separate escrow calls; every cart row must resolve before any wallet send. Actual cart fixes redeem token at #0; the large alternate redeem-ID pair fixture is serializer capability evidence, not a registered alternate UI. Both preflight stall and SDK discrepancy are independently observed here. B3's malformed edition quote remains unresolved; exact pair lookup can reject it but cannot repair its quotation. |
+| **Direct B1/B2 and Admin comparison, without B6 credit.** Contract `initiate_trade:368–494`; shared exact-term key; Admin `drops.data.js:456–462`, `drops.builder.js:17–88`, `drops.send.service.js:199–230`, `pairs/exchange-pairs.js:268–310`, `pair-compatibility.js`; registry/resolvers and existing E1. | Drops producer preserves numeric burn/redeem amounts, native redeem ID and independently resolved collection addresses; Public matches those six terms. Exchange locks redeem contract/ID #0 but permits positive operator-supplied amounts; Public selects only unit-burn/quoted-reward tuples. A supported Admin pair can intentionally be unusable by Public; arbitrary pair management is not proof of Public compatibility. Complete-term equality/uniqueness is shared. Contract checks current pair terms and sender==user_wallet for every entry, then grouped FA2 calls; mapping changes, insufficient inventory/balance or external rejection fail through B1's whole-operation semantics. Approvals grant the escrow persistent operator permission; contract sender checks still constrain Public trades. E1's payload decode is reused, not rerun; native atomicity/external FA2 honesty remain unverified integrations. |
+| **W12 submission durability/uncertainty.** Complete `shared/public-trade-ops.js:12–206`; both handler lock/reservation/rejection/hash catches and both restore/status-retry consumers. | Immutable copied scope/intent, write-before-wallet, global submission lock with ifAvailable, unavailable locking/storage, malformed/oversized journal, 32 receipts/10000 storage keys, invalid new intent, read/quota/remove failures and emergency hash retention. Definite matching extension/P2P abort versus generic/WalletConnect/reset ambiguity; primitive provenance captured before await; complete matching operation response versus loose hash hints; returned alias, missing/invalid hash, interrupted request, late hash after account invalidation, reload and repeat prevention. In-flight guards release on settled errors; unresolved records never expire or evict. No-hash history inspection does not itself supply evidence or unlock; no automatic or UI hash-import recovery is inferred. |
+| **W12 confirmation/status recovery.** Complete shared `pollForConfirmation`/confirmation matcher/status extraction and store `reconcile`; Drops/Exchange poll wrappers and retry handlers. | All recorded top-level trade calls require exact hash/sender/escrow/entrypoint, distinct safe indexer IDs and consistent terminal outcomes. Applied approvals/unrelated calls, partial/duplicate/malformed/wrong-scope/contradictory rows cannot confirm a receipt. Failed/backtracked/skipped trade group releases only unconfirmed records; previously applied records survive contradictory retries. Whole deadline bounds fetch, JSON, HTTP-text and retry delay, with abort/late-evidence fencing. Per-record cross-tab reconciliation locks, in-page coalescing, queued stale attempts, changed/removed record and post-read persistence failures were traced. Missing/inconsistent level leaves applied holdings blocked and can recover later. Existing fixture poll callbacks that return undefined are stubs; production poll returns only attributed applied evidence, so those fixture successes alone are not confirmation proof. |
+| **W12 post-operation holdings.** Shared `pollForNFTUpdate`, both freshness predicates; complete `shared/tzkt-fa2-balances.js` as direct attribution dependency; Drops `refreshConnectedState`, `updateTokensWithWalletData`, `refreshDropsWallet`, retry/confirmation-map consumers; Exchange render/refresh/retry/confirmed-map consumers. | Complete reader provenance, same account/indexer/escrow/network, unchanged array projection, all exact traded identities, explicit zero, positive safe operation/ledger levels, incoming transfers and duplicate selections. Absence, stale apparent reduction/zero, wrong/missing owner, unsupported entrypoint, partial pages and copied/mutated arrays retain applied records. Total polling budget is checked between awaited complete reads (each page has its own 15s deadline), not a strict total reader deadline; timeout/refetch output is still independently gated by consumers. Failure/repeated retry, reconnect/reload, A→B→A, confirmation after reconnect, older standby/trade/retry versus newer producer and late success/error cannot restore stale actionable balances. Success/status and balance freshness remain distinct. |
+
+Verification on those revisions:
+
+- `node --test --experimental-vm-modules --experimental-test-isolation=none shared/public-trade-pairs.test.mjs shared/public-trade-outcomes.test.mjs shared/public-trade-freshness.test.mjs shared/public-confirmation-deadline.test.mjs drops/js/trade-lifecycle.test.mjs exchange/js/exchange-wallet.test.mjs` — **238/238 PASS**, exit 0.
+- `node --test --experimental-vm-modules --experimental-test-isolation=none --test-name-pattern='(AUD-008-001|EA-XYZ-P3-T013|Wallet change during confirmed|Confirmed trade NFT)' drops/js/wallet-rendering.test.mjs` — **22/22 selected PASS**, exit 0, including actual Drops publication and retained-recovery consumers.
+- `node --experimental-vm-modules audits/repro/AUD-011-public-operations-repro.mjs` — PASS, repeatable: **12 preflight stalls** (both pages × operator/pair × fetch/JSON/error-text) and **two Public SDK account discrepancies**, with eventual-response, unchanged-account and event-first controls. Actual handlers, helpers, Public verifier and installed native getter/setter/request/permission/serialization/peer/emitter; inert storage/transport, no SDK client. Final harness corrections and bounds are in the findings ledger. Exit 0 asserts the defects, not clean behavior.
+- `node --check audits/repro/AUD-011-public-operations-repro.mjs` and final diff/whitespace/Git checks — PASS. Tests run in-process without escalation; Node experimental diagnostics/PowerShell stderr wrappers do not change the captured native exit. No environmental restriction was retried.
+
+**Current totals: 40 scopes: 17 COMPLETE (bounded source), 9 PARTIAL,
+14 NOT EXAMINED.** New **B4-001** is a confirmed availability failure with
+provisional P2 impact. The recovered E2 finding gains independent Public request
+and journal/reconciliation evidence, not a duplicate independent finding. All
+nine prior provisional findings/evidence remain; ten independent findings now
+accumulate. No consequential B4 source obligation remains unexamined. External
+wallet honesty/hash fidelity, actual transport/peer/signing, provider accuracy,
+native FA2/protocol execution/finality, browser storage durability/Web Locks,
+current hosted SDK/code and deployed identities remain unverified integrations.
+The confirmation boundary trusts the identified operation response and indexer's
+hash/source/status/level; it is not an independent chain or wallet attestation.
+
+Only Outer `audits/coverage.md`, `audits/AUD-011-findings.md` and new
+`audits/repro/AUD-011-public-operations-repro.mjs` changed during B4; Admin is
+unchanged. Branches, HEADs, indexes, prior evidence and operational state are
+preserved. Task-created ignored logs were removed by verified exact workspace
+paths. **B5–B7 remain outstanding at the original plan boundaries.** No B5 work,
+fixes, checklist change, full-pass finalization, clean refresh, broad build,
+exports, external operation, transaction or Git integration occurred.
+
+## AUD-011 — Batch 3 examination (2026-11-25)
+
+**B3 COMPLETE / WITH FINDINGS within source/inert boundaries; AUD-011 PARTIAL.**
+All four planned slices, **W01/W05–W08/W10**, were examined through the final
+observation/cart/action-state inputs consumed by Public send handlers. Outer
+`2453358c8cf91d4db3bc24e447ed0859f91216e8` and Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`, both
+`ticket-AUD-011-full-correctness-review`, are unchanged. Initial Outer state was
+the modified coverage and four untracked prior findings/reproduction files;
+Admin was clean. Those files and all B1/B2/E1/E2 evidence are preserved. Node
+`v22.16.0`, installed dependencies, the Public `testnet`/Shadownet slot and the
+current canonical configuration are the assumptions. Mainnet remains disabled.
+No historical examination credit was inherited.
+
+Expected properties: verified current wallet/network ownership; complete reads
+before absence becomes zero; exact native identities and safe whole quantities;
+canonical exclusions applied before native projection; independent metadata,
+image, supply and time ownership; truthful current availability through failure,
+suspension and recovery. Forward examination followed startup, SDK/document
+events, connect/disconnect, balances/retry, checkbox/dropdown/cart actions,
+countdown/polling and lifecycle callbacks. Reverse examination started at every
+connected/owned/eligible/supply/LIVE/action publication and cart financial field.
+Boundary examination followed SDK→shared state→each page, complete TzKT pages,
+canonical CMS→mirror→native row, canonical params→preview/supply, trusted
+UTC→calendar→pause evidence, and editions→per-unit reward→aggregate cart.
+
+| Completed slice / examined source paths | Consequential obligations / evidence |
+| --- | --- |
+| **W01 shared wallet.** Complete `shared/beacon-setup.js`, `shared/tzkt-fa2-balances.js`; relevant logger/network configuration contracts; both page wallet consumers below. Direct dependency only: installed Beacon 4.8.1 `DAppClient.{getActiveAccount,setActiveAccount,clearActiveAccount}` and `BeaconEventHandler.emit`. | Client reuse/legacy migration/storage denial, constructor network, boot timing/binding, permissions deduplication/rejection, explicit disconnect, valid/null/mismatched account events, clearing failures and generations around every account await, shared NFT promise and duplicate-address publications. Complete cursor pagination: exact nats, safe-number admission, zero/empty, multi-page/cap/order/duplicate/HTTP/JSON/request/body-timeout failures, no partial publication. Delayed explicit disconnect can overwrite a newer valid account (**B3-001**). Native SDK lifecycle methods verify the schedule; no Admin account-binding or ABI proof was repeated. |
+| **W05/W06 Drops configuration, holdings and cart.** Complete `drops/js/events.js` parameter gate/details, CMS capture/stamping/cloning, balance/eligibility/selection/cart render, wallet synchronization/refresh/retry and refresh producers; complete `token-rendering.js`, `reveal-coordinator.js`; `events-config.js`, `shared/public-drop-compatibility.js` at consumer admission. Canonical params and B1/B2 identity contracts are dependencies. | Scheduled/unscheduled/inactive and unavailable config; malformed dates/amounts, unsupported combinations and distinct FA2s; immutable detached canonical templates versus wallet rows; enabled collection, canonical exclusion and exact native ID (including zero and large text), missing/ambiguous mirror and duplicate CMS handling. Exact per-token balances/aggregate overflow, below/exact burn, absent/zero/failed reads, single checkbox, deselection/reselection/reset, disconnected preview versus connected eligibility. Pending boot, A→B/null/reconnect, late success/error, same-address duplicate notifications, request epochs and repeated retry retire obsolete quantities. Retained-trade freshness is followed only as a publication/invalidation dependency; journal/send/confirmation semantics remain B4. |
+| **W08 redeem preview/inventory.** Complete `events.js` metadata lookup/inverse mirror, independent image/supply initialization and commits, supply reader/display/start/stop/reconciliation, and inventory action/flame gates. | Canonical title/image resolution preserves exact native redeem ID; missing row/image/error use explicit fallback, while a stalled image does not block metadata/supply authority. Initial barrier/error releases, independent supply versus image, deduplicated nonoverlapping polls/restart, complete missing token→zero, malformed/unsafe balance→unknown, zero/positive-insufficient/sufficient configured redeem quantity, later failure/recovery, visibility and phase changes were examined. Verified zero intentionally stops replenishment polling; it is not fresh evidence of future inventory. In-flight reads are not cancelled on hiding; reentry shares them. Provider/chain freshness is not independently established. |
+| **W07 time and continuing availability.** Complete `shared/drop-time.js`, `shared/drop-countdown.js` and `events.js` countdown owner, pause reader/loop, retry, pagehide/BFCache and visibility consumers; final button/flame/pill state. | Calendar/leap/US seasonal-zone round trips, noon/midnight, invalid times/gaps/folds and viewer-zone independence; UTC payload/HTTP/cache/RTT/uncertainty, age/drift/jump/suspension, cancellation/generations, retry/offline/resume and one certain expiry. Manual unpause remains distinct from expiry. Pause HTTP/boolean/body deadline, overdue response, failure/retry, holdings await→fresh pause reread, repeated pause/unpause, current wallet/request guards and owner replacement/pagehide/BFCache were traced. Continuing LIVE loses the countdown's visibility/freshness hooks at expiry (**B3-002**). Real ellipsis also restores old mobile text for legitimate `STANDBY…`; recorded as display evidence, not an authority failure. |
+| **W10 Exchange holdings/economics/cart.** Complete `exchange/js/exchange.js` non-submission paths: startup delay/binding, CMS stamping, shared and independent reads, wallet/pane publication, retry/generations, edition helper, quantity map/dropdowns, cart extraction/render/totals, clear/remove/tab/global hooks and bottom-action observer. `exchange-config.js` at identity boundary. | Exact contract/token IDs, two panes/duplicate rows, missing/zero/unsafe/malformed balances, stale A/B/reconnect/paged results, verified per-dropdown quantities independent of editions, 20-per-identity/50-total limits and safe reward multiplication/sums. Empty/invalid selections retire the displayed cart; hidden tabs remain included, clear/remove recalculate, legacy receive cannot supply authority. Whole-invalid editions reject but numeric prefixes become confident reward terms (**B3-003**). Finite valid reward controls and malformed selections were challenged at final `getBurnCart()`/total outputs; operation lookup/construction/submission remains B4. |
+
+Focused verification (no broad suite/build or exports):
+
+- `node --test --experimental-vm-modules --experimental-test-isolation=none shared/beacon-setup.test.mjs shared/fa2-balances.test.mjs shared/drop-time.test.mjs shared/drop-countdown.test.mjs drops/js/token-rendering.test.mjs drops/js/reveal-coordinator.test.mjs drops/js/countdown.test.mjs drops/js/countdown-lifecycle.test.mjs` — **118/118 PASS**, native exit 0. Includes existing top-level fixture assertions; not a live rendering/SDK/provider claim.
+- Selected current Drops/Exchange wallet/quantity tests — **27/27 PASS**, native exit 0; exact invocation in the [B3 evidence ledger](AUD-011-findings.md#b3-verification-and-limits). These test names were selected for observation, quantity and invalidation seams; no B4 completion credit follows from handler controls they also exercise.
+- `node --experimental-vm-modules audits/repro/AUD-011-public-observations-repro.mjs` — PASS observing **three source failures** plus the mobile display discrepancy, with unchanged-authority, valid-input, rejection and recovery controls. Current production functions and existing inert fixtures; installed SDK lifecycle methods only, deferred storage, suspended timers and CMS text controlled. No real SDK client, local service, live transport or transaction was started.
+- Tests ran in-process without child spawning and needed no escalation. PowerShell wraps Node experimental warnings as stderr `NativeCommandError` records; the captured TAP and explicit `$LASTEXITCODE` are both successful. No unchanged sandbox-blocked B2 command was retried. Harness development corrected a missing inert SDK delegate and a cross-realm assertion before the successful final runs; neither was treated as a production defect.
+
+Current totals: **40 scopes: 14 COMPLETE (bounded source), 11 PARTIAL,
+15 NOT EXAMINED.** The three B3 findings have provisional impact assessments and
+remain unresolved, as do B2's five findings and E2. No consequential B3 source
+obligation remains unexamined. External/live wallet transport, actual browser
+suspension/task ordering, CMS payloads, RPC/indexer accuracy/snapshot consistency,
+time-provider correctness and deployed identities remain unverified integrations.
+Ordinary polling is observational, not a reservation or atomic chain snapshot;
+balances can change externally between observations. B3 does not establish
+operation construction, signing, confirmation or post-operation correctness.
+
+**Remaining: Batches 4–7 at their original boundaries.** First-paint/navigation
+and delivery remain B7; Admin lifecycle and downstream orchestration remain B5/B6.
+No remediation, compact-checklist edit, full-pass finalization or clean-result
+refresh occurred. Changed files for this batch are only Outer
+`audits/coverage.md`, `audits/AUD-011-findings.md` and the new Public reproduction;
+Admin is unchanged. Final syntax/repeatability, focused diff/whitespace and Git
+state checks are recorded with the findings. Runtime/config/generated files,
+operational state, branches, HEADs and indexes are preserved. No ticket exports.
+
+## AUD-011 — Batch 2 examination (2026-11-25)
+
+**B2 COMPLETE / WITH FINDINGS within source and disposable-fixture boundaries;
+AUD-011 PARTIAL.** Examined all three B2 slices, W30–W32, through file and committed
+snapshot publication. Outer `2453358c8cf91d4db3bc24e447ed0859f91216e8` and Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`, both
+`ticket-AUD-011-full-correctness-review`, remained unchanged. Initial Outer changes
+were the prior modified coverage and recovered untracked findings/ABI/SDK evidence;
+Admin was clean. Those prior edits/evidence are preserved. Node `v22.16.0`, local
+NTFS, current installed dependencies, selected Public testnet/Shadownet and the B1
+identity contracts are the assumptions; no historical audit supplies examination
+credit. [B2 findings and evidence](AUD-011-findings.md#batch-2-examination--2026-11-25)
+supersede W30–W32's initial NOT EXAMINED labels in the retained inventory.
+
+Expected properties: one canonical source; exact network/token and amount meaning
+through authoring; preview/source/candidate binding at mutation; serialization of
+supported writers; archive before reset; exact rollback or preserved fail-closed
+recovery; snapshots bound to their source version; stale work cannot restore
+authority; service/provider/control readiness must reflect current observations.
+Forward traversal followed UI, HTTP, CLI and startup/watch actions; reverse
+traversal followed all replacements, archive/journal writes and provider
+publications; boundary traversal compared form/title namespaces, shared schema,
+fixed paths, hashes, mirrors and consumer invalidation.
+
+| Completed slice / examined paths | Consequential obligations and evidence |
+| --- | --- |
+| **W30 local registration/session.** Admin `src/admin.js:233–249`; complete `src/features/drops/authoring/{index,authoring.controller,authoring.client,authoring.state,authoring.view,authoring.form,authoring.tokens,authoring.preview}.js` and relevant visibility/disabled CSS; `titles.manifest.js`, `titles/hen.json` at the selection boundary. | CREATE/EDIT/DEACTIVATE, preserved disabled rows/sentinels, canonical exclusion strings versus native redeem IDs, numeric/date/time parsing, validation/preview/acknowledgement, changes during every request, duplicate events, close/reopen, stale success/failure, apply uncertainty, startup/health retry and deadlines through response decoding. Corrected **B2-001**: the selector offers ineligible HEN redemption and shared validation accepts it; the canonical/native ID mismatch remains evidence on that invalid path, not a supported feature; BUSY/reconciliation recovery leaves controls disabled (**B2-003**). Existing 80 focused Admin checks plus actual-form/real-writer and scheduled-health reproductions. No broad rendering or production-bundle claim. |
+| **W30/W31 loopback service.** Complete `scripts/drop-params-authoring-service.mjs`, `shared/drop-params/drop-params-authoring-service.mjs`; Admin client/provider above. | Fixed loopback bind and routes, Host/Origin/CORS, JSON/content-type/body limit, per-process nonce, restart/reuse/foreign-port behavior; read-only validate/preview; operation admission, exact source/candidate/plan binding, single-use/expiry, writer errors, rollback/reconciliation reports and late/unavailable replies. A separate live local PID's lock is classified `active` but not busy (**B2-005**); unlocked read overlap misbinds source version (**B2-004**). Existing mocked writer-state/same-PID contention tests do not cover those schedules. HTTP tests use disposable local listeners, never the operational listener. |
+| **W31 schema and mutation entries.** Complete `scripts/drop-params-transaction.mjs`, `shared/drop-params/drop-params-authoring.mjs`, `drop-params-transaction.mjs`; `shared/public-drop-compatibility.js` and `shared/drop-time.js` as direct validation dependencies. | Direct CLI/service converge on fixed-path locked writer; object/operation/path/ID/version validation, exact recursive keys, active/inactive/unscheduled domain, network capability, distinct contracts, enabled-burn cardinality, duplicates, zero/negative/unsafe amounts, exact zero/large token-ID text, invalid calendar/DST gap/fold, deterministic source/JSON and hashes. CREATE/EDIT admission, DEACTIVATE active archive versus inactive no-op; same-plan completion replay and conflicting ID/plan rejection. Canonical unscheduled authored content is supported but rejected by both Admin provider modes (**B2-002**). Collection membership/distinct-contract checks and shared compatibility still admit HEN redeem despite its burn-only role (**B2-001**); direct CLI/service admission shares this gap. Raw source is trusted local executable code, not a remote input parser. |
+| **W31 archive, failure and recovery.** Complete `drop-params-archive.mjs`, `drop-params-recovery.mjs`, remaining transaction flow. | Exclusive immutable archive publication/read-back/collision/reuse; staging and each replacement/final-verification failure; journal before effects; exact base/target ownership and all-base/all-target/mixed recovery, missing/divergent files, malformed/unreadable journals, failed/interrupted rollback/reconciliation and retained evidence. Pending blocks READY/projection/service mutation; read-only status stays available. Direct locked writer retry may reconcile pending before retry; explicit reconcile also handles reconciliation-required. Terminal records permit projection; archives remain historical. Process interruption differs from power-loss durability. Disposable tests exercise interruptions, preservation, supported resolution and retries; real journals/locks/archives never changed. |
+| **W31 lock/concurrency.** Complete claim inspection/publication/acquisition/release in `drop-params-projector.mjs`, existing lock fixtures. | Complete private staging→exclusive hard-link claims; choosing/waiting/owned, ticket/tie order, competing acquisitions and reclaimers, live/dead PID, delayed publication, invalid grace, cancellation, timeouts, foreign replacement/ownership loss and cleanup. Supported writer/CLI/projector contend through one lock; released async scopes cannot reuse ownership. Cross-process busy reporting fails above, but underlying exclusion/CAS still holds. Unique UUIDs, coherent one-host filesystem/PID namespace and supported lock protocol are assumptions; mixed versions/network volumes/external claim removal are excluded. |
+| **W32 propagation and publication.** Complete `shared/drop-params/{index.js,package.json,gen-drop-params-json.mjs,watch-drop-params-json.mjs,drop-params-projector.mjs}`; canonical source/JSON and Admin mirror inspected as inputs; Admin `src/features/drops/drop-params.provider.js`, complete `authoring/drop-params.provider.dev.js`, `scripts/build-guard-drop-params-mirror.mjs`; relevant package sync/watch/build entries. | Source cache busting, deterministic LF output, unchanged-byte no-op, atomic per-file replacement, recovery gate under lock, watch debounce/epochs/in-flight draining/rapid saves, one-shot failures and missing/invalid outputs. Production immutable static mirror versus service-only development; refresh constraints/generations/deduplication, guarded post-apply version/operation, unknown/offline/drift/blocked states retire params, recovery/unchanged publications. Weak build guard only parses JSON; schema/provider admission remains separate. **B2-002/B2-004** qualify acceptance/version truth. Exported low-level option/path helpers were traced to all current callers; they are not extra registered HTTP or CLI capabilities. |
+| **W32 consumer stop boundary.** Admin `drops.controller.js:523–568,790–834`, `drops.time-cache.js`, `drops.load.service.js:117–143`, `drops.checklist.controller.js:870–887`; identity dependency only: `drops.data.js:294–295,456–462`, `drops.builder.js:77–80`, Public `drops/js/events.js:726–736,2211–2226`, B1 registry HEN mirror. | Provider subscription initializes once, replacement/non-READY bumps status/checklist/request epochs, retires params/norm/readiness, clears cached intent, disables Send and stops loops before preview reentry. Same source suppresses publications, exposing B2-004. Configured native redeem ID is preserved downstream; this explains the B2-001 serialization observation but does not establish HEN redeem eligibility or a required translation fix. This is boundary tracing only: full normalize/translation/load/send/checklist semantics remain B6; Public observations remain B3; production delivery/isolation remains B7. |
+
+Focused verification (no build, broad application suite or exports):
+
+- `node --test --experimental-test-isolation=none shared/drop-params/drop-params-projection.test.mjs shared/drop-params/drop-params-lock.test.mjs` — initial sandbox run: **101/107 PASS**, six process-dependent failures (`spawn EPERM` and dependent claim waits). No production defect was inferred from them.
+- Same command with `--test-name-pattern='^(real child owner|AUD-004-003: an interrupted partial apply|clear and rolled-back recovery|writer/projector contention|AUD-005-001 supported service|existing authoring, writer, service)'` — permitted rerun: **6/6 PASS**, native exit 0; disposable wrapper also reports **54/54** schema/writer/service and **1/1** watcher checks PASS. No broad suite was repeated.
+- From Admin: `node --test --experimental-test-isolation=none tests/runtime/drop-params-authoring.test.mjs tests/runtime/drop-params-provider.test.mjs tests/runtime/authoring-session.test.mjs tests/runtime/authoring-response-timeout.test.mjs` — **80/80 PASS**. Initial PowerShell combined redirection reported exit 1 for Node's experimental warning despite passing TAP; rerun with separate stderr and explicit native exit confirmed **exit 0**, 80/80. These mocks do not certify all canonical shapes, cross-PID busy state or every recovery transition.
+- `node audits/repro/AUD-011-config-propagation-repro.mjs` — PASS observing the five bounded failures and active/inactive, healthy/recovered, fresh-poll and stale-CAS controls. Real form/provider/controller/service/writer code; reused inert DOM and disposable copied filesystem; only read timing and external boundaries controlled. Assertions describe defects, not passing remediation tests. Final repeatability and diff/state checks are recorded with the findings.
+
+Current totals: **40 scopes: 8 COMPLETE (bounded source: B1's five plus W30–W32),
+11 PARTIAL, 21 NOT EXAMINED.** B2 has five unresolved source findings; existing E2
+SDK and E1 ABI evidence remain unchanged and were not rerun. No consequential B2
+source obligation remains unexamined. Live browser/transport/filesystem scheduling,
+power-loss durability, hosted publication and downstream execution remain
+unverified integrations. The known unsupported independent-editor race is
+preserved, not reclassified as fixed; B2-004 uses a supported locked writer.
+Batches **3–7 remain outstanding exactly at their recorded boundaries**. No B3
+examination, fixes, remediation-checklist change, final clean refresh or AUD-011
+finalization occurred. Runtime/configuration/operational files, branches, HEADs
+and indexes were preserved; only Outer audit records and the new reproduction
+are intended changes. No ticket exports, commits, integration or deployment.
+
+## AUD-011 — Batch 1 examination (2026-11-25)
+
+**B1 COMPLETE within source/inert boundaries; AUD-011 PARTIAL.** Reviewed unchanged
+Outer `2453358c8cf91d4db3bc24e447ed0859f91216e8` and Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`, both on
+`ticket-AUD-011-full-correctness-review`. The expected recovered Outer files and
+prior coverage edits were preserved; Admin remains unmodified. The
+[Batch 1 evidence ledger](AUD-011-findings.md#batch-1-examination--2026-11-25)
+records forward/reverse/boundary examination, negative paths and actual checks.
+
+| Completed bounded scope | Examined effects / boundary |
+| --- | --- |
+| W02 identity | Registry, Public network/config, Admin network/live-cfg: actual target agreement, strict/fallback/Mainnet admission, current exact collection/mirror/range identities. Persisted-network transition lifecycle remains B5. |
+| W33 direct trade | Every trade's sender and six terms, exact burn/redeem recipients and quantities, grouping/repetition, first/later invalid items, shortage/operator/interface/rejection and protocol rollback assumptions. External FA2/chain execution stops explicitly. |
+| W34 direct privileged entries | Admin authority, set/update/cleanup/count invariants, tuple versus ID uniqueness, pause toggle, exact XTZ payout and token rescue, events/no-ops/errors and repeated calls. Client submission/recovery remains B5/B6. |
+| W35 funding | Positive/zero default, attached tez, unsolicited FA2 ingress, custody-versus-supply/sink meaning and inventory consumer identity boundaries. Full inventory/readiness publication remains B3/B5/B6. |
+| W40 provenance | Current source/snapshot/mechanical fixture, exact manifest/release/archive identities, compiled event types, distinct historical artifact and historical deployment records, current artifact consumer obligations. Native compilation and present deployment remain unverified. |
+
+Current reconciled totals: **40 scopes: 5 COMPLETE (bounded source), 11 PARTIAL,
+24 NOT EXAMINED**. The initial inventory below remains the planning snapshot,
+not current completion credit. No new material finding or unresolved source-level
+hypothesis was established in B1. Direct admin duplicate terms, permanent custody
+authority, sink control and honest FA2 behavior remain explicit trust boundaries;
+the previously validated SDK account-binding defect remains unresolved. Existing
+E1/E2 evidence was preserved and not rerun. No historical audit examination or
+native execution credit was inherited.
+
+Checks: ignored `audits/work/AUD-011-batch1-checks.mjs` PASS (31 exact checkout/HEAD
+manifest identities, fixture/promotion/archive correspondence, compiled event
+schema and mutation control, actual registry/resolver/preflight controls);
+`node --test --experimental-test-isolation=none shared/chain-registry.test.mjs`
+4/4 PASS; eight selected mapping-identity cases in
+`shared/public-trade-pairs.test.mjs` PASS; invariant coverage verifier PASS
+(mapping integrity only, not 181 executed obligations). Exact commands and limits
+are in the linked ledger. Initial Node→Git sandbox `EPERM` was resolved by a
+read-only elevated rerun. No live requests, transactions, operational mutations,
+builds, broad suites, native legacy execution or patch exports occurred.
+
+**Outstanding:** Batches 2–7, unchanged dependencies/obligations in the seven-batch
+plan; B2 was not started. Native rollback/external FA2/SDK/provider and present
+deployed-code/state behavior remain unverified at the recorded boundaries. No
+final clean refresh, AUD-011 finalization or remediation-checklist change.
+
+## AUD-011 — remaining coverage inventory (2026-11-25)
+
+**Historical planning checkpoint — superseded for B1 by the ledger above; no complete or clean pass.** Source:
+Outer `2453358c8cf91d4db3bc24e447ed0859f91216e8`, independent Admin
+`d8636e957d3974ba73882d9d29242898f10ed3e0`; both on
+`ticket-AUD-011-full-correctness-review`. Initial Outer changes were the three
+recovered untracked AUD-011 evidence files; Admin was clean. This execution
+changes only Outer audit documentation and preserves all historical records below.
+
+The [AUD-011 checkpoint](AUD-011-findings.md#remaining-coverage-inventory--2026-11-25)
+contains the current source-derived inventory, entrypoints, cross-repository
+boundaries, evidence ledger, both historical crosswalks and seven bounded
+examination batches. Forward, reverse and boundary discovery froze 39 scopes
+before consulting the original 33 workflows and later 20 groups. Reconciliation
+added missing contract artifact provenance as W40 and made GitHub checklist
+reads, dormant exported parsers/catalogue caches and exporter/launcher effects
+explicit. The independent freeze and subsequent additions remain distinguishable.
+
+Reconciled coverage: **40 scopes (38 workflows, one support-library boundary,
+one provenance dependency): 0 COMPLETE, 11 PARTIAL, 29 NOT EXAMINED.** Only the
+recovered local ABI compatibility check and separately bounded Admin/SDK
+account-binding validation are completed evidence items. They do not complete
+their containing workflows. Historical examination/tests supply no AUD-011
+credit. Source discovery itself is not correctness examination.
+
+No reproduction, ABI check, broad test, build, export generation, operational
+write, remote integration or remediation ran for this checkpoint. The validated
+SDK defect and its live/alternative-path limits remain as recorded. Legacy
+execution, deployed identity, live Webflow/wallet/provider behavior and complete
+workflow examination remain unverified. The remediation checklist is unchanged.
+This is initial coverage recovery/planning, not a post-clean refresh; next work
+is the dependency-aware examination slices in the checkpoint.
+
 ## AUD-010 — independent full-application investigation (2026-11-24)
 
 **COMPLETE / NOT CLEAN.** One independent adversarial source examination of both
