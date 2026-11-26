@@ -332,6 +332,34 @@ test("collection validation is scoped to the selected registry network", () => {
   }).ok, true);
 });
 
+test("AUD-011-001: canonical and native HEN redeem IDs fail every authored validation mode", () => {
+  for (const mirrorNetwork of ["testnet", "mainnet"]) {
+    for (const dropScheduled of [true, false]) {
+      for (const operation of ["canonical", "authored", "active"]) {
+        for (const tokenId of ["94684", "0"]) {
+          const candidate = activeFixture();
+          Object.assign(candidate, { mirrorNetwork, dropScheduled });
+          candidate.burnTokens[0].collection = "INTRODUCTIONS";
+          candidate.redeemToken = { ...candidate.redeemToken, collection: "HEN", tokenId };
+          const result = validateDropParams(candidate, { operation });
+          assert.equal(result.ok, false);
+          assert(result.errors.some(error => error.path === "$.redeemToken.collection" && /HEN.*burning only/.test(error.message)));
+          assert.equal(result.errors.some(error => error.code === "contract_mismatch"), false);
+        }
+      }
+    }
+  }
+});
+
+test("AUD-011-001: HEN exclusion adds no general redeem role matrix to unscheduled content", () => {
+  for (const collection of Object.keys(chainRegistry.testnet.collections).filter(key => key !== "HEN")) {
+    const candidate = activeFixture();
+    candidate.dropScheduled = false;
+    candidate.redeemToken.collection = collection;
+    assert.equal(validateDropParams(candidate).ok, true, collection);
+  }
+});
+
 test("EA-XYZ-P3-T004: active single and multi-collection drops reject equal burn/redeem contracts", () => {
   for (const mirrorNetwork of ["testnet", "mainnet"]) {
     for (const operation of ["canonical", "authored", "active"]) {

@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import http from "node:http";
 import { isDeepStrictEqual } from "node:util";
+import { isDropRedeemCollectionEligible } from "../public-drop-compatibility.js";
 
 import {
   DROP_PARAMS_OPERATIONS,
@@ -355,6 +356,7 @@ export function createDropParamsAuthoringApi(options = {}) {
         operations: Object.values(DROP_PARAMS_WRITER_OPERATIONS),
         mirrorNetworks: [...SUPPORTED_MIRROR_NETWORKS],
         collections: [...KNOWN_COLLECTION_KEYS],
+        redeemCollections: KNOWN_COLLECTION_KEYS.filter(isDropRedeemCollectionEligible),
         timezones: ["CST", "EST", "PST"]
       }
     };

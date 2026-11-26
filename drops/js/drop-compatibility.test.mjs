@@ -46,7 +46,7 @@ function candidate(burn = 'HEN', redeem = 'CANAAN') {
   return params;
 }
 const supported = (burn, redeem) => ['HEN', 'INTRODUCTIONS'].includes(burn)
-  && ['HEN', 'INTRODUCTIONS', 'CANAAN'].includes(redeem) && burn !== redeem;
+  && ['INTRODUCTIONS', 'CANAAN'].includes(redeem) && burn !== redeem;
 const unsupported = [];
 for (const burn of keys) for (const redeem of keys) {
   if (!supported(burn, redeem)) unsupported.push(candidate(burn, redeem));
@@ -60,6 +60,11 @@ unsupported.push(noEnabled);
 const wrongNetwork = candidate();
 wrongNetwork.mirrorNetwork = 'mainnet';
 unsupported.push(wrongNetwork);
+for (const tokenId of ['94684', '0']) {
+  const henRedeem = candidate('INTRODUCTIONS', 'HEN');
+  henRedeem.redeemToken.tokenId = tokenId;
+  unsupported.push(henRedeem, { ...henRedeem, dropScheduled: false });
+}
 
 test('CFG-003: all registry collection combinations cross actual authoring, Admin, rendering and Public lookup seams', async () => {
   assert.equal(network, 'testnet', 'This regression targets the selected Shadownet Public surface');
@@ -175,15 +180,16 @@ test('CFG-003: Public rejects incompatible bundled params before wallet/provider
   assert.equal(createDropsConfig({ ...candidate(), mirrorNetwork: 'mainnet' }, 'mainnet').isConfigured, false);
 });
 
-test('CFG-003: HEN redeem presentation resolves the canonical catalog without changing network trade identity', () => {
-  const cfg = candidate('INTRODUCTIONS', 'HEN').redeemToken;
-  const row = { dataset: { tokenId: '94684' } };
-  const context = vm.createContext({ tokenMapping: chainRegistry[network].mirrors,
-    window: { cmsRowsByCollection: { HEN: [row] } }, document: { querySelectorAll: () => [] } });
+test('CFG-003: eligible redeem presentation resolves the canonical catalog without changing network trade identity', () => {
+  const cfg = candidate('HEN', 'INTRODUCTIONS').redeemToken;
+  const row = { dataset: { tokenId: '2' } };
+  // A non-identity mirror exercises inverse presentation lookup independently of HEN.
+  const context = vm.createContext({ tokenMapping: { INTRODUCTIONS: { '2': '0' } },
+    window: { cmsRowsByCollection: { INTRODUCTIONS: [row] } }, document: { querySelectorAll: () => [] } });
   vm.runInContext(section('function findRedeemRow(', '/**\n * Resolves title'), context);
-  assert.equal(context.findRedeemRow(cfg, 'HEN'), row);
+  assert.equal(context.findRedeemRow(cfg, 'INTRODUCTIONS'), row);
   assert.equal(cfg.tokenId, '0');
-  assert.equal(context.findRedeemRow({ ...cfg, tokenId: '999' }, 'HEN'), null);
+  assert.equal(context.findRedeemRow({ ...cfg, tokenId: '999' }, 'INTRODUCTIONS'), null);
 });
 
 test('CFG-003: disabled rows, exclusions, unscheduled authored content and exact inactive shape retain their contracts', () => {

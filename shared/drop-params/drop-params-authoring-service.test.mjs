@@ -121,6 +121,9 @@ test("GET metadata and validate/preview are read-only while apply delegates to t
   assert.equal(state.service.status, "READY");
   assert.equal(state.service.host, "127.0.0.1");
   assert.equal(state.representations.equal, true);
+  assert(state.capabilities.collections.includes("HEN"));
+  assert.deepEqual(state.capabilities.redeemCollections,
+    state.capabilities.collections.filter(collection => collection !== "HEN"));
   assert.deepEqual(base.params, beforeParams);
   assert.equal(base.sourceVersion, beforeSourceVersion);
 
@@ -156,6 +159,34 @@ test("GET metadata and validate/preview are read-only while apply delegates to t
   assert.equal(executeCalls, 1);
   assert.equal(executeRequest.operation, "CREATE");
   assert(isDeepStrictEqual(executeRequest.candidate, candidate));
+});
+
+test("AUD-011-001: service rejects crafted HEN redeem IDs on CREATE/EDIT validate, preview and stale apply", async () => {
+  for (const operation of ["CREATE", "EDIT"]) {
+    const base = snapshot(operation === "CREATE" ? INACTIVE_DROP_PARAMS : activeFixture());
+    let executeCalls = 0;
+    let snapshotReads = 0;
+    const api = createDropParamsAuthoringApi({
+      readSnapshot: async () => { snapshotReads++; return structuredClone(base); },
+      readWriterState: async () => writer(),
+      execute: async () => { executeCalls++; }
+    });
+    const request = { operation, expectedSourceVersion: base.sourceVersion, candidate: activeFixture() };
+    const preview = await api.preview(request);
+    for (const tokenId of ["94684", "0"]) {
+      const candidate = activeFixture();
+      candidate.burnTokens[0].collection = "INTRODUCTIONS";
+      candidate.redeemToken = { ...candidate.redeemToken, collection: "HEN", tokenId };
+      const rejects = error => error.code === "validation_failed" && error.statusCode === 422 &&
+        error.details.errors.some(item => item.path === "$.redeemToken.collection" && /HEN.*burning only/.test(item.message));
+      await assert.rejects(api.validate({ operation, candidate }), rejects);
+      await assert.rejects(api.preview({ ...request, candidate }), rejects);
+      await assert.rejects(api.apply({ ...request, candidate, candidateHash: preview.candidateHash,
+        planHash: preview.planHash, previewToken: preview.previewToken }), rejects);
+    }
+    assert.equal(snapshotReads, 1, "invalid candidates fail before reading writer/repository state");
+    assert.equal(executeCalls, 0);
+  }
 });
 
 test("service validation rejects an active candidate without burn tokens before execution", async () => {

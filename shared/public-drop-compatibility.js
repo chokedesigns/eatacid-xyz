@@ -5,12 +5,21 @@ import {
   validatePublicDropsConfig
 } from './chain-registry.js';
 
+// HEN has an explicit burn-only role. Other collection admission still belongs
+// to registry/schema validation and the existing Public surface capabilities.
+export function isDropRedeemCollectionEligible(collection) {
+  return collection !== 'HEN';
+}
+
 // Shared by authoring and Public's runtime gate. The schema validator owns types,
 // amounts and exclusions; this boundary owns what the current surface can express.
 export function validatePublicDropCompatibility(params, network) {
   const errors = [];
-  if (params?.dropScheduled !== true) return { ok: true, errors };
   const reject = (path, message) => errors.push({ path, message, code: 'public_compatibility' });
+  if (!isDropRedeemCollectionEligible(params?.redeemToken?.collection)) {
+    reject('$.redeemToken.collection', 'HEN is eligible for Drop burning only, not redemption');
+  }
+  if (params?.dropScheduled !== true) return { ok: errors.length === 0, errors };
 
   if (params.mirrorNetwork !== network) {
     reject('$.mirrorNetwork', `must match the selected Public network (${network})`);
@@ -39,7 +48,7 @@ export function validatePublicDropCompatibility(params, network) {
   }
   if (params.redeemToken && !PUBLIC_DROPS_COLLECTION_KEYS.includes(params.redeemToken.collection)) {
     reject('$.redeemToken.collection',
-      `has no Public Drops redeem catalog; supported collections: ${PUBLIC_DROPS_COLLECTION_KEYS.join(', ')}`);
+      `has no Public Drops redeem catalog; supported collections: ${PUBLIC_DROPS_COLLECTION_KEYS.filter(isDropRedeemCollectionEligible).join(', ')}`);
   }
   return { ok: errors.length === 0, errors };
 }

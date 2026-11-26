@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import {
   mkdir,
   readFile,
@@ -140,6 +141,34 @@ beforeEach(async () => {
 afterEach(async () => {
   await restoreOriginalFiles();
   await removeTestRuntimeArtifacts();
+});
+
+test("AUD-011-001: CLI CREATE/EDIT reject canonical and native HEN redemption without writes or journals", async () => {
+  for (const command of ["create", "edit"]) {
+    await setCurrent(command === "create" ? INACTIVE_DROP_PARAMS : activeFixture());
+    const before = await exactCurrentBytes();
+    const readJournals = () => readdir(DROP_PARAMS_TRANSACTION_PATHS.journalDirectory)
+      .catch(error => error.code === "ENOENT" ? [] : Promise.reject(error));
+    const journals = await readJournals();
+    for (const tokenId of ["94684", "0"]) {
+      const candidate = activeFixture();
+      candidate.burnTokens[0].collection = "INTRODUCTIONS";
+      candidate.redeemToken = { ...candidate.redeemToken, collection: "HEN", tokenId };
+      const result = spawnSync(process.execPath, ["scripts/drop-params-transaction.mjs", command], {
+        cwd: new URL("../../", import.meta.url), encoding: "utf8", timeout: 10_000,
+        input: JSON.stringify({ operationId: `${testPrefix}hen-redeem-${command}-${tokenId}`,
+          expectedSourceVersion: await getCurrentSourceVersion(), candidate })
+      });
+      assert.ifError(result.error);
+      assert.equal(result.status, 1, result.stderr);
+      assert.equal(result.stdout, "");
+      const failure = JSON.parse(result.stderr);
+      assert.equal(failure.name, "DropParamsValidationError");
+      assert.match(failure.message, /\$\.redeemToken\.collection: HEN.*burning only/);
+      assertByteMapsEqual(await exactCurrentBytes(), before);
+      assert.deepEqual(await readJournals(), journals);
+    }
+  }
 });
 
 test("CREATE commits a complete active configuration and duplicate completion is idempotent", async () => {
