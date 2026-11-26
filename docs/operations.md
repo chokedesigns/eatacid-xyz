@@ -97,7 +97,21 @@ npm run dropparams:transaction -- status
 npm run dropparams:transaction -- reconcile
 ```
 
-`create`, `edit`, and `deactivate` accept exactly one JSON request object on standard input. Every mutation request includes `operationId` and the exact current `expectedSourceVersion`; CREATE/EDIT also include a complete active `candidate`. The command accepts no caller-supplied paths. DEACTIVATE publishes and verifies a schema-version-1 artifact under `shared/drop-params/archive/` before resetting all three current representations to the exact inactive template. Archives are history, never current-config authority, and remain after a rolled-back deactivation.
+`create`, `edit`, and `deactivate` accept exactly one JSON request object on standard input. Every mutation request includes `operationId` and the exact current `expectedSourceVersion`; CREATE/EDIT also include a complete scheduled `candidate` (`dropScheduled:true`). The command accepts no caller-supplied paths. Normal DEACTIVATE of a scheduled Drop publishes and verifies a schema-version-1 artifact under `shared/drop-params/archive/` before resetting all three current representations to the exact empty inactive template below. Archives are history, never current-config authority, and remain after a rolled-back deactivation.
+
+```json
+{
+  "dropScheduled": false,
+  "dropName": "",
+  "mirrorNetwork": null,
+  "dropDate": null,
+  "dropTime": null,
+  "burnTokens": [],
+  "redeemToken": null
+}
+```
+
+`dropScheduled:false` means **NO DROP SCHEDULED**, whether the source contains this template or an otherwise valid complete authored configuration. The latter remains valid canonical content under the normal schema and registry rules; populated fields do not make Drop actions eligible. Do not silently clear it or treat it as an active Drop. The exact empty template is the normal DEACTIVATE result, not a requirement for every false source. Source identity, projection equality, locking, and recovery checks remain mandatory. The CLI returns `already_inactive` without clearing a valid unscheduled source; the authoring service requires a scheduled source for DEACTIVATE.
 
 The ignored `shared/drop-params/.drop-params.operations/` directory holds narrowly scoped local recovery journals and staging files. A failed rollback marks the writer `reconciliation_required` and blocks later mutations, generation, and mirroring. Inspect with `status`; after independently restoring or validating the recorded exact state, use `reconcile`. Do not delete an unresolved journal merely to bypass the block.
 
@@ -130,6 +144,8 @@ The authoring controls are available only in local Admin development. They edit 
 
 The production Admin build removes Parcel's unreachable development-only authoring chunks before running its isolation verifier. Production runtime continues to consume the bundled static mirror and has no localhost authoring transport or controls.
 
+These normal lifecycle paths publish scheduled configurations through CREATE/EDIT and the exact empty template through DEACTIVATE. Current Admin providers reject valid populated unscheduled snapshots: production provider creation throws `invalid_snapshot`, while development publishes `ERROR` with null params and cannot initialize Drops or enable authoring. This is the unresolved [AUD-011 B2-002 / Checklist 0.2 limitation](../audits/AUD-011-findings.md#aud-011-b2-002--valid-unscheduled-canonical-content-prevents-admin-initialization), not a canonical validation rule or a reason to clear the source.
+
 - **CREATE:** when no drop is scheduled, select **Schedule Drop**, complete the structured form, validate, preview the exact plan, and apply. After verified transaction success, Admin fetches the committed service snapshot, verifies its operation and `sourceVersion`, publishes it through the local provider, and re-renders immediately without a reload. A completed no-op settles immediately.
 - **EDIT:** for an active drop, select **Edit Drop Params**. The form starts from the canonical values returned by the service. Validate, preview, and apply; the committed provider snapshot immediately supplies both Drops and its checklist.
 - **DEACTIVATE:** for an active drop, select **Deactivate Drop**, review the archive/reset preview, and acknowledge that no on-chain mutation occurs. **Archive & Deactivate** first publishes and verifies the immutable archive, then resets the canonical source, synchronizes both projections, verifies the transaction, and publishes the exact inactive provider snapshot. The Drops empty state and development-only **Schedule Drop** control update without reload. Failure, rollback, reconciliation, and already-inactive results settle immediately without waiting for a build.
@@ -145,6 +161,7 @@ Authoring does **not** pause or unpause contracts, add or remove token pairs, fu
 - **`sourceVersion` is stale:** discard the stale preview, allow Admin to refresh canonical state, reopen the operation, and validate/preview again. Never force-apply an old preview.
 - **A completed write cannot verify its committed snapshot:** the repository transaction may already have committed, so do not reapply. Inspect the reported `sourceVersion`, service health, representation equality, and transaction status. Restore service/equality health and let the bounded provider refresh recover the current snapshot; no Parcel rebuild or reload is part of synchronization.
 - **Source/projection/mirror drift is detected:** stop authoring and run the supported generator/watcher flow (`npm run dropparams:json`, then Admin `npm run sync:drop-params` when required). Inspect the resulting diffs and equality before retrying. Do not hand-edit either JSON projection.
+- **Admin rejects a valid populated unscheduled snapshot:** distinguish the known provider limitation above from source/projection drift or blocked recovery. Preserve the canonical content; regeneration of already-equal projections does not fix this provider defect. Any deliberate replacement must use the supported manual/CLI workflow with normal validation, source identity, equality, and recovery safeguards.
 - **A transaction rolls back:** read the reported rollback result. A verified rollback preserves the pre-operation current files; inspect status and retry with a fresh source version and preview only after the cause is resolved. An archive already published by DEACTIVATE remains immutable history.
 - **`reconciliation_required` is raised:** authoring stays blocked. Run `npm run dropparams:transaction -- status`, independently restore or validate the exact recorded state, then run `npm run dropparams:transaction -- reconcile`. Do not edit or delete journals, locks, projections, or archives to bypass the block.
 

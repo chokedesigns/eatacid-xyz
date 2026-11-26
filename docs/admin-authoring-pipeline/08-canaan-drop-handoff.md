@@ -36,6 +36,8 @@ The projections must not be edited by hand. Current public/Admin consumers impor
 
 At this architecture snapshot `dropScheduled` is `false`, which is the existing **NO DROP** sentinel. The exact active value is mutable operational state and must be read at handoff time.
 
+The sentinel means **NO DROP SCHEDULED**. Canonical validity permits either the exact empty inactive template or an otherwise valid complete authored configuration with `dropScheduled:false`. Populated unscheduled content must be preserved and grants no Drop action eligibility. Normal schema/registry validation, source identity, projection equality, and recovery safeguards still apply. Current Admin providers reject the populated unscheduled shape; [AUD-011 B2-002 / Checklist 0.2](../../audits/AUD-011-findings.md#aud-011-b2-002--valid-unscheduled-canonical-content-prevents-admin-initialization) remains an unfixed implementation limitation, not a canonical validity rule.
+
 ## What Prepare Drop may do in V1
 
 The optional V1 handoff may prepare a validated proposal using already verified work facts:
@@ -92,11 +94,12 @@ Do not overload `supply` or copy one value into another without policy.
 
 Likewise:
 
-- **drop configured** means params select a drop;
+- **drop configured** means complete params schedule a Drop with `dropScheduled:true`;
 - **pre-drop ready** means required operational checks passed;
 - **live** preserves the existing rule: scheduled time reached and a fresh storage read observes unpaused;
 - **sold out** requires a confirmed remaining escrow balance of zero after live;
-- **cleared/no drop** requires an explicit `dropScheduled:false` save and does not mutate chain state.
+- **no drop scheduled** means `dropScheduled:false`, including valid populated unscheduled content;
+- **cleared** is the normal DEACTIVATE result: archive the previous scheduled Drop, then reset the source and both projections to the exact empty inactive template. It does not mutate chain state. Normal Admin CREATE/EDIT publishes scheduled configurations; saving false alone does not mean the source has been cleared.
 
 The authoring pipeline needs only the handoff boundary. A future Drops lifecycle UI may improve operational states independently.
 
